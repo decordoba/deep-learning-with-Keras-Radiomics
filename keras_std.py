@@ -1,5 +1,6 @@
 from matplotlib import pyplot as plt
 from keras.callbacks import Callback
+from time import clock
 import math
 
 
@@ -14,7 +15,8 @@ BATCH_SUBFIG_YLIM = [3, 1]                          # initial Y range for all su
 BATCH_NUM_COLS = 2                                  # number of colums in the figure
 BATCH_NUM_ROWS = int(math.ceil(len(BATCH_SUBFIG_METRICS) / BATCH_NUM_COLS))     # number of rows in the figure
 
-EPOCH_PLOT_UPDATE_FREQUENCY = 1                     # num epochs between every plot update
+EPOCH_PLOT_UPDATE_FREQUENCY = 0                     # num epochs between every plot update. If 0, we only consider EPOCH_PLOT_TIME_LAPSE
+EPOCH_PLOT_TIME_LAPSE = 30                          # how often do we plot (every EPOCH_PLOT_TIME_LAPSE seconds)
 EPOCH_FIG_NUM = 0                                   # figure number where we will show figure
 EPOCH_SUBFIG_METRICS = [["loss", "val_loss"], ["acc", "val_acc"]]   # metrics to be shown (will be read in on_batch_end)
 EPOCH_SUBFIG_LABELS = [["training", "validation"], ["training", "validation"]]   # labels for the legend in every subfig
@@ -36,6 +38,7 @@ class cbPlotEpochBatch(Callback):
         if SHOW_PLOTS:
             plt.ion()  # Allows plots to be non-blocking
         self.init_epoch_plots()
+        self.time_plot = clock()
 
     def on_train_end(self, logs={}):
         self.update_epoch_plots(rescale_Y=True)  # Rescales Y in epoch plots
@@ -90,7 +93,10 @@ class cbPlotEpochBatch(Callback):
                 self.epoch_metrics[i][j].append(logs.get(EPOCH_SUBFIG_METRICS[i][j]))
         self.epoch_steps.append(self.epoch_num)
         self.epoch_num += 1
-        if self.epoch_num % EPOCH_PLOT_UPDATE_FREQUENCY == 0:
+        curr_time = clock()
+        if ((EPOCH_PLOT_UPDATE_FREQUENCY > 0 and self.epoch_num % EPOCH_PLOT_UPDATE_FREQUENCY == 0) or
+                (EPOCH_PLOT_UPDATE_FREQUENCY <= 0 and self.time_plot + EPOCH_PLOT_TIME_LAPSE < curr_time)):
+            self.time_plot = curr_time
             self.update_epoch_plots()
 
     def update_epoch_plots(self, rescale_Y=False):
