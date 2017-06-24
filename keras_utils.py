@@ -340,7 +340,7 @@ def flexible_neural_net(train_set, test_set, optimizer, loss, *layers, batch_siz
     t = clock() - t
     # Save neural network model as an image, and also data
     save_model_data(model, train_score, test_score, t, location, save_weights=True, history=history)
-    return train_score, test_score, t
+    return train_score, test_score, t, location
 
 def save_model_data(model, train_score, test_score, time, location, save_yaml=True, save_json=False,
                     save_image=True, save_weights=True, save_full_model=False, history=None):
@@ -365,10 +365,10 @@ def save_model_data(model, train_score, test_score, time, location, save_yaml=Tr
     result += "time_taken: {}\n".format(time)
     if history is not None:
         plot_history(history, filename=location + "/history.png")
-        result += "train_accuracy: {}\n".format(history.history['acc'])
-        result += "train_loss: {}\n".format(history.history['loss'])
-        result += "test_accuracy: {}\n".format(history.history['val_acc'])
-        result += "test_loss: {}\n".format(history.history['val_loss'])
+        result += "train_accuracy_history: {}\n".format(history.history['acc'])
+        result += "train_loss_history: {}\n".format(history.history['loss'])
+        result += "test_accuracy_history: {}\n".format(history.history['val_acc'])
+        result += "test_loss_history: {}\n".format(history.history['val_loss'])
     with open(location + "/result.yaml", "w") as f:
         f.write(result)
 
