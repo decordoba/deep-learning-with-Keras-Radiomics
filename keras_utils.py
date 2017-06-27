@@ -4,6 +4,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from keras.utils import np_utils
 from keras import backend
+from keras.callbacks import EarlyStopping
 import math
 from keras.layers.wrappers import Wrapper
 from keras.models import Sequential
@@ -306,7 +307,7 @@ def format_dataset(x_train, y_train, x_test=None, y_test=None, data_reduction=No
     return (X_train, Y_train), (X_test, Y_test), input_shape
 
 def flexible_neural_net(train_set, test_set, optimizer, loss, *layers, batch_size=32, epochs=10,
-                        callback=cbPlotEpoch, location=None, verbose=True):
+                        callback=cbPlotEpoch, early_stopping=10, location=None, verbose=True):
     """
     Layer to create a nn model, compile it, fit it, calculate train and test error, and
     save the model to location with only one function
@@ -324,6 +325,10 @@ def flexible_neural_net(train_set, test_set, optimizer, loss, *layers, batch_siz
     except OSError:
         pass  # In case the dir already exists
 
+    callbacks = [callback(location)]
+    if early_stopping > 0:
+        callbacks.append(EarlyStopping(monitor="val_loss", patience=early_stopping, verbose=True))
+
     # Create model and add layers
     model = Sequential()
     for layer in layers:
@@ -333,7 +338,7 @@ def flexible_neural_net(train_set, test_set, optimizer, loss, *layers, batch_siz
     t = clock()
     # Fit the model to train data
     history = model.fit(train_set[0], train_set[1], batch_size=batch_size, epochs=epochs,
-                        verbose=verbose, callbacks=[callback(location)], validation_data=test_set)
+                        verbose=verbose, callbacks=callbacks, validation_data=test_set)
     # Evaluate the model on training and test data
     train_score = model.evaluate(train_set[0], train_set[1], verbose=verbose)
     test_score = model.evaluate(test_set[0], test_set[1], verbose=verbose)
