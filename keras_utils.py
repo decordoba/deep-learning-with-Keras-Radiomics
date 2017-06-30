@@ -1,6 +1,7 @@
 import os
 from time import clock
 import numpy as np
+import matplotlib
 from matplotlib import pyplot as plt
 from keras.utils import np_utils
 from keras import backend
@@ -118,6 +119,99 @@ def plot_history(history, fig_num=0, filename=None):
     else:
         fig.savefig(filename, bbox_inches="tight")
         fig.clear()
+
+def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, filename=None, bars_dist=0.1,
+                      fig_num=0, cmap="plasma", bird_view=False):
+    """
+    Receives list of X, Y and Z and plots them. X and Y can be strings or numbers.
+    For example:
+        plot_3D_bar_graph(["0", "0", "1", "1"], [0, 1, 0, 1], [0, 1, 1, 2])
+    will plot a 2 by 2 matrix of bars with different heights.
+    Many parmateres can be configured, like a title, the labels, a filename to save the figure,
+    the distance between the bars, the colormap, the initial view...
+    """
+    # get X and Y axis, and ordering them
+    X_labels = set()
+    Y_labels = set()
+    for x in X:
+        X_labels.add(x)
+    for y in Y:
+        Y_labels.add(y)
+    minZ = None
+    maxZ = None
+    for z in Z:
+        try:
+            minZ = min(z, minZ)
+        except TypeError:
+            minZ = z
+        try:
+            maxZ = max(z, maxZ)
+        except TypeError:
+            maxZ = z
+    rangeZ = maxZ - minZ
+    X_labels = sorted(X_labels)
+    Y_labels = sorted(Y_labels)
+    X_mapper = {}
+    Y_mapper = {}
+    for i, x in enumerate(X_labels):
+        X_mapper[x] = i
+    for i, y in enumerate(Y_labels):
+        Y_mapper[y] = i
+
+    # create params needed for plotting
+    X_list = [X_mapper[x] + bars_dist / 2.0 for x in X]
+    Y_list = [Y_mapper[y] + bars_dist / 2.0 for y in Y]
+    Z_offset = minZ - rangeZ * 0.1
+    Z_list = [Z_offset] * len(Z)
+    dX = [1 - bars_dist] * len(X_list)
+    dY = [1 - bars_dist] * len(Y_list)
+    dZ = [z - Z_offset for z in Z]
+
+    # create bar graph
+    fig = plt.figure(fig_num)
+    fig.clear()
+    ax = fig.add_subplot(111, projection='3d')
+    plt.ion()
+    plt.show()
+    cmap = matplotlib.cm.get_cmap(cmap)
+    for i in range(len(X_list)):
+        ax.bar3d(X_list[i], Y_list[i], Z_list[i], dX[i], dY[i], dZ[i],
+                 color=cmap((Z[i] - minZ) / rangeZ))
+    if axis_labels is not None:
+        if axis_labels[0] is not None:
+            ax.set_xlabel(axis_labels[0])
+        if axis_labels[1] is not None:
+            ax.set_ylabel(axis_labels[1])
+        if axis_labels[2] is not None:
+            ax.set_zlabel(axis_labels[2])
+    if title is not None:
+        ax.set_title(title.strip(), fontsize="xx-large", fontweight="bold", y=1.1)
+
+    # change labels axis
+    X_middles = [x + 0.5 for x in range(len(X_labels))]
+    Y_middles = [y + 0.5 for y in range(len(Y_labels))]
+    ax.set_xticks(X_middles)
+    ax.set_xticklabels(X_labels)
+    ax.set_yticks(Y_middles)
+    ax.set_yticklabels(Y_labels)
+
+    # draw colorbar
+    fig.subplots_adjust(bottom=0.16)
+    ax_cbar = fig.add_axes([0.1, 0.07, 0.8, 0.05])
+    matplotlib.colorbar.ColorbarBase(ax_cbar, orientation="horizontal", cmap=cmap,
+                                     norm=matplotlib.colors.Normalize(vmin=minZ, vmax=maxZ))
+
+    # change initial perspective to be seen from above
+    if bird_view:
+        ax.view_init(elev=90, azim=270)
+
+    # wait for user actions and save graph
+    plt.pause(0.001)
+    if filename is not None:
+        txt = input("Position the figure in the preferred perspective, and press ENTER to save it.\nPress the Q key + ENTER to skip saving the figure.\n")
+        if len(txt) < 1 or txt[0].lower() != "q":
+            fig.savefig("{}.png".format(filename.strip()), bbox_inches="tight")
+    plt.ioff()
 
 def plot_model(model, to_file='model.png', show_shapes=False, show_layer_names=True,
                show_params=False):
