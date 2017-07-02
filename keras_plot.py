@@ -165,8 +165,15 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, filename=None, bars
     ax.set_yticks(np.arange(Y_labels.shape[0]) + 0.5)
     ax.set_yticklabels(Y_labels)
 
+    # draw colorbar
+    fig.subplots_adjust(bottom=0.16)
+    ax_cbar = fig.add_axes([0.1, 0.07, 0.8, 0.05])
+    colorbar.ColorbarBase(ax_cbar, orientation="horizontal", cmap=cmap,
+                          norm=mpl_colors.Normalize(vmin=minZ, vmax=maxZ))
+
     # draw bar graph
-    ax.bar3d(X_list, Y_list, np.array([Z_offset] * len(Z_list)), dX, dY, dZ, color=colors_list)
+    ax.bar3d(X_list, Y_list, np.array([Z_offset] * len(Z_list)), dX, dY, dZ, color=colors_list,
+             edgecolors='black', linewidths=0.5)
 
     # add labels and title
     if axis_labels is not None:
@@ -179,11 +186,87 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, filename=None, bars
     if title is not None:
         ax.set_title(title.strip(), fontsize="xx-large", y=1.1)
 
+    # wait for user actions and save graph
+    if filename is not None:
+        plt.ion()
+        plt.show()
+        txt = input("Position the figure in the preferred perspective, and press ENTER to save it.\nPress the Q key + ENTER to skip saving the figure.\n")
+        if len(txt) < 1 or txt[0].lower() != "q":
+            fig.savefig("{}.png".format(filename.strip()), bbox_inches="tight")
+        plt.ioff()
+    else:
+        plt.ioff()
+        plt.show()
+
+def plot_colormap(X, Y, Z, axis_labels=None, title=None, filename=None, fig_num=0, cmap="plasma"):
+    """
+    Receives list of X, Y and Z and plots them. X and Y can be strings or numbers.
+    For example:
+        plot_3D_bar_graph(["0", "0", "1", "1"], [0, 1, 0, 1], [0, 1, 1, 2])
+    will plot a 2 by 2 matrix of bars with different heights.
+    Many parmateres can be configured, like a title, the labels, a filename to save the figure,
+    the distance between the bars, the colormap, the initial view...
+    """
+    # get X and Y axis, and order them
+    X_labels = np.unique(X)
+    Y_labels = np.unique(Y)
+    X_mapper = {}
+    for i, x in enumerate(X_labels):
+        X_mapper[x] = i
+    Y_mapper = {}
+    for i, y in enumerate(Y_labels):
+        Y_mapper[y] = i
+
+    # create params needed for plotting
+    minZ = min(Z)
+    maxZ = max(Z)
+    Z_list = np.array([[0.0 for x in X_labels] for y in Y_labels])
+    Z_mask = np.array([[1.0 for x in X_labels] for y in Y_labels])
+    for x, y, z in zip(X, Y, Z):
+        Z_mask[Y_mapper[y]][X_mapper[x]] = 0
+        Z_list[Y_mapper[y]][X_mapper[x]] = z
+    Z_list = np.ma.array(Z_list, mask=Z_mask)
+    cmap = cm.get_cmap(cmap)
+
+    # create figure
+    fig = plt.figure(fig_num, dpi=120)
+    fig.clear()
+    ax = fig.add_subplot(111)
+
+    # change labels axis
+    ax.set_xticks(np.arange(X_labels.shape[0]) + 0.5, minor=False)
+    ax.set_xticklabels(X_labels)
+    ax.set_yticks(np.arange(Y_labels.shape[0]) + 0.5, minor=False)
+    ax.set_yticklabels(Y_labels)
+
     # draw colorbar
-    fig.subplots_adjust(bottom=0.16)
+    fig.subplots_adjust(bottom=0.25)
     ax_cbar = fig.add_axes([0.1, 0.07, 0.8, 0.05])
     colorbar.ColorbarBase(ax_cbar, orientation="horizontal", cmap=cmap,
                           norm=mpl_colors.Normalize(vmin=minZ, vmax=maxZ))
+
+    # draw color map
+    ax.pcolor(Z_list, edgecolors='black', linewidths=0.3, cmap=cmap)
+
+    # add labels and title
+    if axis_labels is not None:
+        if axis_labels[0] is not None:
+            ax.set_xlabel(axis_labels[0])
+        if axis_labels[1] is not None:
+            ax.set_ylabel(axis_labels[1])
+    if title is not None:
+        ax.set_title(title.strip(), fontsize="xx-large", y=1.1)
+
+    # hide lines for labels
+    for t in ax.xaxis.get_major_ticks():
+        t.tick1On = False
+        t.tick2On = False
+    for t in ax.yaxis.get_major_ticks():
+        t.tick1On = False
+        t.tick2On = False
+
+    # Ensure heatmap cells are square
+    ax.set_aspect('equal')
 
     # wait for user actions and save graph
     if filename is not None:
@@ -196,3 +279,13 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, filename=None, bars
     else:
         plt.ioff()
         plt.show()
+
+if __name__ == "__main__":
+    import random
+    X = "1st 2nd 3rd 4th".split() + "1st 3rd 4th".split() + "1st 2nd 3rd 4th".split()
+    Y = ["a", "a", "a", "a"] + ["b", "b", "b"] + ["c", "c", "c", "c"]
+    Z = [random.random() * 0.5 + 0.5 for _ in X]
+    plot_colormap(X, Y, Z, axis_labels=("x", "y"), title="Hello")
+    plot_3D_bar_graph(X, Y, Z, axis_labels=("x", "y", "z"), title="Hello")
+    plot_3D_bar_graph(X, Y, Z, axis_labels=("x", "y", "z"), title="Hello", bird_view=True,
+                      orthogonal_projection=True)
