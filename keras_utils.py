@@ -7,6 +7,7 @@ from keras.callbacks import EarlyStopping
 from keras.layers.wrappers import Wrapper
 from keras.models import Sequential
 from keras_std import cbPlotEpoch  # cbPlotEpochBatch
+from keras_plot import plot_history
 try:
     # pydot-ng is a fork of pydot that is better maintained.
     import pydot_ng as pydot
@@ -222,7 +223,7 @@ def flexible_neural_net(train_set, test_set, optimizer, loss, *layers, batch_siz
         pass  # In case the dir already exists
 
     callbacks = [callback(location)]
-    if early_stopping > 0:
+    if early_stopping is not None and early_stopping > 0:
         callbacks.append(EarlyStopping(monitor="val_loss", patience=early_stopping, verbose=True))
 
     # Create model and add layers
@@ -241,7 +242,7 @@ def flexible_neural_net(train_set, test_set, optimizer, loss, *layers, batch_siz
     t = clock() - t
     # Save neural network model as an image, and also data
     save_model_data(model, train_score, test_score, t, location, save_weights=True, history=history)
-    return train_score, test_score, t, location
+    return train_score, test_score, t, location, len(history.history['acc'])
 
 def save_model_data(model, train_score, test_score, time, location, save_yaml=True, save_json=False,
                     save_image=True, save_weights=True, save_full_model=False, history=None):
