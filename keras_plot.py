@@ -193,6 +193,9 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, filename=None, bars
         txt = input("Position the figure in the preferred perspective, and press ENTER to save it.\nPress the Q key + ENTER to skip saving the figure.\n")
         if len(txt) < 1 or txt[0].lower() != "q":
             fig.savefig("{}.png".format(filename.strip()), bbox_inches="tight")
+            print("Figure saved in {}.png\n".format(filename.strip()))
+        else:
+            print()
         plt.ioff()
     else:
         plt.ioff()
@@ -275,6 +278,9 @@ def plot_colormap(X, Y, Z, axis_labels=None, title=None, filename=None, fig_num=
         txt = input("Position the figure in the preferred perspective, and press ENTER to save it.\nPress the Q key + ENTER to skip saving the figure.\n")
         if len(txt) < 1 or txt[0].lower() != "q":
             fig.savefig("{}.png".format(filename.strip()), bbox_inches="tight")
+            print("Figure saved in {}.png\n".format(filename.strip()))
+        else:
+            print()
         plt.ioff()
     else:
         plt.ioff()
