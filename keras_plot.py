@@ -109,8 +109,8 @@ def plot_history(history, fig_num=0, filename=None):
         fig.clear()
 
 def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, filename=None, bars_dist=0.1,
-                      fig_num=0, cmap="plasma", bird_view=False, orthogonal_projection=False,
-                      subplot_position=111):
+                      fig_num=0, cmap="plasma", view_elev=90, view_azim=45,
+                      orthogonal_projection=False, subplot_position=111, fig_clear=True):
     """
     Receives list of X, Y and Z and plots them. X and Y can be strings or numbers.
     For example:
@@ -144,7 +144,8 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, filename=None, bars
 
     # create figure
     fig = plt.figure(fig_num, dpi=120)
-    fig.clear()
+    if fig_clear:
+        fig.clear()
     ax = fig.add_subplot(subplot_position, projection='3d')
     if orthogonal_projection:
         def matplotlib_orthogonal_projection(zfront, zback):
@@ -155,10 +156,14 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, filename=None, bars
         proj3d.persp_transformation = matplotlib_orthogonal_projection
 
     # change initial perspective to be seen from above
-    if bird_view:
-        ax.view_init(elev=90, azim=90)
-    else:
-        ax.view_init(elev=50, azim=45)
+    if view_elev is not None or view_azim is not None:
+        if view_azim is None:
+            ax.view_init(elev=view_elev)
+        elif view_elev is None:
+            ax.view_init(elev=50, azim=45)
+            ax.view_init(azim=view_azim)
+        else:
+            ax.view_init(elev=view_elev, azim=view_azim)
 
     # change labels axis
     ax.set_xticks(np.arange(X_labels.shape[0]) + 0.5)
@@ -200,10 +205,10 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, filename=None, bars
         plt.ioff()
     else:
         plt.ioff()
-        plt.show()
+        # plt.show()
 
 def plot_colormap(X, Y, Z, axis_labels=None, title=None, filename=None, fig_num=0, cmap="plasma",
-                  subplot_position=111):
+                  subplot_position=111, fig_clear=True):
     """
     Receives list of X, Y and Z and plots them. X and Y can be strings or numbers.
     For example:
@@ -235,7 +240,8 @@ def plot_colormap(X, Y, Z, axis_labels=None, title=None, filename=None, fig_num=
 
     # create figure
     fig = plt.figure(fig_num, dpi=120)
-    fig.clear()
+    if fig_clear:
+        fig.clear()
     ax = fig.add_subplot(subplot_position)
 
     # change labels axis
@@ -286,7 +292,7 @@ def plot_colormap(X, Y, Z, axis_labels=None, title=None, filename=None, fig_num=
         plt.ioff()
     else:
         plt.ioff()
-        plt.show()
+        # plt.show()
 
 if __name__ == "__main__":
     import random

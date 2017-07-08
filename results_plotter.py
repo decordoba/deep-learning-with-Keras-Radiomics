@@ -114,7 +114,7 @@ def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0):
 
     # Results are plotted in a logical order
     comb_list = sorted(comb_list)
-    for comb in comb_list:
+    for k, comb in enumerate(comb_list):
         title = ""
         filename = "{}={} {}={} {}={} ".format("metric", height_keys, "X", keyX, "Y", keyY)
         for j, param in enumerate(params_keys):
@@ -124,20 +124,31 @@ def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0):
         x = plotsX[comb_to_fig[comb]]
         y = plotsY[comb_to_fig[comb]]
         zs = plotsZ[comb_to_fig[comb]]
+        azim = None
+        elev = None
         for i, (height_key, z) in enumerate(zip(height_keys, zs)):
-            subplot_position = 100 + len(height_keys) * 10 + i
+            fn = None
+            subplot_position = 100 + len(height_keys) * 10 + i + 1
+            if i + 1 == len(height_keys):
+                fn = filename
             if plot_mode == 0:
+                if k == 0:
+                    elev = 50
+                    azim = 45
                 plot_3D_bar_graph(x, y, z, axis_labels=(keyX, keyY, height_key), title=title,
-                                  filename=filename, orthogonal_projection=False,
-                                  bird_view=False, subplot_position=subplot_position)
+                                  filename=fn, orthogonal_projection=False, fig_clear=i==0,
+                                  view_azim=azim, view_elev=elev, subplot_position=subplot_position)
             elif plot_mode == 1:
+                if k == 0:
+                    elev = 90
+                    azim = 90
                 plot_3D_bar_graph(x, y, z, axis_labels=(keyX, keyY, height_key), title=title,
-                                  filename=filename, orthogonal_projection=True,
-                                  bird_view=True, subplot_position=subplot_position)
+                                  filename=fn, orthogonal_projection=True, fig_clear=i==0,
+                                  view_azim=azim, view_elev=elev, subplot_position=subplot_position)
             else:
                 title = "Metric: {}\n".format(height_key) + title
-                plot_colormap(x, y, z, axis_labels=(keyX, keyY), title=title,
-                              filename=filename, subplot_position=subplot_position)
+                plot_colormap(x, y, z, axis_labels=(keyX, keyY), title=title, fig_clear=i==0,
+                              filename=fn, subplot_position=subplot_position)
 
 
 if __name__ == "__main__":
