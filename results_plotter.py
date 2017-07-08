@@ -6,13 +6,17 @@ import yaml
 from keras_plot import plot_3D_bar_graph, plot_colormap  # 'Library' by Daniel
 
 
-def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0, ordered_results=True):
+def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0):
     """
     From the selected folder (or current folder if folder == None), plot result found in
     result.yaml
     Different plot modes will plot the same data differently. Right now, only 3 modes are
     implemented: 0 (3D bars graph), 1 (2D colormap) or 2 (3D bars graph but seen from top)
     """
+    # Make sure height keys is a list
+    if not isinstance(height_keys, list):
+        height_keys = [height_keys]
+
     # Navigate to folder and load result.yaml
     if folder is not None:
         os.chdir(folder)
@@ -92,7 +96,6 @@ def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0, order
     plotsY = []
     plotsZ = []
     comb_to_fig = {}
-    fig_to_comb = {}
     comb_list = []
     for sample_key in result:
         comb = ()
@@ -100,60 +103,41 @@ def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0, order
             comb += (result[sample_key]["params"][key],)
         if not comb in comb_to_fig:
             comb_to_fig[comb] = len(plotsX)
-            fig_to_comb[len(plotsX)] = comb
             comb_list.append(comb)
             plotsX.append([])
             plotsY.append([])
-            plotsZ.append([])
+            plotsZ.append([[] for _ in height_keys])
         plotsX[comb_to_fig[comb]].append(result[sample_key]["params"][keyX])
         plotsY[comb_to_fig[comb]].append(result[sample_key]["params"][keyY])
         for i, keyZ in enumerate(height_keys):
             plotsZ[comb_to_fig[comb]][i].append(result[sample_key]["result"][keyZ])
 
-
-    # Plot a figure for every combination (I know, there is a lot of repeated code, sorry)
-    if ordered_results:
-        # Results are plotted in a logical order
-        comb_list = sorted(comb_list)
-        for comb in comb_list:
-            title = ""
-            filename = "{}={} {}={} {}={} ".format("metric", height_key, "X", keyX, "Y", keyY)
-            for j, param in enumerate(params_keys):
-                title += "{}: {}\n".format(param, comb[j])
-                filename += "{}={} ".format(param, comb[j])
-            filename += "{}={} ".format("plot_mode", plot_mode)
-            x = plotsX[comb_to_fig[comb]]
-            y = plotsY[comb_to_fig[comb]]
-            z = plotsZ[comb_to_fig[comb]]
+    # Results are plotted in a logical order
+    comb_list = sorted(comb_list)
+    for comb in comb_list:
+        title = ""
+        filename = "{}={} {}={} {}={} ".format("metric", height_keys, "X", keyX, "Y", keyY)
+        for j, param in enumerate(params_keys):
+            title += "{}: {}\n".format(param, comb[j])
+            filename += "{}={} ".format(param, comb[j])
+        filename += "{}={} ".format("plot_mode", plot_mode)
+        x = plotsX[comb_to_fig[comb]]
+        y = plotsY[comb_to_fig[comb]]
+        zs = plotsZ[comb_to_fig[comb]]
+        for i, (height_key, z) in enumerate(zip(height_keys, zs)):
+            subplot_position = 100 + len(height_keys) * 10 + i
             if plot_mode == 0:
                 plot_3D_bar_graph(x, y, z, axis_labels=(keyX, keyY, height_key), title=title,
-                                  filename=filename, bird_view=False, orthogonal_projection=False)
+                                  filename=filename, orthogonal_projection=False,
+                                  bird_view=False, subplot_position=subplot_position)
             elif plot_mode == 1:
                 plot_3D_bar_graph(x, y, z, axis_labels=(keyX, keyY, height_key), title=title,
-                                  filename=filename, bird_view=True, orthogonal_projection=True)
+                                  filename=filename, orthogonal_projection=True,
+                                  bird_view=True, subplot_position=subplot_position)
             else:
                 title = "Metric: {}\n".format(height_key) + title
                 plot_colormap(x, y, z, axis_labels=(keyX, keyY), title=title,
-                              filename=filename)
-    else:
-        # Results will be plotted in original order (order in results.yaml)
-        for i, (x, y, z) in enumerate(zip(plotsX, plotsY, plotsZ)):
-            title = ""
-            filename = "{}={} {}={} {}={} ".format("metric", height_key, "X", keyX, "Y", keyY)
-            for j, param in enumerate(params_keys):
-                title += "{}: {}\n".format(param, fig_to_comb[i][j])
-                filename += "{}={} ".format(param, fig_to_comb[i][j])
-            filename += "{}={} ".format("plot_mode", plot_mode)
-            if plot_mode == 0:
-                plot_3D_bar_graph(x, y, z, axis_labels=(keyX, keyY, height_key), title=title,
-                                  filename=filename, bird_view=False, orthogonal_projection=False)
-            elif plot_mode == 1:
-                plot_3D_bar_graph(x, y, z, axis_labels=(keyX, keyY, height_key), title=title,
-                                  filename=filename, bird_view=True, orthogonal_projection=True)
-            else:
-                title = "Metric: {}\n".format(height_key) + title
-                plot_colormap(x, y, z, axis_labels=(keyX, keyY), title=title,
-                              filename=filename)
+                              filename=filename, subplot_position=subplot_position)
 
 
 if __name__ == "__main__":

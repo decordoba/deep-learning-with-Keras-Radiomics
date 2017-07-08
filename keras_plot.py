@@ -109,7 +109,8 @@ def plot_history(history, fig_num=0, filename=None):
         fig.clear()
 
 def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, filename=None, bars_dist=0.1,
-                      fig_num=0, cmap="plasma", bird_view=False, orthogonal_projection=False):
+                      fig_num=0, cmap="plasma", bird_view=False, orthogonal_projection=False,
+                      subplot_position=111):
     """
     Receives list of X, Y and Z and plots them. X and Y can be strings or numbers.
     For example:
@@ -144,7 +145,7 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, filename=None, bars
     # create figure
     fig = plt.figure(fig_num, dpi=120)
     fig.clear()
-    ax = fig.add_subplot(111, projection='3d')
+    ax = fig.add_subplot(subplot_position, projection='3d')
     if orthogonal_projection:
         def matplotlib_orthogonal_projection(zfront, zback):
             """ Allows to see 3D figures in matplotlib in orthogonal projection """
@@ -201,7 +202,8 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, filename=None, bars
         plt.ioff()
         plt.show()
 
-def plot_colormap(X, Y, Z, axis_labels=None, title=None, filename=None, fig_num=0, cmap="plasma"):
+def plot_colormap(X, Y, Z, axis_labels=None, title=None, filename=None, fig_num=0, cmap="plasma",
+                  subplot_position=111):
     """
     Receives list of X, Y and Z and plots them. X and Y can be strings or numbers.
     For example:
@@ -234,7 +236,7 @@ def plot_colormap(X, Y, Z, axis_labels=None, title=None, filename=None, fig_num=
     # create figure
     fig = plt.figure(fig_num, dpi=120)
     fig.clear()
-    ax = fig.add_subplot(111)
+    ax = fig.add_subplot(subplot_position)
 
     # change labels axis
     ax.set_xticks(np.arange(X_labels.shape[0]) + 0.5, minor=False)
