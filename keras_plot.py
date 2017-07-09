@@ -108,9 +108,10 @@ def plot_history(history, fig_num=0, filename=None):
         fig.savefig(filename, bbox_inches="tight")
         fig.clear()
 
-def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, filename=None, bars_dist=0.1,
-                      fig_num=0, cmap="plasma", view_elev=90, view_azim=45,
-                      orthogonal_projection=False, subplot_position=111, fig_clear=True):
+def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, suptitle=None, filename=None,
+                      bars_dist=0.1, fig_num=0, cmap="plasma", view_elev=50, view_azim=45,
+                      orthogonal_projection=False, subplot_position=111, fig_clear=True,
+                      global_colorbar=False, scale=None, figsize=(1, 1)):
     """
     Receives list of X, Y and Z and plots them. X and Y can be strings or numbers.
     For example:
@@ -139,11 +140,17 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, filename=None, bars
     dX = np.array([1 - bars_dist] * len(Z_list))
     dY = np.array([1 - bars_dist] * len(Z_list))
     dZ = Z_list - Z_offset
+    if scale is not None:
+        if scale[0] is not None:
+            minZ = scale[0]
+        if scale[1] is not None:
+            maxZ = scale[1]
     cmap = cm.get_cmap(cmap)
     colors_list = cmap((Z_list - minZ) / np.float_(maxZ - minZ))
 
     # create figure
-    fig = plt.figure(fig_num, dpi=120)
+    figsize = (6.4 * figsize[0], 4.8 * figsize[1])
+    fig = plt.figure(fig_num, figsize=figsize)
     if fig_clear:
         fig.clear()
     ax = fig.add_subplot(subplot_position, projection='3d')
@@ -164,6 +171,7 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, filename=None, bars
             ax.view_init(azim=view_azim)
         else:
             ax.view_init(elev=view_elev, azim=view_azim)
+        print("elev", view_elev, "azim", view_azim)
 
     # change labels axis
     ax.set_xticks(np.arange(X_labels.shape[0]) + 0.5)
@@ -171,11 +179,28 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, filename=None, bars
     ax.set_yticks(np.arange(Y_labels.shape[0]) + 0.5)
     ax.set_yticklabels(Y_labels)
 
+    # add space required for title and global colorbar
+    margin_title = 0.25
+    if suptitle is not None:
+        margin_title += len(suptitle.strip().split("\n"))
+    if title is not None:
+        margin_title += len(title.strip().split("\n"))
+        if suptitle is not None:
+            margin_title += 0.25
+    margin_colorbar = 0.0
+    if global_colorbar:
+        margin_colorbar = 0.16
+    fig.subplots_adjust(bottom=margin_colorbar, top=1 - 0.06 * margin_title)
+
     # draw colorbar
-    fig.subplots_adjust(bottom=0.16)
-    ax_cbar = fig.add_axes([0.1, 0.07, 0.8, 0.05])
-    colorbar.ColorbarBase(ax_cbar, orientation="horizontal", cmap=cmap,
-                          norm=mpl_colors.Normalize(vmin=minZ, vmax=maxZ))
+    if global_colorbar:
+        ax_cbar = fig.add_axes([0.1, 0.07, 0.8, 0.05])
+        colorbar.ColorbarBase(ax_cbar, orientation="horizontal", cmap=cmap,
+                              norm=mpl_colors.Normalize(vmin=minZ, vmax=maxZ))
+    else:
+        mappable = cm.ScalarMappable(cmap=cmap, norm=mpl_colors.Normalize(vmin=minZ, vmax=maxZ))
+        mappable.set_array([minZ, maxZ])
+        fig.colorbar(mappable, ax=ax, orientation="horizontal", pad=0.05)
 
     # draw bar graph
     ax.bar3d(X_list, Y_list, np.array([Z_offset] * len(Z_list)), dX, dY, dZ, color=colors_list,
@@ -190,7 +215,9 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, filename=None, bars
         if axis_labels[2] is not None:
             ax.set_zlabel(axis_labels[2])
     if title is not None:
-        ax.set_title(title.strip(), fontsize="xx-large", y=1.1)
+        ax.set_title(title.strip(), fontsize="xx-large", y=1.085)
+    if suptitle is not None:
+        fig.suptitle(suptitle.strip(), fontsize="xx-large")
 
     # wait for user actions and save graph
     if filename is not None:
@@ -203,9 +230,18 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, filename=None, bars
         else:
             print()
         plt.ioff()
-    else:
-        plt.ioff()
-        # plt.show()
+
+        # return point of view params for every ax so next figure can be drawn from same point of view
+        pts_of_view = []
+        for axe in fig.axes:
+            try:
+                pts_of_view.append((axe.elev, axe.azim))
+            except AttributeError:
+                pass
+        return pts_of_view
+
+    # if figure is no shown, we don't care about point of view, so return None
+    return None
 
 def plot_colormap(X, Y, Z, axis_labels=None, title=None, filename=None, fig_num=0, cmap="plasma",
                   subplot_position=111, fig_clear=True):
@@ -239,7 +275,7 @@ def plot_colormap(X, Y, Z, axis_labels=None, title=None, filename=None, fig_num=
     cmap = cm.get_cmap(cmap)
 
     # create figure
-    fig = plt.figure(fig_num, dpi=120)
+    fig = plt.figure(fig_num)
     if fig_clear:
         fig.clear()
     ax = fig.add_subplot(subplot_position)
@@ -290,16 +326,60 @@ def plot_colormap(X, Y, Z, axis_labels=None, title=None, filename=None, fig_num=
         else:
             print()
         plt.ioff()
-    else:
-        plt.ioff()
-        # plt.show()
+
 
 if __name__ == "__main__":
     import random
     X = "1st 2nd 3rd 4th".split() + "1st 3rd 4th".split() + "1st 2nd 3rd 4th".split()
     Y = ["a", "a", "a", "a"] + ["b", "b", "b"] + ["c", "c", "c", "c"]
-    Z = [random.random() * 0.5 + 0.5 for _ in X]
-    plot_colormap(X, Y, Z, axis_labels=("x", "y"), title="Hello")
-    plot_3D_bar_graph(X, Y, Z, axis_labels=("x", "y", "z"), title="Hello")
-    plot_3D_bar_graph(X, Y, Z, axis_labels=("x", "y", "z"), title="Hello", bird_view=True,
-                      orthogonal_projection=True)
+    Z1 = [random.random() * 0.5 + 0.5 for _ in X]
+    Z2 = [random.random() * 0.5 + 0.5 for _ in X]
+    # plot_colormap(X, Y, Z, axis_labels=("x", "y"), title="Hello")
+    # suptitle = None
+    suptitle = "One Line Long Title"
+    # suptitle = "Two Lines Long Title\nTwo Lines Long Title"
+    # suptitle = "Three Lines Long Title\nThree Lines Long Title\nThree Lines Long Title"
+    # title = None
+    title = "One Line Long Title"
+    # title = "Two Lines Long Title\nTwo Lines Long Title"
+    # title = "Three Lines Long Title\nThree Lines Long Title\nThree Lines Long Title"
+
+    # plot_3D_bar_graph(X, Y, Z1, axis_labels=("x", "y", "z1"), title=title, subplot_position=121,
+    #                   fig_clear=True, suptitle=suptitle, global_colorbar=False)
+    # plot_3D_bar_graph(X, Y, Z2, axis_labels=("x", "y", "z2"), title=title, subplot_position=122,
+    #                   fig_clear=False, suptitle=suptitle, filename="test1.png", global_colorbar=False)
+    #
+    # plot_3D_bar_graph(X, Y, Z1, axis_labels=("x", "y", "z1"), title=title, subplot_position=121,
+    #                   fig_clear=True, suptitle=suptitle, global_colorbar=True)
+    # plot_3D_bar_graph(X, Y, Z2, axis_labels=("x", "y", "z2"), title=title, subplot_position=122,
+    #                   fig_clear=False, suptitle=suptitle, filename="test1.png", global_colorbar=True)
+
+    elev1 = None
+    azim1 = None
+    elev2 = None
+    azim2 = None
+    while True:
+        plot_3D_bar_graph(X, Y, Z1, axis_labels=("x", "y", "z1"), title=title, subplot_position=121,
+                          fig_clear=True, suptitle=suptitle, global_colorbar=False, figsize=(2, 1),
+                          view_azim=azim1, view_elev=elev1)
+        pt_view = plot_3D_bar_graph(X, Y, Z2, axis_labels=("x", "y", "z2"), title=title,
+                                    subplot_position=122, fig_clear=False, suptitle=suptitle,
+                                    filename="test1.png", global_colorbar=False,
+                                    scale=(0.5, 1.2), figsize=(2, 1), view_azim=azim2,
+                                    view_elev=elev2)
+        elev1 = pt_view[0][0]
+        azim1 = pt_view[0][1]
+        elev2 = pt_view[1][0]
+        azim2 = pt_view[1][1]
+
+        plot_3D_bar_graph(X, Y, Z1, axis_labels=("x", "y", "z1"), title=title, subplot_position=121,
+                          fig_clear=True, suptitle=suptitle, global_colorbar=True, scale=(0.5, 1.2),
+                          figsize = (2, 1), view_azim=azim1, view_elev=elev1)
+        pt_view = plot_3D_bar_graph(X, Y, Z2, axis_labels=("x", "y", "z2"), title=title,
+                                    subplot_position=122, fig_clear=False, suptitle=suptitle,
+                                    filename="test2.png", global_colorbar=True, scale=(0.5, 1.2),
+                                    figsize=(2, 1), view_azim=azim2, view_elev=elev2)
+        elev1 = pt_view[0][0]
+        azim1 = pt_view[0][1]
+        elev2 = pt_view[1][0]
+        azim2 = pt_view[1][1]
