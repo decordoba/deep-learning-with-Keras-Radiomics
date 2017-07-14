@@ -111,7 +111,8 @@ def plot_history(history, fig_num=0, filename=None):
 def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, suptitle=None, filename=None,
                       bars_dist=0.1, fig_num=0, cmap="plasma", view_elev=50, view_azim=45,
                       orthogonal_projection=False, subplot_position=111, fig_clear=True,
-                      global_colorbar=False, color_scale=None, figsize=(1, 1)):
+                      global_colorbar=False, color_scale=None, figsize=(1, 1), invert_xaxis=False,
+                      invert_yaxis=False):
     """
     Receives list of X, Y and Z and plots them. X and Y can be strings or numbers.
     For example:
@@ -141,10 +142,16 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, suptitle=None, file
     Y_labels = np.unique(Y)
     X_mapper = {}
     for i, x in enumerate(X_labels):
-        X_mapper[x] = i
+        if invert_xaxis:
+            X_mapper[x] = len(X_labels) - i - 1
+        else:
+            X_mapper[x] = i
     Y_mapper = {}
     for i, y in enumerate(Y_labels):
-        Y_mapper[y] = i
+        if invert_yaxis:
+            Y_mapper[y] = len(Y_labels) - i - 1
+        else:
+            Y_mapper[y] = i
 
     # create params needed for plotting
     minZ = min(Z)
@@ -187,12 +194,11 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, suptitle=None, file
             ax.view_init(azim=view_azim)
         else:
             ax.view_init(elev=view_elev, azim=view_azim)
-        print("elev", view_elev, "azim", view_azim)
 
     # change labels axis
-    ax.set_xticks(np.arange(X_labels.shape[0]) + 0.5)
+    ax.set_xticks(np.array([X_mapper[xlabel] + 0.5 for xlabel in X_labels]), minor=False)
     ax.set_xticklabels(X_labels)
-    ax.set_yticks(np.arange(Y_labels.shape[0]) + 0.5)
+    ax.set_yticks(np.array([Y_mapper[ylabel] + 0.5 for ylabel in Y_labels]), minor=False)
     ax.set_yticklabels(Y_labels)
 
     # add space required for title and global colorbar
@@ -261,7 +267,7 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, suptitle=None, file
 
 def plot_colormap(X, Y, Z, axis_labels=None, title=None, suptitle=None, filename=None, fig_num=0,
                   cmap="plasma", subplot_position=111, fig_clear=True, global_colorbar=False,
-                  color_scale=None, figsize=(1, 1)):
+                  color_scale=None, figsize=(1, 1), invert_xaxis=False, invert_yaxis=False):
     """
     Receives list of X, Y and Z and plots them. X and Y can be strings or numbers.
     For example:
@@ -286,10 +292,16 @@ def plot_colormap(X, Y, Z, axis_labels=None, title=None, suptitle=None, filename
     Y_labels = np.unique(Y)
     X_mapper = {}
     for i, x in enumerate(X_labels):
-        X_mapper[x] = i
+        if invert_xaxis:
+            X_mapper[x] = len(X_labels) - i - 1
+        else:
+            X_mapper[x] = i
     Y_mapper = {}
     for i, y in enumerate(Y_labels):
-        Y_mapper[y] = i
+        if invert_yaxis:
+            Y_mapper[y] = len(Y_labels) - i - 1
+        else:
+            Y_mapper[y] = i
 
     # create params needed for plotting
     minZ = min(Z)
@@ -315,9 +327,9 @@ def plot_colormap(X, Y, Z, axis_labels=None, title=None, suptitle=None, filename
     ax = fig.add_subplot(subplot_position)
 
     # change labels axis
-    ax.set_xticks(np.arange(X_labels.shape[0]) + 0.5, minor=False)
+    ax.set_xticks(np.array([X_mapper[xlabel] + 0.5 for xlabel in X_labels]), minor=False)
     ax.set_xticklabels(X_labels)
-    ax.set_yticks(np.arange(Y_labels.shape[0]) + 0.5, minor=False)
+    ax.set_yticks(np.array([Y_mapper[ylabel] + 0.5 for ylabel in Y_labels]), minor=False)
     ax.set_yticklabels(Y_labels)
 
     # add space required for title and global colorbar
@@ -381,8 +393,8 @@ def plot_colormap(X, Y, Z, axis_labels=None, title=None, suptitle=None, filename
         plt.ioff()
 
 def plot_graph_grid(X, Y, Z, subaxis_labels=None, axis_labels=None, suptitle=None, filename=None,
-                    fig_num=0, scaleY=None, scaleX=None, fig_clear=True, figsize=(1, 1),
-                    simplified_style=True):
+                    fig_num=0, scaleX=None, scaleY=None, fig_clear=True, simplified_style=True,
+                    legend_label=None, invert_xaxis=False, invert_yaxis=False):
     """
     Receives list of X, Y and Z (Z is a list of lists of points, one for each (X, Y)) and plots them.
     X and Y can be strings or numbers.
@@ -392,15 +404,22 @@ def plot_graph_grid(X, Y, Z, subaxis_labels=None, axis_labels=None, suptitle=Non
     Many parmateres can be configured, like a title, the labels, a filename to save the figure,
     the distance between the bars, the colormap, the initial view...
     """
+
     # get X and Y axis, and order them
     X_labels = np.unique(X)
     Y_labels = np.unique(Y)
     X_mapper = {}
     for i, x in enumerate(X_labels):
-        X_mapper[x] = i
+        if invert_xaxis:
+            X_mapper[x] = len(X_labels) - i - 1
+        else:
+            X_mapper[x] = i
     Y_mapper = {}
     for i, y in enumerate(Y_labels):
-        Y_mapper[y] = i
+        if invert_yaxis:
+            Y_mapper[y] = len(Y_labels) - i - 1
+        else:
+            Y_mapper[y] = i
 
     # create params needed for plotting
     Z_list = [[[] for x in X_labels] for y in Y_labels]
@@ -431,16 +450,14 @@ def plot_graph_grid(X, Y, Z, subaxis_labels=None, axis_labels=None, suptitle=Non
     Z_list = np.ma.array(Z_list, mask=Z_mask)
 
     # create figure
-    figsize = (6.4 * figsize[0], 4.8 * figsize[1])
+    NUM_ROWS = len(Y_labels)
+    NUM_COLS = len(X_labels)
+    figsize = (6.4 * NUM_COLS / 3.0, 4.8 * NUM_ROWS / 3.0)
     fig = plt.figure(fig_num, figsize=figsize)
     if fig_clear:
         fig.clear()
 
     # plot all graphs
-    NUM_ROWS = len(Y_labels)
-    NUM_COLS = len(X_labels)
-    plt.ion()
-    plt.show()
     for x in X_labels:
         i = X_mapper[x]
         for y in Y_labels:
@@ -448,7 +465,10 @@ def plot_graph_grid(X, Y, Z, subaxis_labels=None, axis_labels=None, suptitle=Non
             if Z_mask[j][i]:
                 continue
             ax = fig.add_subplot(NUM_ROWS, NUM_COLS, j * NUM_COLS + i + 1)
-            ax.plot(Z_list[j][i])
+            if legend_label is not None:
+                ax.plot(Z_list[j][i], label=legend_label)
+            else:
+                ax.plot(Z_list[j][i])
             ax.set_xlim([minXaxis, maxXaxis])
             ax.set_ylim([minYaxis, maxYaxis])
 
@@ -473,6 +493,7 @@ def plot_graph_grid(X, Y, Z, subaxis_labels=None, axis_labels=None, suptitle=Non
                     ax.tick_params(labelbottom='off')
                 elif len(xlabel.strip()) > 0:
                     ax.set_xlabel(xlabel.strip())
+
             else:
                 if axis_labels is not None:
                     label_title = ""
@@ -489,6 +510,9 @@ def plot_graph_grid(X, Y, Z, subaxis_labels=None, axis_labels=None, suptitle=Non
                     if subaxis_labels[1] is not None:
                         ax.set_ylabel(subaxis_labels[1])
 
+            if legend_label is not None and i == (NUM_COLS - 1) // 2 and j == 0:
+                ax.legend(loc='lower center', bbox_to_anchor=(0.5, 1.05), ncol=len(ax.lines))
+
     # fix overlaps numbers in axis
     plt.tight_layout()
 
@@ -496,11 +520,11 @@ def plot_graph_grid(X, Y, Z, subaxis_labels=None, axis_labels=None, suptitle=Non
     margin_title = 1
     if suptitle is not None:
         margin_title += len(suptitle.strip().split("\n"))
+    if legend_label is not None:
+        margin_title += 1
     fig.subplots_adjust(top=1 - 0.06 * margin_title)
     if suptitle is not None:
         fig.suptitle(suptitle.strip(), fontsize="xx-large")
-
-    plt.ioff()
 
     # wait for user actions and save graph
     if filename is not None:
@@ -514,6 +538,8 @@ def plot_graph_grid(X, Y, Z, subaxis_labels=None, axis_labels=None, suptitle=Non
             print()
         plt.ioff()
 
+    return minXaxis, (minYaxis, maxYaxis)  # return scaleX and scaleY (can be used as input to next call)
+
 
 if __name__ == "__main__":
     import random
@@ -523,25 +549,26 @@ if __name__ == "__main__":
     Z2 = [random.random() * 0.5 + 0.5 for _ in X]
     Z3 = [[i + random.random() * 2 - 1 for i in range(20)] for _ in X]
     Z4 = [[i + random.random() * 2 - 1.5 for i in range(20)] for _ in X]
-    # plot_colormap(X, Y, Z, axis_labels=("x", "y"), title="Hello")
     suptitle = None
-    # suptitle = "One Line Long Title"
+    suptitle = "One Line Long Title"
     # suptitle = "Two Lines Long Title\nTwo Lines Long Title"
-    suptitle = "Three Lines Long Title\nThree Lines Long Title\nThree Lines Long Title"
+    # suptitle = "Three Lines Long Title\nThree Lines Long Title\nThree Lines Long Title"
     title = None
     # title = "One Line Long Title"
     # title = "Two Lines Long Title\nTwo Lines Long Title"
     # title = "Three Lines Long Title\nThree Lines Long Title\nThree Lines Long Title"
 
     plot_graph_grid(X, Y, Z3, axis_labels=("x", "y"), subaxis_labels=("Epochs", "Accuracy"),
-                    suptitle=suptitle, fig_num=1, fig_clear=True)
+                    suptitle=suptitle, fig_num=1, fig_clear=True, legend_label="Asdfg")
     plot_graph_grid(X, Y, Z4, axis_labels=("x", "y"), subaxis_labels=("Epochs", "Accuracy"),
-                    suptitle=suptitle, fig_num=1, fig_clear=False, filename="test3.png")
+                    suptitle=suptitle, fig_num=1, fig_clear=False, legend_label="Ghjklopqwerty",
+                    filename="test3.png")
 
     plot_graph_grid(X, Y, Z3, axis_labels=("x", "y"), subaxis_labels=("Epochs", "Accuracy"),
-                    suptitle=suptitle, fig_num=1, fig_clear=True, simplified_style=False)
+                    suptitle=suptitle, fig_num=1, fig_clear=True, legend_label="Asdfg",
+                    simplified_style=False)
     plot_graph_grid(X, Y, Z4, axis_labels=None, subaxis_labels=None, simplified_style=False,
-                    suptitle=suptitle, fig_num=1, fig_clear=False)
+                    suptitle=suptitle, fig_num=1, fig_clear=False, legend_label="Ghjklopqwerty")
 
     plot_colormap(X, Y, Z1, axis_labels=("x", "y"), title=title, subplot_position=121,
                   fig_clear=True, suptitle=suptitle, global_colorbar=False, figsize=(2, 1))
