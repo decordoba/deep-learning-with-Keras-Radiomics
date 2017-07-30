@@ -112,7 +112,7 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, suptitle=None, file
                       bars_dist=0.1, fig_num=0, cmap="plasma", view_elev=50, view_azim=45,
                       orthogonal_projection=False, subplot_position=111, fig_clear=True,
                       global_colorbar=False, color_scale=None, figsize=(1, 1), invert_xaxis=False,
-                      invert_yaxis=False):
+                      invert_yaxis=False, zlim=None):
     """
     Receives list of X, Y and Z and plots them. X and Y can be strings or numbers.
     For example:
@@ -135,6 +135,9 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, suptitle=None, file
     :param global_colorbar: whether if the colorbar is global (shared by all subfigures) or local (one for every subfigure)
     :param color_scale: tuple that represents the min and max values used in the scale to draw the colormap. If None, the scale will be picked automatically
     :param figsize: initial size of the figure. By default it is a (1, 1) square, but can be set to (1,2), to change the shape.
+    :param invert_xaxis: inverts the xaxis
+    :param invert_yaxis: inverts the yaxis
+    :param zlim: if not None, sets the scale used in the zaxis, else it is set automatically
     :return: returns a list of all elevs and azims for all subfigures if filename is not None
     """
     # get X and Y axis, and order them
@@ -159,7 +162,10 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, suptitle=None, file
     X_list = np.array([X_mapper[x] + bars_dist / 2.0 for x in X])
     Y_list = np.array([Y_mapper[y] + bars_dist / 2.0 for y in Y])
     Z_list = np.array(Z)
-    Z_offset = minZ - (maxZ - minZ) * 0.1
+    if zlim is None:
+        Z_offset = minZ - (maxZ - minZ) * 0.1
+    else:
+        Z_offset = zlim[0]
     dX = np.array([1 - bars_dist] * len(Z_list))
     dY = np.array([1 - bars_dist] * len(Z_list))
     dZ = Z_list - Z_offset
@@ -227,6 +233,10 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, suptitle=None, file
     # draw bar graph
     ax.bar3d(X_list, Y_list, np.array([Z_offset] * len(Z_list)), dX, dY, dZ, color=colors_list,
              edgecolors='black', linewidths=0.5)
+
+    # set z axis to zlim
+    if zlim is not None:
+        ax.set_zlim(zlim)
 
     # add labels and title
     if axis_labels is not None:
