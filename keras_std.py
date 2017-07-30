@@ -15,7 +15,7 @@ BATCH_SUBFIG_YLIM = [3, 1]                          # initial Y range for all su
 BATCH_NUM_COLS = 2                                  # number of colums in the figure
 BATCH_NUM_ROWS = int(math.ceil(len(BATCH_SUBFIG_METRICS) / BATCH_NUM_COLS))     # number of rows in the figure
 
-EPOCH_PLOT_UPDATE_FREQUENCY = 0                     # num epochs between every plot update. If 0, we only consider EPOCH_PLOT_TIME_LAPSE
+EPOCH_PLOT_UPDATE_FREQUENCY = 1                     # num epochs between every plot update. If 0, we only consider EPOCH_PLOT_TIME_LAPSE
 EPOCH_PLOT_TIME_LAPSE = 30                          # how often do we plot (every EPOCH_PLOT_TIME_LAPSE seconds)
 EPOCH_FIG_NUM = 0                                   # figure number where we will show figure
 EPOCH_SUBFIG_METRICS = [["loss", "val_loss"], ["acc", "val_acc"]]   # metrics to be shown (will be read in on_batch_end)
