@@ -3,7 +3,7 @@
 import sys
 import os
 import yaml
-from numpy import percentile
+import numpy as np
 from keras_plot import plot_3D_bar_graph, plot_colormap, plot_graph_grid  # 'Library' by Daniel
 
 
@@ -132,15 +132,20 @@ def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0,
         except KeyError:
             locations[comb_to_fig[comb]].append(sample_key)  # in my early work, I did not save location, so this supports earlier versions
 
-    Z20 = percentile(Zs, 20)
-    Z80 = percentile(Zs, 80)
+    Z20 = np.percentile(Zs, 20)
+    Z80 = np.percentile(Zs, 80)
     minZ = min(Zs)
     maxZ = max(Zs)
+    color_scale = None
+    zlim = None
+    if shared_color_scale and static_z_scale:
+        color_scale = (Z20, Z80)  # used to select color of bars
+        zlim = (minZ, maxZ)  # used to select z_scale
 
     # Results are plotted in a logical order
     pt_view = None
     orthog_proj = False
-    if plot_mode == 0 or plot_mode == 1:
+    if plot_mode != 2:
         elev0 = 50
         azim0 = 45
         orthog_proj = False
@@ -148,6 +153,9 @@ def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0,
             elev0 = 90
             azim0 = 90
             orthog_proj = True
+        elif plot_mode == 3:
+            elev0 = 60
+            azim0 = 69
         pt_view = [(elev0, azim0) for _ in height_keys]
     comb_list = sorted(comb_list)
     for comb in comb_list:
@@ -160,12 +168,6 @@ def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0,
         x = plotsX[comb_to_fig[comb]]
         y = plotsY[comb_to_fig[comb]]
         zs = plotsZ[comb_to_fig[comb]]
-        color_scale = None
-        zlim = None
-        if shared_color_scale:
-            color_scale = (Z20, Z80)  # used to select color of bars
-            if static_z_scale:
-                zlim = (minZ, maxZ)  # used to select z_scale
         sub_result = None
         if secondary_plot is not None:
             sub_result = [[] for _ in secondary_plot]
@@ -191,12 +193,14 @@ def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0,
                                                  suptitle=suptitle, filename=None, scaleY=scaleY,
                                                  scaleX=scaleX, fig_clear=i==0,
                                                  legend_label=legend_label, invert_yaxis=True)
+        if shared_color_scale and not static_z_scale:
+            color_scale = (np.min(zs), np.max(zs))
         for i, (height_key, z) in enumerate(zip(height_keys, zs)):
             subplot_position = 100 + len(height_keys) * 10 + i + 1
             figsize = (len(height_keys), 1)
             fn = filename if i + 1 == len(height_keys) else None
             title = "{}: {}\n".format("metric", height_key)
-            if plot_mode == 0 or plot_mode == 1:
+            if plot_mode == 0 or plot_mode == 1 or plot_mode == 3:
                 tmp_view = plot_3D_bar_graph(x, y, z, axis_labels=(keyX, keyY, height_key),
                                              suptitle=suptitle, title=title, filename=fn,
                                              fig_clear=i==0, orthogonal_projection=orthog_proj,
@@ -207,7 +211,6 @@ def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0,
                                              invert_xaxis=True, zlim=zlim)
                 if tmp_view is not None:
                     pt_view = tmp_view
-                    print(tmp_view)
             else:
                 plot_colormap(x, y, z, axis_labels=(keyX, keyY), title=title, suptitle=suptitle,
                               fig_clear=i==0, filename=fn, subplot_position=subplot_position,
@@ -217,31 +220,36 @@ def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0,
 
 if __name__ == "__main__":
     folder = None
-    metric = None
     mode = 0
+    metric = None
     static_z_scale = False
     secondary_plot = False
     if len(sys.argv) > 1:
         folder = sys.argv[1]
     if len(sys.argv) > 2:
         mode = int(sys.argv[2])
-        if mode >= 6:
-            mode -= 6
-            secondary_plot = True
-        if mode >= 3:
-            mode -= 3
+        if mode >= 12:
             static_z_scale = True
-    elif len(sys.argv) > 3:
+            mode = 3
+        else:
+            if mode >= 6:
+                mode -= 6
+                secondary_plot = True
+            if mode >= 3:
+                mode -= 3
+                static_z_scale = True
+    if len(sys.argv) > 3:
         metric = sys.argv[3]
+
     if secondary_plot:
         if metric is not None:
-            plot_results(folder=folder, height_key=metric, plot_mode=mode,
+            plot_results(folder=folder, height_keys=metric, plot_mode=mode,
                          static_z_scale=static_z_scale)
         else:
             plot_results(folder=folder, plot_mode=mode, static_z_scale=static_z_scale)
     else:
         if metric is not None:
-            plot_results(folder=folder, height_key=metric, plot_mode=mode,
+            plot_results(folder=folder, height_keys=metric, plot_mode=mode,
                          static_z_scale=static_z_scale, secondary_plot=None)
         else:
             plot_results(folder=folder, plot_mode=mode, static_z_scale=static_z_scale,
@@ -258,4 +266,5 @@ if __name__ == "__main__":
             3,4,5... !secondary_plot,  static_z_scale
             6,7,8...  secondary_plot, !static_z_scale
             9,A,B...  secondary_plot,  static_z_scale
+            C...     !secondary_plot,  static_z_scale, mode 3
     """
