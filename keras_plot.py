@@ -15,6 +15,7 @@ def plot_images(images, fig_num=0, labels=None, label_description="Label", label
     """
     plt.ion()  # Allows plots to be non-blocking
     fig = plt.figure(fig_num)
+    fig.clear()
     for i, img in enumerate(images):
         if cmap is None:
             plt.imshow(img)
@@ -33,8 +34,8 @@ def plot_images(images, fig_num=0, labels=None, label_description="Label", label
         s = input("Press ENTER to see the next image, or Q (q) to continue:  ")
         if len(s) > 0 and s[0].lower() == "q":
             break
-    plt.close()  # Hide plotting window
     fig.clear()
+    plt.close()  # Hide plotting window
     plt.ioff()  # Make plots blocking again
 
 def plot_weights(w, fig_num=0, filename=None, title=None, cmap=None):
@@ -102,6 +103,56 @@ def plot_history(history, fig_num=0, filename=None):
     subfig.set_title('Model Loss')
     subfig.set_xlabel('Epoch')
     subfig.legend(loc='upper left')
+    if filename is None:
+        plt.ioff()
+    else:
+        fig.savefig(filename, bbox_inches="tight")
+        fig.clear()
+
+def plot_confusion_matrix(true_values, predicted_values, labels, fig_num=0, filename=None,
+                          title=None, cmap="plasma", max_scale_factor=50.0):
+    if filename is None:
+        plt.ion()
+    confusion_matrix = [[0] * len(labels) for _ in labels]
+    label_mapper = dict([(label, i) for i, label in enumerate(labels)])
+    for predicted, expected in zip(true_values, predicted_values):
+        confusion_matrix[label_mapper[predicted]][label_mapper[expected]] += 1
+
+    # Adapted from: https://stackoverflow.com/questions/35572000/how-can-i-plot-a-confusion-matrix
+    norm_conf = []
+    for row in confusion_matrix:
+        tmp_arr = []
+        sum_row = sum(row, 0)
+        for el in row:
+            tmp_arr.append(min(float(el) / float(sum_row) * max_scale_factor, 1))
+        norm_conf.append(tmp_arr)
+
+    fig = plt.figure(fig_num)
+    fig.clear()
+    ax = fig.add_subplot(111)
+    ax.set_aspect(1)  # Make squares
+    ax.xaxis.tick_top()  # Like in a table, I want the labels top and left
+    ax.xaxis.set_label_position('top')
+    ax.set_xlabel("Predicted Values")
+    ax.set_ylabel("True Values")
+    cmap = cm.get_cmap(cmap)
+    # result = ax.imshow(np.array(norm_conf), cmap=cmap, norm=mpl_colors.LogNorm(vmin=1e-4, vmax=1),
+    #                    interpolation='nearest')
+    result = ax.imshow(np.array(norm_conf), cmap=cmap, interpolation='nearest')
+    fig.colorbar(result)
+    side = range(len(labels))
+    for x in side:
+        for y in side:
+            ax.annotate(str(confusion_matrix[x][y]), xy=(y, x), horizontalalignment='center',
+                        verticalalignment='center')
+    plt.xticks(side, labels)
+    plt.yticks(side, labels)
+    if title is not None:
+        fig.subplots_adjust(top=0.82, bottom=0.05)
+        ax.set_title(title.strip(), fontsize="xx-large", y=1.125)
+    else:
+        fig.subplots_adjust(bottom=0.05)
+
     if filename is None:
         plt.ioff()
     else:
