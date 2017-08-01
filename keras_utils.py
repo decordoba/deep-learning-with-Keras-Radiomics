@@ -254,7 +254,7 @@ def save_model_data(model, train_score, test_score, time, location, save_yaml=Tr
                    to_file=location + "/model.png")
     if save_yaml:
         with open(location + "/model.yaml", "w") as f:
-            f.write(model.to_yaml())  # Load it with model = model_from_json(json_string)
+            f.write(model.to_yaml())  # Load it with model = model_from_yaml(yaml_string)
     if save_json:
         with open(location + "/model.json", "w") as f:
             f.write(model.to_json())  # Load it with model = model_from_json(json_string)

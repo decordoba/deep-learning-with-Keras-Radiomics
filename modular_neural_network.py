@@ -36,6 +36,10 @@ class MyFirstExperiment(Experiment):
                             "pool_sizes1": pool_sizes1}
 
     def run_experiment(self, train_set, test_set, input_shape, labels, comb, epochs):
+        # comb holds values like (32, (2,2), optimizers-Adam()). We need to use self.keys_mapper
+        # which maps a name ("units", "kernel_sizes", "optimizers") to the position where it is
+        # in comb. I wonder if it would be more comprehensible with a function like
+        # get_element_from_comb(self, comb, key) { return comb[self.keys_mapper[key]] }
         opt = comb[self.keys_mapper["optimizers1"]]
         loss = comb[self.keys_mapper["losses1"]]
         f1 = comb[self.keys_mapper["filters1"]]
