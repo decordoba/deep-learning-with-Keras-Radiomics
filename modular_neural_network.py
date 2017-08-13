@@ -7,7 +7,7 @@ from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Conv2D, MaxPooling2D
 from keras import losses
 from keras import optimizers
-from keras.datasets import mnist
+from keras.datasets import mnist, cifar10
 from keras_utils import flexible_neural_net  # 'Library' by Daniel
 from keras_experiments import Experiment, experiments_runner  # 'Library' by Daniel
 
@@ -109,7 +109,8 @@ if __name__ == "__main__":
     t = clock()
 
     experiment = SingleExperiment
-    data = mnist.load_data
+    # data = mnist.load_data
+    data = cifar10.load_data
 
     if len(sys.argv) == 1:
         experiments_runner(data, experiment)
