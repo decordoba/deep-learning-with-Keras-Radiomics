@@ -8,7 +8,7 @@ import math
 
 
 def plot_images(images, fig_num=0, labels=None, label_description="Label", labels2=None,
-                label2_description="Label", show_errors_only=False, cmap="Greys"):
+                label2_description="Label", show_errors_only=False, cmap="Greys", no_axis=True):
     """
     Show all images in images list, one at a time, waiting for an ENTER to show the next one
     If q + ENTER is pressed, the function is terminated
@@ -17,6 +17,8 @@ def plot_images(images, fig_num=0, labels=None, label_description="Label", label
     fig = plt.figure(fig_num)
     fig.clear()
     for i, img in enumerate(images):
+        if show_errors_only and labels is not None and labels2 is not None and labels[i] == labels2[i]:
+            continue
         if cmap is None:
             plt.imshow(img)
         else:
@@ -25,11 +27,12 @@ def plot_images(images, fig_num=0, labels=None, label_description="Label", label
             if labels2 is None:
                 title = "{} = {}".format(label_description, labels[i])
             else:
-                if show_errors_only and labels[i] == labels2[i]:
-                    continue
                 title = "{} = {} , {} = {}".format(label_description, labels[i],
                                                    label2_description, labels2[i])
             plt.title(title, fontsize="xx-large")
+            if no_axis:
+                plt.yticks([])
+                plt.xticks([])
         plt.pause(0.001)
         s = input("Press ENTER to see the next image, or Q (q) to continue:  ")
         if len(s) > 0 and s[0].lower() == "q":
@@ -37,6 +40,47 @@ def plot_images(images, fig_num=0, labels=None, label_description="Label", label
     fig.clear()
     plt.close()  # Hide plotting window
     plt.ioff()  # Make plots blocking again
+
+def plot_all_images(images, fig_num=0, filename=None, labels=None, label_description="Label",
+                    labels2=None, label2_description="Label", cmap="Greys", no_axis=True,
+                    title=None):
+    """
+    Show all images in images list, one at a time, waiting for an ENTER to show the next one
+    If q + ENTER is pressed, the function is terminated
+    """
+    if filename is None:
+        plt.ion()
+
+    fig = plt.figure(fig_num)
+    fig.clear()
+
+    if title is not None:
+        fig.suptitle(title)
+
+    num_imgs = len(images)
+
+    for i, img in enumerate(images):
+        ax = fig.add_subplot(1, num_imgs, i + 1)
+
+        if cmap is None:
+            ax.imshow(img)
+        else:
+            ax.imshow(img, cmap=cmap)
+        if labels is not None:
+            if labels2 is None:
+                title = "{} = {}".format(label_description, labels[i])
+            else:
+                title = "{} = {} , {} = {}".format(label_description, labels[i],
+                                                   label2_description, labels2[i])
+            ax.set_title(title)
+            if no_axis:
+                plt.yticks([])
+                plt.xticks([])
+    if filename is None:
+        plt.ioff()
+    else:
+        fig.savefig(filename, bbox_inches="tight")
+        fig.clear()
 
 def plot_weights(w, fig_num=0, filename=None, title=None, cmap=None):
     """
@@ -110,23 +154,41 @@ def plot_history(history, fig_num=0, filename=None):
         fig.clear()
 
 def plot_confusion_matrix(true_values, predicted_values, labels, fig_num=0, filename=None,
-                          title=None, cmap="plasma", max_scale_factor=50.0):
+                          title=None, cmap="plasma", max_scale_factor=100.0, ignore_diagonal=False,
+                          color_by_row=False):
     if filename is None:
         plt.ion()
-    confusion_matrix = [[0] * len(labels) for _ in labels]
+
+    # create confusion matrix
+    confusion_matrix = np.array([[0] * len(labels) for _ in labels])
     label_mapper = dict([(label, i) for i, label in enumerate(labels)])
     for predicted, expected in zip(true_values, predicted_values):
         confusion_matrix[label_mapper[predicted]][label_mapper[expected]] += 1
 
+    if not color_by_row:
+        mask = np.ones(confusion_matrix.shape, dtype=bool)
+        if ignore_diagonal:
+            np.fill_diagonal(mask, 0)
+        max_cell = confusion_matrix[mask].max()
+
     # Adapted from: https://stackoverflow.com/questions/35572000/how-can-i-plot-a-confusion-matrix
+    # create attributes to select cell colors
     norm_conf = []
-    for row in confusion_matrix:
+    for i, row in enumerate(confusion_matrix):
         tmp_arr = []
-        sum_row = sum(row, 0)
-        for el in row:
-            tmp_arr.append(min(float(el) / float(sum_row) * max_scale_factor, 1))
+        if color_by_row:
+            divisor = sum(row, 0)
+        else:
+            divisor = max_cell
+        if ignore_diagonal and color_by_row:
+            divisor -= float(row[i])
+        for j, el in enumerate(row):
+            tmp_arr.append(min(float(el) / float(divisor) * max_scale_factor, 1))
+            if ignore_diagonal and i == j:
+                tmp_arr[-1] = np.nan
         norm_conf.append(tmp_arr)
 
+    # draw figure
     fig = plt.figure(fig_num)
     fig.clear()
     ax = fig.add_subplot(111)
@@ -158,6 +220,7 @@ def plot_confusion_matrix(true_values, predicted_values, labels, fig_num=0, file
     else:
         fig.savefig(filename, bbox_inches="tight")
         fig.clear()
+    return confusion_matrix
 
 def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, suptitle=None, filename=None,
                       bars_dist=0.1, fig_num=0, cmap="plasma", view_elev=50, view_azim=45,
