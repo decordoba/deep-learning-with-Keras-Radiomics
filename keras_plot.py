@@ -43,24 +43,34 @@ def plot_images(images, fig_num=0, labels=None, label_description="Label", label
 
 def plot_all_images(images, fig_num=0, filename=None, labels=None, label_description="Label",
                     labels2=None, label2_description="Label", cmap="Greys", no_axis=True,
-                    title=None):
+                    title=None, max_cols=5):
     """
-    Show all images in images list, one at a time, waiting for an ENTER to show the next one
-    If q + ENTER is pressed, the function is terminated
+    Show several images with labels at the same time
     """
     if filename is None:
         plt.ion()
-
-    fig = plt.figure(fig_num)
-    fig.clear()
-
-    if title is not None:
-        fig.suptitle(title)
+        plt.close(fig_num)
 
     num_imgs = len(images)
 
+    if num_imgs <= 0:
+        print("Nothing to show!\n")
+        return
+
+    fig_size = [num_imgs % max_cols, num_imgs // max_cols + 1]
+    if num_imgs % max_cols == 0:
+        fig_size[1] -= 1
+    if num_imgs >= max_cols:
+        fig_size[0] = max_cols
+
+    margin_title = 0
+    if title is not None:
+        margin_title = 0.5
+    fig = plt.figure(fig_num, figsize=(1.6 * fig_size[0], 1.2 * fig_size[1] + margin_title))
+    fig.clear()
+
     for i, img in enumerate(images):
-        ax = fig.add_subplot(1, num_imgs, i + 1)
+        ax = fig.add_subplot(fig_size[1], fig_size[0], i + 1)
 
         if cmap is None:
             ax.imshow(img)
@@ -68,14 +78,22 @@ def plot_all_images(images, fig_num=0, filename=None, labels=None, label_descrip
             ax.imshow(img, cmap=cmap)
         if labels is not None:
             if labels2 is None:
-                title = "{} = {}".format(label_description, labels[i])
+                subfig_title = "{} = {}".format(label_description, labels[i])
             else:
-                title = "{} = {} , {} = {}".format(label_description, labels[i],
-                                                   label2_description, labels2[i])
-            ax.set_title(title)
+                subfig_title = "{} = {} , {} = {}".format(label_description, labels[i],
+                                                          label2_description, labels2[i])
+            ax.set_title(subfig_title)
             if no_axis:
                 plt.yticks([])
                 plt.xticks([])
+
+    # fix overlaps numbers in axis
+    plt.tight_layout()
+
+    if title is not None:
+        fig.suptitle(title, fontsize="xx-large")
+        fig.subplots_adjust(top=0.9 - (margin_title * 0.42 / fig_size[1]))
+
     if filename is None:
         plt.ioff()
     else:
