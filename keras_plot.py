@@ -57,6 +57,8 @@ def plot_all_images(images, fig_num=0, filename=None, labels=None, label_descrip
         print("Nothing to show!\n")
         return
 
+    if max_cols is None:
+        max_cols = 5
     fig_size = [num_imgs % max_cols, num_imgs // max_cols + 1]
     if num_imgs % max_cols == 0:
         fig_size[1] -= 1

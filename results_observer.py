@@ -16,7 +16,7 @@ def load_model(location):
 
 
 def observe_results(data_generator, folder=None, to_categorical=True, data_reduction=None,
-                    mode=0, observe_training=False):
+                    mode=0, observe_training=0, filename=None, num_columns=None):
     """
     :param data_generator:
     :param folder:
@@ -47,14 +47,19 @@ def observe_results(data_generator, folder=None, to_categorical=True, data_reduc
     model = load_model(folder)
 
     print("Calculating predicted labels ...")
-    if observe_training:
+    if observe_training == 1:
         pred_percents = model.predict(train_set[0])
         true_labels = y_train
         examples_set = x_train
+    elif observe_training == 2:
+        pred_percents = model.predict(test_set[0] + train_set[0])
+        true_labels = y_test + y_train
+        examples_set = x_test + x_train
     else:
         pred_percents = model.predict(test_set[0])
         true_labels = y_test
         examples_set = x_test
+
     pred_labels = np.argmax(pred_percents, axis=1)
     errors_vector = (pred_labels != true_labels)
     num_errors = np.sum(errors_vector)
@@ -72,7 +77,7 @@ def observe_results(data_generator, folder=None, to_categorical=True, data_reduc
         color_by_row = False
     confusion_mat = plot_confusion_matrix(true_labels, pred_labels, labels,
                                           title="Confusion Matrix " + ("(Training Set)" if observe_training else "(Test Set)"),
-                                          filename=None, max_scale_factor=max_scale_factor,
+                                          filename=filename, max_scale_factor=max_scale_factor,
                                           ignore_diagonal=ignore_diag, color_by_row=color_by_row)
 
     print("Counting misclassified examples ...")
@@ -114,9 +119,13 @@ def observe_results(data_generator, folder=None, to_categorical=True, data_reduc
         print("Filtering by: {} Values\n".format("Predicted" if pred_notrue else "True"))
         while True:
             print("Select the label you want to filter.")
-            print("0. Back")
+            print("{:>2}. Back".format(0))
             for i, key in enumerate(labels):
-                print("{}. Label {}".format(i + 1, key))
+                if pred_notrue:
+                    num_errors = len(errors_by_predicted_label[key])
+                else:
+                    num_errors = len(errors_by_expected_label[key])
+                print("{:>2}. Label {}  ({} mistakes)".format(i + 1, key, num_errors))
             num = -1
             while num < 0 or num > len(labels):
                 try:
@@ -143,7 +152,7 @@ def observe_results(data_generator, folder=None, to_categorical=True, data_reduc
             # plot_images(x_test[indices], labels=y_test[indices], labels2=label_test[indices],
             #             label2_description="Predicted label", fig_num=1)
             plot_all_images(examples_set[indices], labels=title_labels, labels2=None, fig_num=1,
-                            title=title)
+                            title=title, max_cols=num_columns)
 
 
     txt = input("Press ENTER to see all the misclassified examples unsorted one by one, or q to exit. ")
@@ -158,20 +167,30 @@ def observe_results(data_generator, folder=None, to_categorical=True, data_reduc
 if __name__ == "__main__":
     data = mnist.load_data
     folder = None
+    filename = None
     mode = 0
-    observe_training = True
-    if len(sys.argv) > 1:
+    observe_training = 0
+    num_columns = 5
+    if len(sys.argv) > 1 and sys.argv[1].lower() != "none":
         folder = sys.argv[1]
-    if len(sys.argv) > 2:
-        mode = int(sys.argv[2])
+    if len(sys.argv) > 2 and sys.argv[2].lower() != "none":
+        filename = sys.argv[2]
     if len(sys.argv) > 3:
-        observe_training = bool(sys.argv[3])
+        mode = int(sys.argv[3])
+    if len(sys.argv) > 4:
+        observe_training = int(sys.argv[4])
+    if len(sys.argv) > 5:
+        num_columns = int(sys.argv[5])
 
-    observe_results(data, folder=folder, mode=mode, observe_training=observe_training)
+    observe_results(data, folder=folder, filename=filename, mode=mode,
+                    observe_training=observe_training, num_columns=num_columns)
 
     """
     Expects:
         py results_observer.py
         py results_observer.py folder
-        py results_observer.py folder mode
+        py results_observer.py folder filename
+        py results_observer.py folder filename mode
+        py results_observer.py folder filename mode test(0)/training(1)/both(2)
+        py results_observer.py folder filename mode test(0)/training(1)/both(2) num_cols
     """
