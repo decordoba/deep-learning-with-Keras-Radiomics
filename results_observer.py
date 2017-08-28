@@ -51,15 +51,17 @@ def observe_results(data_generator, folder=None, to_categorical=True, data_reduc
         pred_percents = model.predict(train_set[0])
         true_labels = y_train
         examples_set = x_train
+        confusion_title = "Confusion Matrix (Training Set)"
     elif observe_training == 2:
         pred_percents = model.predict(np.concatenate((train_set[0], test_set[0])))
         true_labels = np.concatenate((y_train, y_test))
         examples_set = np.concatenate((x_train, x_test))
-        print(true_labels.shape, examples_set.shape)
+        confusion_title = "Confusion Matrix (Training & Test Set)"
     else:
         pred_percents = model.predict(test_set[0])
         true_labels = y_test
         examples_set = x_test
+        confusion_title = "Confusion Matrix (Test Set)"
 
     pred_labels = np.argmax(pred_percents, axis=1)
     errors_vector = (pred_labels != true_labels)
@@ -77,7 +79,7 @@ def observe_results(data_generator, folder=None, to_categorical=True, data_reduc
         max_scale_factor = 1.0
         color_by_row = False
     confusion_mat = plot_confusion_matrix(true_labels, pred_labels, labels,
-                                          title="Confusion Matrix " + ("(Training Set)" if observe_training else "(Test Set)"),
+                                          title=confusion_title,
                                           filename=filename, max_scale_factor=max_scale_factor,
                                           ignore_diagonal=ignore_diag, color_by_row=color_by_row)
 
