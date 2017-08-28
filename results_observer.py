@@ -52,9 +52,10 @@ def observe_results(data_generator, folder=None, to_categorical=True, data_reduc
         true_labels = y_train
         examples_set = x_train
     elif observe_training == 2:
-        pred_percents = model.predict(test_set[0] + train_set[0])
-        true_labels = y_test + y_train
-        examples_set = x_test + x_train
+        pred_percents = model.predict(np.concatenate((train_set[0], test_set[0])))
+        true_labels = np.concatenate((y_train, y_test))
+        examples_set = np.concatenate((x_train, x_test))
+        print(true_labels.shape, examples_set.shape)
     else:
         pred_percents = model.predict(test_set[0])
         true_labels = y_test
@@ -182,7 +183,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 5:
         num_columns = int(sys.argv[5])
 
-    observe_results(data, folder=folder, filename=filename, mode=mode,
+    observe_results(data, folder=folder, filename=filename, mode=mode, data_reduction=None,
                     observe_training=observe_training, num_columns=num_columns)
 
     """
