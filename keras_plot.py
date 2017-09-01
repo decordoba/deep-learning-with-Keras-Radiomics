@@ -192,14 +192,14 @@ def plot_confusion_matrix(true_values, predicted_values, labels, fig_num=0, file
         else:
             confusion_matrix[label_mapper[predicted]][label_mapper[expected]] += 1
 
-    mask = np.ones(confusion_matrix.shape, dtype=int)
+    # crete mask to show some cells white
+    mask = np.ones(confusion_matrix.shape, dtype=bool)
+    if plot_half:
+        mask *= np.tri(*mask.shape, dtype=bool)
     if not color_by_row:
         if ignore_diagonal:
-            np.fill_diagonal(mask, 0)
+            np.fill_diagonal(mask, False)
         max_cell = confusion_matrix[mask].max()
-
-    if plot_half:
-        mask *= np.tri(*mask.shape, dtype=int)
 
     # Adapted from: https://stackoverflow.com/questions/35572000/how-can-i-plot-a-confusion-matrix
     # create attributes to select cell colors
@@ -208,13 +208,16 @@ def plot_confusion_matrix(true_values, predicted_values, labels, fig_num=0, file
         tmp_arr = []
         if color_by_row:
             divisor = sum(row, 0)
+            if ignore_diagonal:
+                divisor -= float(row[i])
         else:
             divisor = max_cell
-        if ignore_diagonal and color_by_row:
-            divisor -= float(row[i])
         for j, el in enumerate(row):
-            tmp_arr.append(min(float(el) / float(divisor) * max_scale_factor, 1))
-            if mask[i][j] == 0:
+            if divisor == 0:  # avoid dividing by 0
+                tmp_arr.append(1)
+            else:
+                tmp_arr.append(min(float(el) / float(divisor) * max_scale_factor, 1))
+            if mask[i][j] == False:
                 tmp_arr[-1] = np.nan
         norm_conf.append(tmp_arr)
 
@@ -232,6 +235,7 @@ def plot_confusion_matrix(true_values, predicted_values, labels, fig_num=0, file
     #                    interpolation='nearest')
     result = ax.imshow(np.array(norm_conf), cmap=cmap, interpolation='nearest')
     fig.colorbar(result)
+    # print numbers in the middle of the cells
     side = range(len(labels))
     for x in side:
         for y in side:
@@ -239,6 +243,7 @@ def plot_confusion_matrix(true_values, predicted_values, labels, fig_num=0, file
                 continue
             ax.annotate(str(confusion_matrix[x][y]), xy=(y, x), horizontalalignment='center',
                         verticalalignment='center')
+    # print labels in axis
     plt.xticks(side, labels)
     plt.yticks(side, labels)
     if title is not None:
