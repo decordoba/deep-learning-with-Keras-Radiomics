@@ -18,12 +18,12 @@ def load_model(location):
 def observe_results(data_generator, folder=None, to_categorical=True, data_reduction=None,
                     mode=0, observe_training=0, filename=None, num_columns=None):
     """
-    :param data_generator:
-    :param folder:
-    :param to_categorical:
+    :param data_generator: where to get the data from (keras.datasets.mnist.load_data, cifar...)
+    :param folder: name of folder where results are found
+    :param to_categorical: to_categorical flag when formatting the dataset
     :param data_reduction: if set to a number, use only (1/data_reduction) of all data. None uses all the data
-    :param mode: plotting mode (0 or 1), whether to show color in the main diagonal or not
-    :param observe_training: if True, we observe results for training set, else for test set
+    :param mode: plotting mode, 0 shows color in the main diagonal, 1 does not, 2-3 adds the matrix transposed and only shows lower half of result
+    :param observe_training: 0, we observe results for training set, 1 for test set, 2 for both
     :return:
     """
     if folder is None:
@@ -71,15 +71,20 @@ def observe_results(data_generator, folder=None, to_categorical=True, data_reduc
                                                                            1 - num_errors / size_set))
 
     print("Drawing confusion matrix ...")
-    ignore_diag = False
-    max_scale_factor = 100.0
-    color_by_row = True
-    if mode == 0:
-        ignore_diag = True
-        max_scale_factor = 1.0
-        color_by_row = False
+    ignore_diag = True
+    max_scale_factor = 1.0
+    color_by_row = False
+    half_matrix = False
+    if mode == 1 or mode == 3:
+        ignore_diag = False
+        max_scale_factor = 100.0
+        color_by_row = True
+        if mode == 3:
+            half_matrix = True
+    elif mode == 2:
+        half_matrix = True
     confusion_mat = plot_confusion_matrix(true_labels, pred_labels, labels,
-                                          title=confusion_title,
+                                          title=confusion_title, plot_half=half_matrix,
                                           filename=filename, max_scale_factor=max_scale_factor,
                                           ignore_diagonal=ignore_diag, color_by_row=color_by_row)
 
@@ -193,7 +198,7 @@ if __name__ == "__main__":
         py results_observer.py
         py results_observer.py folder
         py results_observer.py folder filename
-        py results_observer.py folder filename mode
-        py results_observer.py folder filename mode test(0)/training(1)/both(2)
-        py results_observer.py folder filename mode test(0)/training(1)/both(2) num_cols
+        py results_observer.py folder filename mode(0-2)
+        py results_observer.py folder filename mode(0-2) test(0)/training(1)/both(2)
+        py results_observer.py folder filename mode(0-2) test(0)/training(1)/both(2) num_cols
     """
