@@ -175,7 +175,7 @@ def plot_history(history, fig_num=0, filename=None):
 
 def plot_confusion_matrix(true_values, predicted_values, labels, fig_num=0, filename=None,
                           title=None, cmap="plasma", max_scale_factor=100.0, ignore_diagonal=False,
-                          color_by_row=False):
+                          color_by_row=False, plot_half=False):
     if filename is None:
         plt.ion()
 
@@ -183,13 +183,23 @@ def plot_confusion_matrix(true_values, predicted_values, labels, fig_num=0, file
     confusion_matrix = np.array([[0] * len(labels) for _ in labels])
     label_mapper = dict([(label, i) for i, label in enumerate(labels)])
     for predicted, expected in zip(true_values, predicted_values):
-        confusion_matrix[label_mapper[predicted]][label_mapper[expected]] += 1
+        if plot_half:
+            min_val = label_mapper[predicted]
+            max_val = label_mapper[expected]
+            if min_val > max_val:
+                min_val, max_val = max_val, min_val
+            confusion_matrix[max_val][min_val] += 1
+        else:
+            confusion_matrix[label_mapper[predicted]][label_mapper[expected]] += 1
 
+    mask = np.ones(confusion_matrix.shape, dtype=int)
     if not color_by_row:
-        mask = np.ones(confusion_matrix.shape, dtype=bool)
         if ignore_diagonal:
             np.fill_diagonal(mask, 0)
         max_cell = confusion_matrix[mask].max()
+
+    if plot_half:
+        mask *= np.tri(*mask.shape, dtype=int)
 
     # Adapted from: https://stackoverflow.com/questions/35572000/how-can-i-plot-a-confusion-matrix
     # create attributes to select cell colors
@@ -204,7 +214,7 @@ def plot_confusion_matrix(true_values, predicted_values, labels, fig_num=0, file
             divisor -= float(row[i])
         for j, el in enumerate(row):
             tmp_arr.append(min(float(el) / float(divisor) * max_scale_factor, 1))
-            if ignore_diagonal and i == j:
+            if mask[i][j] == 0:
                 tmp_arr[-1] = np.nan
         norm_conf.append(tmp_arr)
 
@@ -225,6 +235,8 @@ def plot_confusion_matrix(true_values, predicted_values, labels, fig_num=0, file
     side = range(len(labels))
     for x in side:
         for y in side:
+            if plot_half and x < y:
+                continue
             ax.annotate(str(confusion_matrix[x][y]), xy=(y, x), horizontalalignment='center',
                         verticalalignment='center')
     plt.xticks(side, labels)
