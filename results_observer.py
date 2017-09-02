@@ -16,7 +16,8 @@ def load_model(location):
 
 
 def observe_results(data_generator, folder=None, to_categorical=True, data_reduction=None,
-                    mode=0, observe_training=0, filename=None, num_columns=None):
+                    mode=0, observe_training=0, filename=None, num_columns=None,
+                    misclassified_wizard=True):
     """
     :param data_generator: where to get the data from (keras.datasets.mnist.load_data, cifar...)
     :param folder: name of folder where results are found
@@ -24,6 +25,7 @@ def observe_results(data_generator, folder=None, to_categorical=True, data_reduc
     :param data_reduction: if set to a number, use only (1/data_reduction) of all data. None uses all the data
     :param mode: plotting mode, 0 shows color in the main diagonal, 1 does not, 2-3 adds the matrix transposed and only shows lower half of result
     :param observe_training: 0, we observe results for training set, 1 for test set, 2 for both
+    :param misclassified_wizard: if True, shows the wizard to see mistakes, else skips this
     :return:
     """
     if folder is None:
@@ -109,6 +111,9 @@ def observe_results(data_generator, folder=None, to_categorical=True, data_reduc
         fp = len(errors_by_predicted_label[label])
         print("    Label {}: {:>3} mistakes, {:>5} right answers => Accuracy: {}".format(label, fp, tp,
                                                                                          tp / (tp + fp)))
+
+    if not misclassified_wizard:
+        return
 
     while True:
         print("Welcome to the misclassified images viewer!")

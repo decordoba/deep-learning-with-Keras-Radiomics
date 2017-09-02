@@ -8,7 +8,7 @@ from keras_plot import plot_3D_bar_graph, plot_colormap, plot_graph_grid  # 'Lib
 
 
 def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0,
-                 shared_color_scale=True, static_z_scale=False,
+                 shared_color_scale=True, static_z_scale=False, save_without_prompt=False,
                  secondary_plot=["train_accuracy_history", "test_accuracy_history"]):
     """
     From the selected folder (or current folder if folder == None), plot result found in
@@ -47,6 +47,8 @@ def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0,
 
     # Remove keys which always hold the same value, or which (almost) vary every sample, we don't want to plot them
     for key in list(parameters.keys()):
+        if len(parameters) <= 2:
+            break
         if len(parameters[key]) < 2 or len(parameters[key]) > len(result) * 0.95:
             del parameters[key]
 
@@ -61,6 +63,11 @@ def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0,
     # Ask the users what two variables they want to plot
     print("Number of samples: {}\n".format(len(result)))
     idx1 = None
+    if len(parameters) <= 2 or save_without_prompt:
+        idx0 = 0
+        idx1 = 1
+        if len(parameters) <= 1:
+            idx1 = 0
     while idx1 is None:
         for i, key in enumerate(params_keys):
             print("{}. {}".format(i + 1, key))
@@ -178,7 +185,7 @@ def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0,
                         for i, secondary_key in enumerate(secondary_plot):
                             sub_result[i].append(tmp[secondary_key])
                     except yaml.YAMLError as YamlError:
-                        print("There was an error parsing '{}/result.yaml'. Secondary plotting aborted.".format(locaºtion))
+                        print("There was an error parsing '{}/result.yaml'. Secondary plotting aborted.".format(location))
                         print(YamlError)
                         sub_result = None
                 if sub_result is None:
@@ -208,15 +215,20 @@ def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0,
                                              subplot_position=subplot_position, figsize=figsize,
                                              global_colorbar=shared_color_scale, fig_num=0,
                                              color_scale=color_scale, invert_yaxis=True,
-                                             invert_xaxis=True, zlim=zlim)
+                                             invert_xaxis=True, zlim=zlim,
+                                             save_without_prompt=save_without_prompt)
                 if tmp_view is not None:
                     pt_view = tmp_view
             else:
                 plot_colormap(x, y, z, axis_labels=(keyX, keyY), title=title, suptitle=suptitle,
                               fig_clear=i==0, filename=fn, subplot_position=subplot_position,
                               global_colorbar=shared_color_scale, color_scale=color_scale,
-                              figsize=figsize, fig_num=0)
+                              figsize=figsize, fig_num=0, save_without_prompt=save_without_prompt)
             # TODO: check why some plots are flat (in test_0703)
+
+    os.chdir("./..")
+    return result
+
 
 if __name__ == "__main__":
     folder = None

@@ -249,3 +249,4 @@ def experiments_runner(data_generator, experiment_obj, folder=None, data_reducti
                                                                          timedelta(seconds=avg_time)))
 
     os.chdir("./..")
+    return folder
