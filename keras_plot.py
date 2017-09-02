@@ -263,7 +263,7 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, suptitle=None, file
                       bars_dist=0.1, fig_num=0, cmap="plasma", view_elev=50, view_azim=45,
                       orthogonal_projection=False, subplot_position=111, fig_clear=True,
                       global_colorbar=False, color_scale=None, figsize=(1, 1), invert_xaxis=False,
-                      invert_yaxis=False, zlim=None):
+                      invert_yaxis=False, zlim=None, save_without_prompt=False):
     """
     Receives list of X, Y and Z and plots them. X and Y can be strings or numbers.
     For example:
@@ -289,6 +289,7 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, suptitle=None, file
     :param invert_xaxis: inverts the xaxis
     :param invert_yaxis: inverts the yaxis
     :param zlim: if not None, sets the scale used in the zaxis, else it is set automatically
+    :param save_without_prompt: if True, it will save without showing figure (filename must not be None), else, it shows figure and then it saves it once we press ENTER or cancel with Q
     :return: returns a list of all elevs and azims for all subfigures if filename is not None
     """
     # get X and Y axis, and order them
@@ -404,15 +405,19 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, suptitle=None, file
 
     # wait for user actions and save graph
     if filename is not None:
-        plt.ion()
-        plt.show()
-        txt = input("Position the figure in the preferred perspective, and press ENTER to save it.\nPress the Q key + ENTER to skip saving the figure.\n")
-        if len(txt) < 1 or txt[0].lower() != "q":
+        if save_without_prompt:
             fig.savefig("{}.png".format(filename.strip()), bbox_inches="tight")
             print("Figure saved in {}.png\n".format(filename.strip()))
         else:
-            print()
-        plt.ioff()
+            plt.ion()
+            plt.show()
+            txt = input("Position the figure in the preferred perspective, and press ENTER to save it.\nPress the Q key + ENTER to skip saving the figure.\n")
+            if len(txt) < 1 or txt[0].lower() != "q":
+                fig.savefig("{}.png".format(filename.strip()), bbox_inches="tight")
+                print("Figure saved in {}.png\n".format(filename.strip()))
+            else:
+                print()
+            plt.ioff()
 
         # return point of view params for every ax so next figure can be drawn from same point of view
         pts_of_view = []
@@ -428,7 +433,8 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, suptitle=None, file
 
 def plot_colormap(X, Y, Z, axis_labels=None, title=None, suptitle=None, filename=None, fig_num=0,
                   cmap="plasma", subplot_position=111, fig_clear=True, global_colorbar=False,
-                  color_scale=None, figsize=(1, 1), invert_xaxis=False, invert_yaxis=False):
+                  color_scale=None, figsize=(1, 1), invert_xaxis=False, invert_yaxis=False,
+                  save_without_prompt=False):
     """
     Receives list of X, Y and Z and plots them. X and Y can be strings or numbers.
     For example:
@@ -447,6 +453,7 @@ def plot_colormap(X, Y, Z, axis_labels=None, title=None, suptitle=None, filename
     :param global_colorbar: whether if the colorbar is global (shared by all subfigures) or local (one for every subfigure)
     :param color_scale: tuple that represents the min and max values used in the scale to draw the colormap. If None, the scale will be picked automatically
     :param figsize: initial size of the figure. By default it is a (1, 1) square, but can be set to (1,2), to change the shape.
+    :param save_without_prompt: if True, it will save without showing figure (filename must not be None), else, it shows figure and then it saves it once we press ENTER or cancel with Q
     """
     # get X and Y axis, and order them
     X_labels = np.unique(X)
@@ -543,15 +550,19 @@ def plot_colormap(X, Y, Z, axis_labels=None, title=None, suptitle=None, filename
 
     # wait for user actions and save graph
     if filename is not None:
-        plt.ion()
-        plt.show()
-        txt = input("Position the figure in the preferred perspective, and press ENTER to save it.\nPress the Q key + ENTER to skip saving the figure.\n")
-        if len(txt) < 1 or txt[0].lower() != "q":
+        if save_without_prompt:
             fig.savefig("{}.png".format(filename.strip()), bbox_inches="tight")
             print("Figure saved in {}.png\n".format(filename.strip()))
         else:
-            print()
-        plt.ioff()
+            plt.ion()
+            plt.show()
+            txt = input("Position the figure in the preferred perspective, and press ENTER to save it.\nPress the Q key + ENTER to skip saving the figure.\n")
+            if len(txt) < 1 or txt[0].lower() != "q":
+                fig.savefig("{}.png".format(filename.strip()), bbox_inches="tight")
+                print("Figure saved in {}.png\n".format(filename.strip()))
+            else:
+                print()
+            plt.ioff()
 
 def plot_graph_grid(X, Y, Z, subaxis_labels=None, axis_labels=None, suptitle=None, filename=None,
                     fig_num=0, scaleX=None, scaleY=None, fig_clear=True, simplified_style=True,
