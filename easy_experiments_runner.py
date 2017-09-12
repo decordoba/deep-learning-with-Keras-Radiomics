@@ -15,7 +15,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Create and run experiments with modular_keras, and save results neatly")
     parser.add_argument('-d', '--dataset', choices=["mnist", "cifar10", "cifar100"], default="mnist",
-                        help="Name of the dataset to try ('mnist', 'cifar10', 'cifar100'). Default is 'mnist'.")
+                        help="Name of the dataset to try. Default is 'mnist'.")
     parser.add_argument('-e', '--experiment', choices=range(len(experiments)), type=int, default=0,
                         help="Experiement architecture (0 to {}). Default is 0.".format(len(experiments) - 1))
     parser.add_argument('-f', '--folder', type=str, help="Name of the folder where the results will be saved.", default=None)
@@ -28,6 +28,7 @@ if __name__ == "__main__":
     print("Arguments used:")
     for arg in args._get_kwargs():
         print("    {} : {}".format(arg[0], arg[1]))
+    print()
 
     if args.dataset.lower() == "mnist":
         data = mnist.load_data
@@ -43,7 +44,7 @@ if __name__ == "__main__":
     print("\nTotal Time Taken to perform Experiment: {} s\n\n".format(timedelta(seconds=clock() - t)))
 
     t = clock()
-    results = plot_results(folder=folder, height_keys=["accTr", "accTe"], plot_mode=3,
+    results = plot_results(folder=folder, height_keys=["accTr", "accTe"], plot_mode=0,
                            static_z_scale=True, secondary_plot=None, save_without_prompt=True)
     print("\nTotal Time Taken to plot Results: {} s\n\n".format(timedelta(seconds=clock() - t)))
 
