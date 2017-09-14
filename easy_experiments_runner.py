@@ -1,8 +1,18 @@
 #!/usr/bin/env python3.5
 
-import argparse
+import sys
 from time import clock
-from datetime import timedelta
+from datetime import timedelta, datetime
+
+# Put this here so it runs before importing TensorFlow
+print("---------------------------------------------------------------------------------------")
+now = datetime.now()
+print("|  Running: {:<72}  |".format(" ".join(sys.argv)))
+print("|  Time:    {:<72}  |".format("{} {:02d}:{:02d}:{:02d}".format(now.date(), now.hour,
+                                                                      now.minute, now.second)))
+print("---------------------------------------------------------------------------------------")
+
+import argparse
 from modular_neural_network import MyFirstExperiment, MyFirstExperimentContinued, SingleExperiment, MyFirstExperimentShort
 from results_plotter import plot_results
 from results_observer import observe_results
