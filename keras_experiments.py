@@ -241,8 +241,9 @@ def experiments_runner(data_generator, experiment_obj, folder=None, data_reducti
         # print data to monitor how well we are doing
         taken = clock() - t
         avg_time = (avg_time * (it - num_skips) + taken) / (it - num_skips + 1)
-        print("\nResults:  Training:  Acc: {:10}  Loss: {}".format(aTr, lTr))
-        print("          Test:      Acc: {:<10}  Loss: {}".format(aTe, lTe))
+        print("\nResults:  Training:  Acc: {:<10}  Loss: {}".format(round(aTr, 8), round(lTr, 8)))
+        print("          Test:      Acc: {:<10}  Loss: {}".format(round(aTe, 8), round(lTe, 8)))
+        print("          Number of Epochs:   {}".format(n_epochs))
         print("          Time taken:         {}  (fit & evaluation time: {})".format(timedelta(seconds=taken),
                                                                                      timedelta(seconds=time)))
         print("          Expected time left: {}  (mean time: {})".format(timedelta(seconds=avg_time * (num_iterations - it - 1)),
