@@ -5,13 +5,13 @@ the information necessary so that the performance of every experiment can easily
 Several libraries implement plotting methods that allow easy understanding of the experiments performed. Here we can see a sample of the
 figures obtained:
 
-<a href="README_images/model.png" title="Detailed schematic of the Keras model used"><img src="/README_images/model.png" width="30%" ></a>
-<a href="README_images/loss_acc.png" title="Loss and accuracy evolution as epochs go by"><img src="/README_images/loss_acc.png" width="30%" ></a>
-<a href="README_images/sample_9s.png" title="Miscalssified images for a label (example: MNIST dataset)"><img src="/README_images/sample_9s.png" width="30%" ></a>
+<a href="README_images/model.png" title="Detailed schematic of the Keras model used"><img src="/README_images/model.png" width="25%" ></a> <a href="README_images/loss_acc.png" title="Loss and accuracy evolution as epochs go by"><img src="/README_images/loss_acc.png" width="70%" ></a>
 
-![Confusion matrices](/README_images/confusion_matrices.png?raw=true)
+<a href="README_images/sample_9s.png" title="Misclassified images for a label (example: MNIST dataset)"><img src="/README_images/sample_9s.png" width="70%" ></a>
 
-![Example of figure comparing the results of different models](/README_images/fig1.png?raw=true)
+<a href="README_images/confusion_matrices.png" title="Confusion matrices"><img src="/README_images/confusion_matrices.png"></a>
+
+<a href="README_images/fig1.png" title="Example of figure comparing the results of different models"><img src="/README_images/fig1.png" width="70%"></a>
 
 
 ## Files
