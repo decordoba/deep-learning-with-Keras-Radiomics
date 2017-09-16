@@ -8,12 +8,7 @@ from keras.layers.wrappers import Wrapper
 from keras.models import Sequential
 from keras_std import cbPlotEpoch  # cbPlotEpochBatch
 from keras_plot import plot_history
-try:
-    # pydot-ng is a fork of pydot that is better maintained.
-    import pydot_ng as pydot
-except ImportError:
-    # Fall back on pydot if necessary.
-    import pydot
+import pydot
 
 
 def plot_model(model, to_file='model.png', show_shapes=False, show_layer_names=True,
