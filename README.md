@@ -5,11 +5,14 @@ the information necessary so that the performance of every experiment can easily
 Several libraries implement plotting methods that allow easy understanding of the experiments performed. Here we can see a sample of the
 figures obtained:
 
-![Detailed schematic of the Keras model used](/README_images/model.png?raw=true)
-![Loss and accuracy evolution as epochs go by](/README_images/loss_acc.png?raw=true)
+<a href="README_images/model.png" title="Detailed schematic of the Keras model used"><img src="/README_images/model.png" width="30%" ></a>
+<a href="README_images/loss_acc.png" title="Loss and accuracy evolution as epochs go by"><img src="/README_images/loss_acc.png" width="30%" ></a>
+<a href="README_images/sample_9s.png" title="Miscalssified images for a label (example: MNIST dataset)"><img src="/README_images/sample_9s.png" width="30%" ></a>
+
 ![Confusion matrices](/README_images/confusion_matrices.png?raw=true)
+
 ![Example of figure comparing the results of different models](/README_images/fig1.png?raw=true)
-![Miscalssified images for a label (example: MNIST dataset)](/README_images/sample_9s.png?raw=true)
+
 
 ## Files
 
