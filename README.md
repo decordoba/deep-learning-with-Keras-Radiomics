@@ -14,10 +14,10 @@ figures obtained:
 <a href="README_images/model.png" title="Detailed schematic of the Keras model used"><img src="/README_images/model.png" width="25%" ></a> <a href="README_images/loss_acc.png" title="Loss and accuracy evolution as epochs go by"><img src="/README_images/loss_acc.png" width="70%" ></a>
 
 
-## What you will find 
+## How to use every file
 
 ### [easy_experiments_runner.py](easy_experiments_runner.py)
-Start here to see some results without changing any code!
+**Start here to see some results without changing any code!**
 
 Open a command terminal, and run the following:
 
@@ -79,13 +79,124 @@ $ python3 results_plotter.py
 $ python3 results_observer.py
 ```
 
-See the following sections to learn how to use every module separately, and to learn to change the architeccture used in `easy_experiments_runner.py`.
+See the following sections to learn how to use every module separately, and to learn to change the architecture used in `easy_experiments_runner.py`.
 
 ### [modular_neural_network.py](modular_neural_network.py)
 
-### [results_observer.py](results_observer.py)
+In here, the different architectures that will be tested can be configured. To do so, we need to create a subclass of the `Experiment` class. As our first experiment, we will create an experiment set that tries different combinations of :
+
+```python
+class MyFirstExperiment(Experiment):
+    def __init__(self):
+        # create standard experiments structure
+        self.experiments = {"filters1": [16, 32, 64],
+                            "filters2": [16, 32, 64],
+                            "units1": [16, 32]}
+
+    def run_experiment(self, train_set, test_set, input_shape, labels, comb, epochs):
+        # Yes, self.keys_mapper magically works if you defined self.experiments correctly in the __init__ method
+        f1 = comb[self.keys_mapper["filters1"]]
+        f2 = comb[self.keys_mapper["filters2"]]
+        u1 = comb[self.keys_mapper["units1"]]
+        # flexible_neural_net will do all the work, it just needs to get the training and test set, the optimizer
+        # and loss functions used, and a list of all the keras layers that will be tested.
+        return flexible_neural_net(train_set, test_set, optimizers.Adam(), losses.categorical_crossentropy,
+                                   # layers in our Sequential model
+                                   Conv2D(f1, kernel_size=(3, 3), activation='relu', input_shape=input_shape),
+                                   Conv2D(f2, kernel_size=(3, 3), activation='relu'),
+                                   MaxPooling2D(pool_size=(2, 2)),
+                                   Dropout(0.25),
+                                   Flatten(),
+                                   Dense(u1, activation='relu'),
+                                   Dropout(0.5),
+                                   Dense(len(labels), activation='softmax'),
+                                   # optional parameters, don't touch them unless you know what you are doing
+                                   batch_size=32, epochs=epochs, verbose=False)
+```
+
+What happened in the previous class is: the variables that we want to test are saved in `self.experiments` (in this case we will run all the combinations of filters1, filters2 and units1 possible, and each will be an experiment. In this case, we will perform 3x3x2 = 18 experiments). Then, we need to tell in our `run_experiment` function how to apply those parameters, by choosing how a configuration defines the neural network architecture. In the above case, the current combination of parameters is extracted to `f1`, `f2` and `u1` and used to determine the number of units and filters in different layers of our network.
+
+[modular_neural_network.py](modular_neural_network.py) contains several experiments already configured to start playing around, but the configurations and possibilities are endless!
+
+[modular_neural_network.py](modular_neural_network.py) is also an executable file that will run all your experiments and save them in a tree of folders (see the easy_experiments_runner section for more information). Change the experiments and dataset used in the main function to choose the experiments you want to run. Then run the code (it can take many hours to execute) with:
+
+```
+$ python3 modular_neural_network.py my_folder_name
+```
 
 ### [results_plotter.py](results_plotter.py)
+
+This module allows us to visualize the results saved using `modular_neural_network.py` or `easy_experiments_runner.py`, choose our preferred mode of visualization, and save them. To do so, run the following command and the wizard to see and save the figures will be started:
+
+```
+$ python3 results_plotter.py my_folder_name
+Number of samples: 18
+
+1. filters1
+2. filters2
+3. units1
+Choose the first parameter (X) to plot (type number + ENTER):
+>> 1
+Parameter X selected: filters1
+
+2. filters2
+3. units1
+Choose the second parameter (Y) to plot (type number + ENTER) or enter 0 to start over:
+>> 3
+Parameter Y selected: units1
+
+Position the figure in the preferred perspective, and press ENTER to save it.
+Press the Q key + ENTER to skip saving the figure.
+```
+
+After selecting the variables that we want to see in the X and Y axis, we will see a figure in a window, and we will be able to rotate it until we get the desired perspective, and decide to save it or skip it, and jump to the next one. With this we will iterate through all the possible combinations of figures with the chosen X and Y axis. The results obtained with the above configuration are as follows:
+
+<a href="README_images/fig2.png" title="filters2=16"><img src="/README_images/fig2.png" width="32%"></a>
+<a href="README_images/fig3.png" title="filters2=32"><img src="/README_images/fig3.png" width="32%"></a>
+<a href="README_images/fig4.png" title="filters2=64"><img src="/README_images/fig4.png" width="32%"></a>
+
+### [results_observer.py](results_observer.py)
+
+This module allows the user to see the confusion matrix from any model generated using `modular_neural_network.py` or `easy_experiments_runner.py`. Generate it running:
+
+```
+$ python3 results_observer.py my_folder_name/nn0000  # Shows confusion matrix
+$ python3 results_observer.py my_folder_name/nn0000 confusion_matrix.png  # Shows and saves confusion matrix
+```
+
+With this we will get a result like the following:
+
+<a href="README_images/mat1.png" title="Confusion Matrix for test set"><img src="/README_images/mat1.png" width="50%"></a>
+
+It will also load a dialog so see the misclassified examples, in the following way:
+
+```
+Welcome to the misclassified images viewer!
+Use the number keys + ENTER to select the best option.
+Do you want to filter by predicted value or true value?
+0. Exit
+1. Filter by predicted values
+2. Filter by true values
+>> 2
+Filtering by: True Values
+
+Select the label you want to filter.
+ 0. Back
+ 1. Label 0  (80 mistakes)
+ 2. Label 1  (24 mistakes)
+ 3. Label 2  (100 mistakes)
+ 4. Label 3  (112 mistakes)
+ 5. Label 4  (106 mistakes)
+ 6. Label 5  (88 mistakes)
+ 7. Label 6  (64 mistakes)
+ 8. Label 7  (110 mistakes)
+ 9. Label 8  (169 mistakes)
+10. Label 9  (155 mistakes)
+>> ...
+```
+
+With this we can obtain results like:
+<a href="README_images/sample_9s.png" title="Example of misclassified 9s"><img src="/README_images/sample_9s.png" width="32%"></a>
 
 ### [keras_utils.py](keras_utils.py)
 
