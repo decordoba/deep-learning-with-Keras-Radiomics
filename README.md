@@ -70,6 +70,8 @@ This will run the 18 experiments defined in `modular_neural_network.MyFirstExper
 * A `model.yaml` and a `weights.h5` file. These files hold the model used and the weights obtained after the training. With them, we can load the models into Keras again, so all the training is not lost (see [documentation](https://keras.io/getting-started/faq/#how-can-i-save-a-keras-model)).
 * A custom `result.yaml` file, which will save the data generated while training (loss and accuracy change, time taken etc.). The information saved there will be used for plotting.
 
+<a href="README_images/folder_tree.png" title="Folder structure"><img src="/README_images/folder_tree.png"></a>
+
 After this, some plots are generated and saved to the above folder (the one named after the current date and time). The program is configured to run until the end without human supervision. For custom plotting and more control on the figures saved, which can be tweaked manually, modify the parameters passed to plot_results.
 
 Finally, all the models in the folders created previously are loaded, and several confusion matrices are generated and saved in their respective folders. It is also possible to see the misclassified examples in a figure (using a wizard that allows you to choose what examples to look at), and modify the aspect of the confusion matrices. To modify these and other settings, modify the parameters passed to observe_results.
@@ -199,7 +201,8 @@ Select the label you want to filter.
 ```
 
 With this we can obtain results like:
-<a href="README_images/sample_9s.png" title="Example of misclassified 9s"><img src="/README_images/sample_9s.png" width="32%"></a>
+
+<a href="README_images/sample_9s.png" title="Example of misclassified 9s"><img src="/README_images/sample_9s.png" width="50%"></a>
 
 ### [keras_utils.py](keras_utils.py)
 
