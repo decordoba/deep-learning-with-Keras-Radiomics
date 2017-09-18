@@ -13,8 +13,11 @@ figures obtained:
 
 <a href="README_images/model.png" title="Detailed schematic of the Keras model used"><img src="/README_images/model.png" width="25%" ></a> <a href="README_images/loss_acc.png" title="Loss and accuracy evolution as epochs go by"><img src="/README_images/loss_acc.png" width="70%" ></a>
 
+## Where to start
 
-## How to use every file
+Start reading the `easy_experiments_runner.py` section to try the code without modifying any code.
+
+## Contents and files
 
 ### [easy_experiments_runner.py](easy_experiments_runner.py)
 **Start here to see some results without changing any code!**
@@ -60,11 +63,11 @@ Therefore, the program can be sped-up (by dropping 99% of the data and changing 
 $ python3 easy_experiments_runner.py --data_reduction 100 --experiment 3
 ```
 
-This will run the 18 experiments defined in `modular_neural_network.MyFirstExperimentShort` (see the [modular_neural_network.py](modular_neural_network.py) section below). A folder will be created (named after the current date and time) where all the data from the experiment will be saved, and inside a folder for every one of the experiments will be created and filled with several files:
+This will run the 18 experiments defined in `modular_neural_network.MyFirstExperimentShort` (see the [modular_neural_network.py](modular_neural_network.py) section below). A folder will be created (named after the current date and time) where all the data from the experiment will be stored. Inside this folder, a new folder named `nn[experiment_number]` will be created and filled with the following files for every one of the experiments:
 
 * A `history.png` image, with the training and evaluation loss and accuracy when training.
 * A `model.png` image containing a detailed model (with all the parameters used in the architecture). This model is generated using a modification of the `keras.utils.plot_model` function, which will print more information in the model.
-* A `model.yaml` and a `weights.h5` file. These files hold the model used and the weights obtained after the training. With them, we can load the models into Keras again, so all the training is not lost (see .
+* A `model.yaml` and a `weights.h5` file. These files hold the model used and the weights obtained after the training. With them, we can load the models into Keras again, so all the training is not lost (see [documentation](https://keras.io/getting-started/faq/#how-can-i-save-a-keras-model)).
 * A custom `result.yaml` file, which will save the data generated while training (loss and accuracy change, time taken etc.). The information saved there will be used for plotting.
 
 After this, some plots are generated and saved to the above folder (the one named after the current date and time). The program is configured to run until the end without human supervision. For custom plotting and more control on the figures saved, which can be tweaked manually, modify the parameters passed to plot_results.
@@ -94,12 +97,12 @@ class MyFirstExperiment(Experiment):
                             "units1": [16, 32]}
 
     def run_experiment(self, train_set, test_set, input_shape, labels, comb, epochs):
-        # Yes, self.keys_mapper magically works if you defined self.experiments correctly in the __init__ method
+        # Yes, self.keys_mapper magically works if you defined self.experiments correctly in __init__
         f1 = comb[self.keys_mapper["filters1"]]
         f2 = comb[self.keys_mapper["filters2"]]
         u1 = comb[self.keys_mapper["units1"]]
-        # flexible_neural_net will do all the work, it just needs to get the training and test set, the optimizer
-        # and loss functions used, and a list of all the keras layers that will be tested.
+        # flexible_neural_net will do all the work, it just needs to get the training and test set, the
+        # optimizer and loss functions used, and a list of all the keras layers that will be tested.
         return flexible_neural_net(train_set, test_set, optimizers.Adam(), losses.categorical_crossentropy,
                                    # layers in our Sequential model
                                    Conv2D(f1, kernel_size=(3, 3), activation='relu', input_shape=input_shape),
