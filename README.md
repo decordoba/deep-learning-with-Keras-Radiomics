@@ -2,8 +2,7 @@
 Perform a set of experiments with different Neural Network configurations and architectures. The system automatically saves all
 the information necessary so that the performance of every experiment can easily be compared to the others.
 
-Several libraries implement plotting methods that allow easy understanding of the experiments performed. Here we can see a sample of the
-figures obtained:
+This repository contains several libraries that implement monitoring and plotting methods that allow easy understanding of the experiments performed. The following figures are a sample of the data automatically generated during the experiments:
 
 <a href="README_images/confusion_matrices.png" title="Confusion matrices"><img src="/README_images/confusion_matrices.png"></a>
 
@@ -15,7 +14,7 @@ figures obtained:
 
 ## Where to start
 
-Start reading the `easy_experiments_runner.py` section to try the code without modifying any code.
+Start reading the `easy_experiments_runner.py` section to try the program without modifying any code.
 
 ## Contents and files
 
@@ -121,6 +120,8 @@ class MyFirstExperiment(Experiment):
 
 What happened in the previous class is: the variables that we want to test are saved in `self.experiments` (in this case we will run all the combinations of filters1, filters2 and units1 possible, and each will be an experiment. In this case, we will perform 3x3x2 = 18 experiments). Then, we need to tell in our `run_experiment` function how to apply those parameters, by choosing how a configuration defines the neural network architecture. In the above case, the current combination of parameters is extracted to `f1`, `f2` and `u1` and used to determine the number of units and filters in different layers of our network.
 
+It is necessary that `run_experiments` returns a call to `flexible_neural_net`, which is the function that will save all the data in the folder structure. In future implementations, the structure will be simplified, but for now, it can be used as seen in the above example.
+
 [modular_neural_network.py](modular_neural_network.py) contains several experiments already configured to start playing around, but the configurations and possibilities are endless!
 
 [modular_neural_network.py](modular_neural_network.py) is also an executable file that will run all your experiments and save them in a tree of folders (see the easy_experiments_runner section for more information). Change the experiments and dataset used in the main function to choose the experiments you want to run. Then run the code (it can take many hours to execute) with:
@@ -204,10 +205,46 @@ With this we can obtain results like:
 
 <a href="README_images/sample_9s.png" title="Example of misclassified 9s"><img src="/README_images/sample_9s.png" width="50%"></a>
 
+### [keras_experiments.py](keras_experiments.py)
+
+Dependency of `modular_neural_network.py` and `easy_experiments_runner.py`, it defines the Experiment abstract class, which will be subclassed to create all the custom experiments. It also contains the `experiments_runner` function:
+
+```python
+def experiments_runner(data_generator, experiment_obj, folder=None, data_reduction=None,
+                       epochs=100, to_categorical=True)
+    # Loads the data from data_generator, loads the experiment object used (containing all the
+    # experiments that have to be run), creates/opens a folder where it will save all the data,
+    # and runs all experiments and saves all results in a folder structure. If the folder already
+    # exists and contains old results, the experiments already performed will not be run again.
+    # This allows us to stop the execution, and start it again where we left off.
+```
+
+This is the main function that `modular_neural_network.py` and `easy_experiments_runner.py` call to save the data of all the experiments. It will be the one in charge of saving all the data in our folder structure
+
 ### [keras_utils.py](keras_utils.py)
+
+Contains several useful keras related functions, all of which require to import the TensorFlow backend. These are the main ones:
+
+```python
+def plot_model(model, to_file='model.png', show_shapes=False, show_layer_names=True,
+               show_params=False)
+    # Extension of keras.utils.plot_model
+    # Plots model to an image, and also params of layers (original does not do it)
+
+def format_dataset(x_train, y_train, x_test=None, y_test=None, data_reduction=None,
+                   to_categorical=False, ret_labels=False, verbose=False)
+    # Reformat input: change dimensions, scale and cast so it can be fed into our model
+
+def flexible_neural_net(train_set, test_set, optimizer, loss, *layers, batch_size=32, epochs=10,
+                        callback=cbPlotEpoch, early_stopping=10, location=None, verbose=True)
+    # Layer to create a nn model, compile it, fit it, calculate train and test error, and
+    # save the model to location with only one function
+
+def save_model_data(model, train_score, test_score, time, location, save_yaml=True, save_json=False,
+                    save_image=True, save_weights=True, save_full_model=False, history=None):
+    # Save in location some information about the model (location needs to exist!)
+```
 
 ### [keras_plot.py](keras_plot.py)
 
 ### [keras_std.py](keras_std.py)
-
-### [keras_experiments.py](keras_experiments.py)
