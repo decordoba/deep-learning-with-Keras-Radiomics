@@ -12,16 +12,20 @@ if __name__ == "__main__":
     experiments = ["MyFirstExperiment", "MyFirstExperimentContinued", "SingleExperiment",
                    "MyFirstExperimentShort"]
 
+    # Parser to allow fancy command arguments input
     parser = argparse.ArgumentParser(description="Create and run experiments with modular_keras, and save results neatly")
     parser.add_argument('-d', '--dataset', choices=["mnist", "cifar10", "cifar100"], default="mnist",
                         help="Name of the dataset to try. Default is 'mnist'.")
     parser.add_argument('-e', '--experiment', choices=range(len(experiments)), type=int, default=0,
                         help="Experiement architecture (0 to {}). Default is 0.".format(len(experiments) - 1))
-    parser.add_argument('-f', '--folder', type=str, help="Name of the folder where the results will be saved.", default=None)
-    parser.add_argument('-ne', '--number_epochs', type=int, help="Maximum number of epochs before termination. Default is 100.", default=100)
+    parser.add_argument('-f', '--folder', type=str, default=None,
+                        help="Name of the folder where the results are saved. If not set, the folder is named with the current date & time.")
+    parser.add_argument('-ne', '--number_epochs', type=int, default=100,
+                        help="Maximum number of epochs before termination. Default is 100.")
     parser.add_argument('-dr', '--data_reduction', type=int, default=None,
-                        help="Number by which to divide the data used. For example, dr=3 means only 1/3 of the data will be used. Default is 1.")
+                        help="Number by which to divide the data used. For example, dr=3 means only 1/3 of the data is used. Default is 1.")
 
+    # Parses inputs, if argument is -h or --help, prints help and exits
     args = parser.parse_args()
 
     # Put this here so it runs before importing TensorFlow
@@ -45,17 +49,25 @@ if __name__ == "__main__":
     from results_observer import observe_results
     from keras_experiments import experiments_runner
 
-    t = clock()
+    # Run all experiments (according to the chosen experiment, performed over the chosen dataset)
+    # and save results into folder with chosen folder name. #epochs and dr can also be set
+    t = clock()  # Start measure of time taken
     folder = experiments_runner(data, experiment, folder=args.folder,
                                 data_reduction=args.data_reduction, epochs=args.number_epochs)
     print("\nTotal Time Taken to perform Experiment: {} s\n\n".format(timedelta(seconds=clock() - t)))
 
-    t = clock()
+    # Parse created folder and save all existing combinations of figures for accTr and accTe.
+    # Set save_without_prompt to False to see the dialog and see and modify the figures before
+    # saving them. Take a look at results_plotter for more settings
+    t = clock()  # Start measure of time taken
     results = plot_results(folder=folder, height_keys=["accTr", "accTe"], plot_mode=0,
                            static_z_scale=True, secondary_plot=None, save_without_prompt=True)
     print("\nTotal Time Taken to plot Results: {} s\n\n".format(timedelta(seconds=clock() - t)))
 
-    t = clock()
+    # Parse every folder and create the confusion matrix for the training, test and both. Set the
+    # misclassified_wizard boolean to True to see the figures before saving them and to also see
+    # the wizard to watch the misclassified examples. Read results_observer for more settings
+    t = clock()  # Start measure of time taken
     for subfolder in results:
         full_path = folder + "/" + subfolder
         observe_results(data, folder=full_path, filename=full_path + "/confusion_test.png",
