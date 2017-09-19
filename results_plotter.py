@@ -79,7 +79,7 @@ def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0,
             except ValueError:
                 num = -1
         idx0 = num - 1
-        print("Parameter 1 selected: {}\n".format(params_keys[idx0]))
+        print("Parameter X selected: {}\n".format(params_keys[idx0]))
         for i, key in enumerate(params_keys):
             if i == idx0:
                 continue
@@ -95,7 +95,7 @@ def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0,
             print()
             continue
         idx1 = num - 1
-        print("Parameter 2 selected: {}\n".format(params_keys[idx1]))
+        print("Parameter Y selected: {}\n".format(params_keys[idx1]))
 
     # Prepare variables to plot
     keyX = params_keys[idx0]  # name of key x axis
@@ -233,7 +233,7 @@ def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0,
 if __name__ == "__main__":
     folder = None
     mode = 0
-    metric = None
+    metric = None  # if left None, the metrics used will be ["accTr", "accTe"]
     static_z_scale = False
     secondary_plot = False
     if len(sys.argv) > 1:
@@ -270,13 +270,13 @@ if __name__ == "__main__":
     """
     Expects:
         py results_plotter.py
+        py results_plotter.py folder
         py results_plotter.py folder mode
-        py results_plotter.py folder mode metric
         py results_plotter.py folder mode metric
 
     * MODE: 0,1,2... !secondary_plot, !static_z_scale
             3,4,5... !secondary_plot,  static_z_scale
             6,7,8...  secondary_plot, !static_z_scale
             9,A,B...  secondary_plot,  static_z_scale
-            C...     !secondary_plot,  static_z_scale, mode 3
+            C...     !secondary_plot,  static_z_scale, mode 3 (the secret mode)
     """
