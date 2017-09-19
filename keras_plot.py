@@ -45,7 +45,7 @@ def plot_all_images(images, fig_num=0, filename=None, labels=None, label_descrip
                     labels2=None, label2_description="Label", cmap="Greys", no_axis=True,
                     title=None, max_cols=5):
     """
-    Show several images with labels at the same time
+    Show several images with labels at the same time (in the same figure)
     """
     if filename is None:
         plt.ion()
@@ -176,6 +176,13 @@ def plot_history(history, fig_num=0, filename=None):
 def plot_confusion_matrix(true_values, predicted_values, labels, fig_num=0, filename=None,
                           title=None, cmap="plasma", max_scale_factor=100.0, ignore_diagonal=False,
                           color_by_row=False, plot_half=False):
+    """
+    Plots a confusion matrix from a list of true and predicted labels. The variable labels contains
+    the labels names. ignore_diagonal is used to leave the diagonal white (no color), and plot half
+    only shows the lower half of the matrix (adding the top and bottom part together).
+    max_scale_factor is used to show contrast even for small values in comparison to the larger
+    numbers in the diagonal, set it to 1 to get the right color scale
+    """
     if filename is None:
         plt.ion()
 
@@ -269,7 +276,7 @@ def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, suptitle=None, file
     For example:
         plot_3D_bar_graph(["0", "0", "1", "1"], [0, 1, 0, 1], [0, 1, 1, 2])
     will plot a 2 by 2 matrix of bars with different heights.
-    Many parmateres can be configured, like a title, the labels, a filename to save the figure,
+    Many parameters can be configured, like a title, the labels, a filename to save the figure,
     the distance between the bars, the colormap, the initial point of view...
     :param axis_labels: the label in every axis (x, y, z)
     :param title: the title for the subfigure
@@ -437,10 +444,8 @@ def plot_colormap(X, Y, Z, axis_labels=None, title=None, suptitle=None, filename
                   save_without_prompt=False):
     """
     Receives list of X, Y and Z and plots them. X and Y can be strings or numbers.
-    For example:
-        plot_3D_bar_graph(["0", "0", "1", "1"], [0, 1, 0, 1], [0, 1, 1, 2])
-    will plot a 2 by 2 matrix of bars with different heights.
-    Many parmateres can be configured, like a title, the labels, a filename to save the figure,
+    It will plot a matrix of squares, each with a color representing the number of Z.
+    Many parameters can be configured, like a title, the labels, a filename to save the figure,
     the distance between the bars, the colormap, the initial view...
     :param axis_labels: the label in every axis (x, y, z)
     :param title: the title for the subfigure
@@ -453,6 +458,8 @@ def plot_colormap(X, Y, Z, axis_labels=None, title=None, suptitle=None, filename
     :param global_colorbar: whether if the colorbar is global (shared by all subfigures) or local (one for every subfigure)
     :param color_scale: tuple that represents the min and max values used in the scale to draw the colormap. If None, the scale will be picked automatically
     :param figsize: initial size of the figure. By default it is a (1, 1) square, but can be set to (1,2), to change the shape.
+    :param invert_xaxis: inverts the xaxis
+    :param invert_yaxis: inverts the yaxis
     :param save_without_prompt: if True, it will save without showing figure (filename must not be None), else, it shows figure and then it saves it once we press ENTER or cancel with Q
     """
     # get X and Y axis, and order them
@@ -570,10 +577,7 @@ def plot_graph_grid(X, Y, Z, subaxis_labels=None, axis_labels=None, suptitle=Non
     """
     Receives list of X, Y and Z (Z is a list of lists of points, one for each (X, Y)) and plots them.
     X and Y can be strings or numbers.
-    For example:
-        plot_3D_bar_graph(["0", "0", "1", "1"], [0, 1, 0, 1], [0, 1, 1, 2])
-    will plot a 2 by 2 matrix of bars with different heights.
-    Many parmateres can be configured, like a title, the labels, a filename to save the figure,
+    Many parameters can be configured, like a title, the labels, a filename to save the figure,
     the distance between the bars, the colormap, the initial view...
     """
 

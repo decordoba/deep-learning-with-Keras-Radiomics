@@ -242,7 +242,7 @@ def flexible_neural_net(train_set, test_set, optimizer, loss, *layers, batch_siz
 def save_model_data(model, train_score, test_score, time, location, save_yaml=True, save_json=False,
                     save_image=True, save_weights=True, save_full_model=False, history=None):
     """
-    Save in location information about the model location needs to exist!)
+    Save in location some information about the model (location needs to exist!)
     """
     if save_image:
         plot_model(model, show_shapes=True, show_layer_names=False, show_params=True,
@@ -270,7 +270,8 @@ def save_model_data(model, train_score, test_score, time, location, save_yaml=Tr
         f.write(result)
 
 def unpack_layer(object_in_list):
-    # Receives a list, where the first param is an object, and the next ones are the
+    # Receives a list, where the first param is an object, and the next ones are the parameters,
+    # and returns an object call with such parameters
     obj = object_in_list[0]
     general_params = []
     required_params = {}

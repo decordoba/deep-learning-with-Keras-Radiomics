@@ -170,6 +170,12 @@ def params_in_data(params, data, ignore_keys=("iteration_number", "date", "locat
 
 def experiments_runner(data_generator, experiment_obj, folder=None, data_reduction=None,
                                 epochs=100, to_categorical=True):
+    # Loads the data from data_generator, loads the experiment object used (containing all the
+    # experiments that have to be run), creates/opens a folder where it will save all the data,
+    # and runs all experiments and saves all results in a folder structure. If the folder already
+    # exists and contains old results, the experiments already performed will not be run again.
+    # This allows us to stop the execution, and start it again where we left off.
+
     print("Loading training and test sets ...")
     # Load into train and test sets
     (x_train, y_train), (x_test, y_test) = data_generator()
