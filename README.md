@@ -174,7 +174,7 @@ With this we will get a result like the following:
 
 <a href="README_images/mat1.png" title="Confusion Matrix for test set"><img src="/README_images/mat1.png" width="50%"></a>
 
-It will also load a dialog so see the misclassified examples, in the following way:
+It will also load a dialog to see the misclassified examples, in the following way:
 
 ```
 Welcome to the misclassified images viewer!
@@ -226,11 +226,6 @@ This is the main function that `modular_neural_network.py` and `easy_experiments
 Contains several useful keras related functions, all of which require to import the TensorFlow backend. These are the main ones:
 
 ```python
-def plot_model(model, to_file='model.png', show_shapes=False, show_layer_names=True,
-               show_params=False)
-    # Extension of keras.utils.plot_model
-    # Plots model to an image, and also params of layers (original does not do it)
-
 def format_dataset(x_train, y_train, x_test=None, y_test=None, data_reduction=None,
                    to_categorical=False, ret_labels=False, verbose=False)
     # Reformat input: change dimensions, scale and cast so it can be fed into our model
@@ -243,8 +238,134 @@ def flexible_neural_net(train_set, test_set, optimizer, loss, *layers, batch_siz
 def save_model_data(model, train_score, test_score, time, location, save_yaml=True, save_json=False,
                     save_image=True, save_weights=True, save_full_model=False, history=None):
     # Save in location some information about the model (location needs to exist!)
+
+def plot_model(model, to_file='model.png', show_shapes=False, show_layer_names=True,
+               show_params=False)
+    # Extension of keras.utils.plot_model
+    # Plots model to an image, and also params of layers (original does not do it)
 ```
+
+`format_dataset` receives a training and test set and formats them so they can be used as input in `flexible_neural_net`. It basically reshapes the input matrix if necessary and makes sure that all dimensions needed exist.
+
+`flexible_neural_net` performs only one experiment. It receives the architecture (including optimizer, loss and layers) as an input, and runs one experiment, saving all the datta from such experiment in a `nn[experiment_number]` folder.
+
+`save_model_data` saves the training and test scores (accuracy and loss) and the time taken to run in a `result.yaml` file. It also can save information from an already trained model. What will be saved can be selected using the parameters of the function: the model can be saved in `.yaml` or `.json` format, an image of the model can be saved (`plot_model` will be called), the trained weights can be saved as a `weights.h5` file, the full model can be saved (including weights and architecture) too, and the history can also be saved in the `result.yaml` file.
+
+`plot_model` creates an schematic image of a Sequential model in Keras. This schematic shows the different layers, as well as all the relevant variables that conform each layer, which will vary depending on the layer type. An example of a detailed model schematic can be seen in the following figure:
+
+<a href="README_images/model.png" title="Detailed schematic of a Keras model"><img src="/README_images/model.png" width="40%" ></a>
 
 ### [keras_plot.py](keras_plot.py)
 
+Library that uses `matplotlib` to implement several plotting functions:
+
+```
+def plot_images(images, fig_num=0, labels=None, label_description="Label", labels2=None,
+                label2_description="Label", show_errors_only=False, cmap="Greys", no_axis=True)
+    # Show all images in images list, one at a time, waiting for an ENTER to show the next one
+    # If q + ENTER is pressed, the function is terminated
+    
+def plot_all_images(images, fig_num=0, filename=None, labels=None, label_description="Label",
+                    labels2=None, label2_description="Label", cmap="Greys", no_axis=True,
+                    title=None, max_cols=5)
+    # Show several images with labels at the same time (in the same figure)
+
+def plot_weights(w, fig_num=0, filename=None, title=None, cmap=None)
+    # Show weights of a 4D kernel [x, y, depth, #kernels]. If w has only 3D, it is assumed that
+    # Dim2 is the #kernels, and depth is 1 (B/W kernels). If depths is different to 3 or 4, depth
+    # is set to 1, and only the 1st component is used. If filename is None, the figure will be shown,
+    # otherwise it will be saved with name filename
+
+def plot_history(history, fig_num=0, filename=None)
+    # Plots loss and accuracy in history
+    # If filename is None, the figure will be shown, otherwise it will be saved with name filename
+
+def plot_confusion_matrix(true_values, predicted_values, labels, fig_num=0, filename=None,
+                          title=None, cmap="plasma", max_scale_factor=100.0, ignore_diagonal=False,
+                          color_by_row=False, plot_half=False):
+    # Plots a confusion matrix from a list of true and predicted labels. labels must contain the
+    # labels names. ignore_diagonal is used to leave the diagonal white (no color), and plot half
+    only shows the lower half of the matrix (adding the top and bottom part together).
+
+def plot_confusion_matrix(true_values, predicted_values, labels, fig_num=0, filename=None,
+                          title=None, cmap="plasma", max_scale_factor=100.0, ignore_diagonal=False,
+                          color_by_row=False, plot_half=False):
+    # Plots a confusion matrix from a list of true and predicted labels. The variable labels contains
+    # the labels names. ignore_diagonal is used to leave the diagonal white (no color), and plot half
+    # only shows the lower half of the matrix (adding the top and bottom part together).
+    # max_scale_factor is used to show contrast even for small values in comparison to the larger
+    # numbers in the diagonal, set it to 1 to get the right color scale
+
+def plot_3D_bar_graph(X, Y, Z, axis_labels=None, title=None, suptitle=None, filename=None,
+                      bars_dist=0.1, fig_num=0, cmap="plasma", view_elev=50, view_azim=45,
+                      orthogonal_projection=False, subplot_position=111, fig_clear=True,
+                      global_colorbar=False, color_scale=None, figsize=(1, 1), invert_xaxis=False,
+                      invert_yaxis=False, zlim=None, save_without_prompt=False):
+    """
+    Receives list of X, Y and Z and plots them. X and Y can be strings or numbers, Z must be numbers.
+    For example:
+        plot_3D_bar_graph(["0", "0", "1", "1"], [0, 1, 0, 1], [0, 1, 1, 2])
+    will plot a 2 by 2 matrix of bars with different heights.
+    Many parameters can be configured, like a title, the labels, a filename to save the figure,
+    the distance between the bars, the colormap, the initial point of view...
+    :param axis_labels: the label in every axis (x, y, z)
+    :param title: the title for the subfigure
+    :param suptitle: the global title for the figure
+    :param filename: if None, the figure will be plotted, else, the figure will be saved (the user will be prompted with a save console interface)
+    :param bars_dist: distance between bars (every bar is a square of side 1-bars_dist in a side 1 grid
+    :param fig_num: number of the figure used in matplotlib
+    :param cmap: name of colormap used
+    :param view_elev: param to determine point of view elevation
+    :param view_azim: param to determine point of view rotation
+    :param orthogonal_projection: if True, an orthogonal projection is used, else the default oblique is used
+    :param subplot_position: indicates the size of the whole figure and the position of the current subfigure (i.e. 122 means figure with 2 subfigs, and we draw in the second one)
+    :param fig_clear: whether to clear the whole figure before drawing or not
+    :param global_colorbar: whether if the colorbar is global (shared by all subfigures) or local (one for every subfigure)
+    :param color_scale: tuple that represents the min and max values used in the scale to draw the colormap. If None, the scale will be picked automatically
+    :param figsize: initial size of the figure. By default it is a (1, 1) square, but can be set to (1,2), to change the shape.
+    :param invert_xaxis: inverts the xaxis
+    :param invert_yaxis: inverts the yaxis
+    :param zlim: if not None, sets the scale used in the zaxis, else it is set automatically
+    :param save_without_prompt: if True, it will save without showing figure (filename must not be None), else, it shows figure and then it saves it once we press ENTER or cancel with Q
+    :return: returns a list of all elevs and azims for all subfigures if filename is not None
+    """
+
+def plot_colormap(X, Y, Z, axis_labels=None, title=None, suptitle=None, filename=None, fig_num=0,
+                  cmap="plasma", subplot_position=111, fig_clear=True, global_colorbar=False,
+                  color_scale=None, figsize=(1, 1), invert_xaxis=False, invert_yaxis=False,
+                  save_without_prompt=False):
+    """
+    Receives list of X, Y and Z and plots them. X and Y can be strings or numbers.
+    It will plot a matrix of squares, each with a color representing the number of Z.
+    Many parameters can be configured, like a title, the labels, a filename to save the figure,
+    the distance between the bars, the colormap, the initial view...
+    :param axis_labels: the label in every axis (x, y, z)
+    :param title: the title for the subfigure
+    :param suptitle: the global title for the figure
+    :param filename: if None, the figure will be plotted, else, the figure will be saved (the user will be prompted with a save console interface)
+    :param fig_num: number of the figure used in matplotlib
+    :param cmap: name of colormap used
+    :param subplot_position: indicates the size of the whole figure and the position of the current subfigure (i.e. 122 means figure with 2 subfigs, and we draw in the second one)
+    :param fig_clear: whether to clear the whole figure before drawing or not
+    :param global_colorbar: whether if the colorbar is global (shared by all subfigures) or local (one for every subfigure)
+    :param color_scale: tuple that represents the min and max values used in the scale to draw the colormap. If None, the scale will be picked automatically
+    :param figsize: initial size of the figure. By default it is a (1, 1) square, but can be set to (1,2), to change the shape.
+    :param invert_xaxis: inverts the xaxis
+    :param invert_yaxis: inverts the yaxis
+    :param save_without_prompt: if True, it will save without showing figure (filename must not be None), else, it shows figure and then it saves it once we press ENTER or cancel with Q
+    """
+
+def plot_graph_grid(X, Y, Z, subaxis_labels=None, axis_labels=None, suptitle=None, filename=None,
+                    fig_num=0, scaleX=None, scaleY=None, fig_clear=True, simplified_style=True,
+                    legend_label=None, invert_xaxis=False, invert_yaxis=False):
+    """
+    Receives list of X, Y and Z (Z is a list of lists of points, one for each (X, Y)) and plots them.
+    X and Y can be strings or numbers. It basically will print a grid of plots.
+    Many parameters can be configured, like a title, the labels, a filename to save the figure,
+    the distance between the bars, the colormap, the initial view...
+    """
+```
+
 ### [keras_std.py](keras_std.py)
+
+This library holds the callbacks that create a graph of the loss and accuracy as a neural network is trained. If we add the callback `cbPlotEpoch` when doing `model.fit` in a Sequential Keras model, the loss and accuracy images will be updated every epoch, to allow an easy monitoring of the training. If we add `cbPlotEpochBatch` as a callback to `model.fit`, the loss and accuracy figure will also be updated every several batches. The figures configuration, the update frequency, and other settings can be modified through some constants on top of the `keras_std.py` file.
