@@ -3,25 +3,14 @@
 import sys
 from time import clock
 from datetime import timedelta, datetime
-
-# Put this here so it runs before importing TensorFlow
-print("---------------------------------------------------------------------------------------")
-now = datetime.now()
-print("|  Running: {:<72}  |".format(" ".join(sys.argv)))
-print("|  Time:    {:<72}  |".format("{} {:02d}:{:02d}:{:02d}".format(now.date(), now.hour,
-                                                                      now.minute, now.second)))
-print("---------------------------------------------------------------------------------------")
-
 import argparse
-from modular_neural_network import MyFirstExperiment, MyFirstExperimentContinued, SingleExperiment, MyFirstExperimentShort
-from results_plotter import plot_results
-from results_observer import observe_results
-from keras_experiments import experiments_runner  # 'Library' by Daniel
-from keras.datasets import mnist, cifar10, cifar100
+from importlib import import_module
 
 
 if __name__ == "__main__":
-    experiments = [MyFirstExperiment, MyFirstExperimentContinued, SingleExperiment, MyFirstExperimentShort]
+    # Available experiments names
+    experiments = ["MyFirstExperiment", "MyFirstExperimentContinued", "SingleExperiment",
+                   "MyFirstExperimentShort"]
 
     parser = argparse.ArgumentParser(description="Create and run experiments with modular_keras, and save results neatly")
     parser.add_argument('-d', '--dataset', choices=["mnist", "cifar10", "cifar100"], default="mnist",
@@ -35,18 +24,26 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # Put this here so it runs before importing TensorFlow
+    print("---------------------------------------------------------------------------------------")
+    now = datetime.now()
+    print("|  Running: {:<72}  |".format(" ".join(sys.argv)))
+    print("|  Time:    {:<72}  |".format("{} {:02d}:{:02d}:{:02d}".format(now.date(), now.hour,
+                                                                          now.minute, now.second)))
+    print("---------------------------------------------------------------------------------------")
     print("Arguments used:")
     for arg in args._get_kwargs():
         print("    {} : {}".format(arg[0], arg[1]))
     print()
 
-    if args.dataset.lower() == "mnist":
-        data = mnist.load_data
-    elif args.dataset.lower() == "cifar10":
-        data = cifar10.load_data
-    elif args.dataset == "cifar100":
-        data = cifar100.load_data
-    experiment = experiments[args.experiment]
+    # Imports that load the TensorFlow backend (slow, should only happen if we are going to use it)
+    modular_NN = import_module("modular_neural_network")
+    experiment = getattr(modular_NN, experiments[args.experiment])  # Only import experiment used
+    keras_datasets = import_module("keras.datasets")
+    data = getattr(keras_datasets, args.dataset).load_data  # Only import dataset used
+    from results_plotter import plot_results
+    from results_observer import observe_results
+    from keras_experiments import experiments_runner
 
     t = clock()
     folder = experiments_runner(data, experiment, folder=args.folder,
