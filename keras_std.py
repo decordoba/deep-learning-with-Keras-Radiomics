@@ -1,3 +1,6 @@
+import matplotlib as mpl
+# This line allows mpl to run with no DISPLAY defined
+mpl.use('Agg')
 from matplotlib import pyplot as plt
 from keras.callbacks import Callback
 from time import clock

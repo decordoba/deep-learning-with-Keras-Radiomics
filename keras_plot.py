@@ -1,3 +1,6 @@
+import matplotlib as mpl
+# This line allows mpl to run with no DISPLAY defined
+mpl.use('Agg')
 import numpy as np
 from mpl_toolkits.mplot3d import proj3d
 from matplotlib import pyplot as plt
