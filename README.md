@@ -97,30 +97,27 @@ class MyFirstExperiment(Experiment):
                             "filters2": [16, 32, 64],
                             "units1": [16, 32]}
 
-    def run_experiment(self, train_set, test_set, input_shape, labels, comb, epochs):
+    def run_experiment(self, input_shape, labels, comb):
         # Yes, self.keys_mapper magically works if you defined self.experiments correctly in __init__
         f1 = comb[self.keys_mapper["filters1"]]
         f2 = comb[self.keys_mapper["filters2"]]
         u1 = comb[self.keys_mapper["units1"]]
-        # flexible_neural_net will do all the work, it just needs to get the training and test set, the
-        # optimizer and loss functions used, and a list of all the keras layers that will be tested.
-        return flexible_neural_net(train_set, test_set, optimizers.Adam(), losses.categorical_crossentropy,
-                                   # layers in our Sequential model
-                                   Conv2D(f1, kernel_size=(3, 3), activation='relu', input_shape=input_shape),
-                                   Conv2D(f2, kernel_size=(3, 3), activation='relu'),
-                                   MaxPooling2D(pool_size=(2, 2)),
-                                   Dropout(0.25),
-                                   Flatten(),
-                                   Dense(u1, activation='relu'),
-                                   Dropout(0.5),
-                                   Dense(len(labels), activation='softmax'),
-                                   # optional parameters, don't touch them unless you know what you are doing
-                                   batch_size=32, epochs=epochs, verbose=False)
+        # return an optimizer and a loss, and a list of layers
+        return (optimizers.Adam(), losses.categorical_crossentropy,
+                # layers in our Sequential model
+                Conv2D(f1, kernel_size=(3, 3), activation='relu', input_shape=input_shape),
+                Conv2D(f2, kernel_size=(3, 3), activation='relu'),
+                MaxPooling2D(pool_size=(2, 2)),
+                Dropout(0.25),
+                Flatten(),
+                Dense(u1, activation='relu'),
+                Dropout(0.5),
+                Dense(len(labels), activation='softmax'))
 ```
 
 What happened in the previous class is: the variables that we want to test are saved in `self.experiments` (in this case we will run all the combinations of filters1, filters2 and units1 possible, and each will be an experiment. In this case, we will perform 3x3x2 = 18 experiments). Then, we need to tell in our `run_experiment` function how to apply those parameters, by choosing how a configuration defines the neural network architecture. In the above case, the current combination of parameters is extracted to `f1`, `f2` and `u1` and used to determine the number of units and filters in different layers of our network.
 
-It is necessary that `run_experiments` returns a call to `flexible_neural_net`, which is the function that will save all the data in the folder structure. In future implementations, the structure will be simplified, but for now, it can be used as seen in the above example.
+It is necessary that `run_experiments` returns an optimizer, a loss function and all the layers of the net.
 
 [modular_neural_network.py](modular_neural_network.py) contains several experiments already configured to start playing around, but the configurations and possibilities are endless!
 
@@ -210,8 +207,8 @@ With this we can obtain results like:
 Dependency of `modular_neural_network.py` and `easy_experiments_runner.py`, it defines the Experiment abstract class, which will be subclassed to create all the custom experiments. It also contains the `experiments_runner` function:
 
 ```python
-def experiments_runner(data_generator, experiment_obj, folder=None, data_reduction=None,
-                       epochs=100, to_categorical=True)
+experiments_runner(data_generator, experiment_obj, folder=None, data_reduction=None, epochs=100,
+                   batch_size=32, early_stopping=10, to_categorical=True, verbose=False)
     # Loads the data from data_generator, loads the experiment object used (containing all the
     # experiments that have to be run), creates/opens a folder where it will save all the data,
     # and runs all experiments and saves all results in a folder structure. If the folder already
@@ -247,7 +244,7 @@ def plot_model(model, to_file='model.png', show_shapes=False, show_layer_names=T
 
 `format_dataset` receives a training and test set and formats them so they can be used as input in `flexible_neural_net`. It basically reshapes the input matrix if necessary and makes sure that all dimensions needed exist.
 
-`flexible_neural_net` performs only one experiment. It receives the architecture (including optimizer, loss and layers) as an input, and runs one experiment, saving all the datta from such experiment in a `nn[experiment_number]` folder.
+`flexible_neural_net` performs only one experiment. It receives the architecture (including optimizer, loss and layers) as an input, and runs one experiment, saving all the data from such experiment in a `nn[experiment_number]` folder.
 
 `save_model_data` saves the training and test scores (accuracy and loss) and the time taken to run in a `result.yaml` file. It also can save information from an already trained model. What will be saved can be selected using the parameters of the function: the model can be saved in `.yaml` or `.json` format, an image of the model can be saved (`plot_model` will be called), the trained weights can be saved as a `weights.h5` file, the full model can be saved (including weights and architecture) too, and the history can also be saved in the `result.yaml` file.
 
