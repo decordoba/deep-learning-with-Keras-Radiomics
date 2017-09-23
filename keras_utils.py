@@ -11,19 +11,30 @@ from keras_plot import plot_history
 import pydot
 
 
+GRAPHVIZ_NOT_INSTALLED = False
+
+
 def plot_model(model, to_file='model.png', show_shapes=False, show_layer_names=True,
                show_params=False):
     """
     Extension of keras.utils.plot_model
     Plots model to an image, and also params of layers (original does not do it)
     """
+    # To avoid program crashing, we will not try to plot the model without Graphviz
+    global GRAPHVIZ_NOT_INSTALLED
+    if GRAPHVIZ_NOT_INSTALLED:
+        return
     dot = model_to_dot(model, show_shapes, show_layer_names, show_params)
     _, extension = os.path.splitext(to_file)
     if not extension:
         extension = 'png'
     else:
         extension = extension[1:]
-    dot.write(to_file, format=extension)
+    try:
+        dot.write(to_file, format=extension)
+    except Exception:  # A generic Exception is raised if Graphviz is not installed
+        GRAPHVIZ_NOT_INSTALLED = True
+        print("Graphviz is not installed, therefore models will not be generated")
 
 def model_to_dot(model, show_shapes=False, show_layer_names=True, show_params=False):
     """Converts a Keras model to dot format.
