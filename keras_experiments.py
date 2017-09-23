@@ -7,6 +7,7 @@ from time import clock
 from datetime import datetime, timedelta
 from abc import ABC, abstractmethod
 from keras_utils import format_dataset  # 'Library' by Daniel
+from keras_utils import flexible_neural_net
 
 
 class Experiment(ABC):
@@ -33,11 +34,10 @@ class Experiment(ABC):
     @abstractmethod
     def run_experiment(self, *args):
         """
-        Expects self.experiments to be used to run all the experiments. Designed to easily work
-        with keras_utils.flexible_neural_net, although it should be flexible to work with any
-        other function.
+        Expects self.experiments to be used to run all the experiments. The return will be used to
+        call keras_utils.flexible_neural_net.
         Example:
-            def run_experiment(self, train_set, test_set, input_shape, labels, comb, epochs):
+            def run_experiment(self, input_shape, labels, comb):
                 opt = comb[self.keys_mapper["optimizers1"]]
                 loss = comb[self.keys_mapper["losses1"]]
                 f1 = comb[self.keys_mapper["filters1"]]
@@ -47,17 +47,15 @@ class Experiment(ABC):
                 ps = comb[self.keys_mapper["pool_sizes1"]]
                 d1 = comb[self.keys_mapper["dropouts1"]]
                 d2 = comb[self.keys_mapper["dropouts2"]]
-                return flexible_neural_net(train_set, test_set, opt, loss,
-                                           Conv2D(f1, kernel_size=ks, activation='relu', input_shape=input_shape),
-                                           Conv2D(f2, kernel_size=ks, activation='relu'),
-                                           MaxPooling2D(pool_size=ps),
-                                           Dropout(d1),
-                                           Flatten(),
-                                           Dense(u1, activation='relu'),
-                                           Dropout(d2),
-                                           Dense(len(labels), activation='softmax'),
-                                           batch_size=32, epochs=epochs,
-                                           verbose=False)
+                return (opt, loss,
+                        Conv2D(f1, kernel_size=ks, activation='relu', input_shape=input_shape),
+                        Conv2D(f2, kernel_size=ks, activation='relu'),
+                        MaxPooling2D(pool_size=ps),
+                        Dropout(d1),
+                        Flatten(),
+                        Dense(u1, activation='relu'),
+                        Dropout(d2),
+                        Dense(len(labels), activation='softmax'))
         """
         pass
 
@@ -168,8 +166,9 @@ def params_in_data(params, data, ignore_keys=("iteration_number", "date", "locat
                 return loc
     return False
 
-def experiments_runner(data_generator, experiment_obj, folder=None, data_reduction=None,
-                                epochs=100, to_categorical=True):
+
+def experiments_runner(data_generator, experiment_obj, folder=None, data_reduction=None, epochs=100,
+                       batch_size=32, early_stopping=10, to_categorical=True, verbose=False):
     # Loads the data from data_generator, loads the experiment object used (containing all the
     # experiments that have to be run), creates/opens a folder where it will save all the data,
     # and runs all experiments and saves all results in a folder structure. If the folder already
@@ -229,9 +228,41 @@ def experiments_runner(data_generator, experiment_obj, folder=None, data_reducti
             continue
 
         # run experiments (returns same as flexible_neural_network)
-        [lTr, aTr], [lTe, aTe], time, location, n_epochs = experiment.run_experiment(train_set, test_set,
-                                                                                     input_shape, labels,
-                                                                                     params_comb, epochs)
+        optimizer, loss, *layers = experiment.run_experiment(input_shape, labels, params_comb)
+        [lTr, aTr], [lTe, aTe], time, location, n_epochs = flexible_neural_net(train_set, test_set,
+                                                               optimizer, loss, *layers,
+                                                               batch_size=batch_size, epochs=epochs,
+                                                               early_stopping=early_stopping,
+                                                               verbose=verbose)
+
+        # originally run_experiment would call flexible_neural_net, or any other experiment
+        # function. It was more flexible, but more complicated for the user. Comment the previous
+        # 2 lines and uncomment the following lines to get the old model back, or go to commit
+        # 8224aa8f89085f5fbab5a86f4529982fbf47b8f8 in github.com/decordoba/deep-learning-with-Keras
+        """
+        [lTr, aTr], [lTe, aTe], time, location, n_epochs = experiment.run_experiment(train_set,
+                                                                            test_set, input_shape,
+                                                                            labels, params_comb,
+                                                                            epochs)
+
+        class MyFirstExperiment(Experiment):  # Model of an Experiment for the old run_experiment
+            def __init__(self):
+                self.experiments = {"filters1": [16, 32], "filters2": [16, 32], "units1": [16, 32]}
+
+            def run_experiment(self, train_set, test_set, input_shape, labels, comb, epochs):
+                f1 = comb[self.keys_mapper["filters1"]]
+                f2 = comb[self.keys_mapper["filters2"]]
+                u1 = comb[self.keys_mapper["units1"]]
+                return flexible_neural_net(train_set, test_set, optimizers.Adam(),
+                        losses.categorical_crossentropy,
+                        Conv2D(f1, kernel_size=(3, 3), activation='relu', input_shape=input_shape),
+                        Conv2D(f2, kernel_size=(3, 3), activation='relu'),
+                        MaxPooling2D(pool_size=(2, 2)), Dropout(0.25), Flatten(),
+                        Dense(u1, activation='relu'), Dropout(0.5),
+                        Dense(len(labels), activation='softmax'),
+                        batch_size=32, epochs=epochs, verbose=False)
+        """
+
         result = {"lossTr": float(lTr), "accTr": float(aTr),
                   "lossTe": float(lTe), "accTe": float(aTe),
                   "time": float(time), "location": location,

@@ -8,7 +8,6 @@ from keras.layers import Conv2D, MaxPooling2D
 from keras import losses
 from keras import optimizers
 from keras.datasets import mnist, cifar10
-from keras_utils import flexible_neural_net  # 'Library' by Daniel
 from keras_experiments import Experiment, experiments_runner  # 'Library' by Daniel
 
 
@@ -35,7 +34,7 @@ class MyFirstExperiment(Experiment):
                             "dropouts2": dropouts2,
                             "pool_sizes1": pool_sizes1}
 
-    def run_experiment(self, train_set, test_set, input_shape, labels, comb, epochs):
+    def run_experiment(self, input_shape, labels, comb):
         # comb holds values like (32, (2,2), optimizers-Adam()). We need to use self.keys_mapper
         # which maps a name ("units", "kernel_sizes", "optimizers") to the position where it is
         # in comb. I wonder if it would be more comprehensible with a function like
@@ -49,17 +48,15 @@ class MyFirstExperiment(Experiment):
         ps = comb[self.keys_mapper["pool_sizes1"]]
         d1 = comb[self.keys_mapper["dropouts1"]]
         d2 = comb[self.keys_mapper["dropouts2"]]
-        return flexible_neural_net(train_set, test_set, opt, loss,
-                                   Conv2D(f1, kernel_size=ks, activation='relu', input_shape=input_shape),
-                                   Conv2D(f2, kernel_size=ks, activation='relu'),
-                                   MaxPooling2D(pool_size=ps),
-                                   Dropout(d1),
-                                   Flatten(),
-                                   Dense(u1, activation='relu'),
-                                   Dropout(d2),
-                                   Dense(len(labels), activation='softmax'),
-                                   batch_size=32, epochs=epochs,
-                                   verbose=False)
+        return (opt, loss,
+                Conv2D(f1, kernel_size=ks, activation='relu', input_shape=input_shape),
+                Conv2D(f2, kernel_size=ks, activation='relu'),
+                MaxPooling2D(pool_size=ps),
+                Dropout(d1),
+                Flatten(),
+                Dense(u1, activation='relu'),
+                Dropout(d2),
+                Dense(len(labels), activation='softmax'))
 
 
 class MyFirstExperimentContinued(MyFirstExperiment):
