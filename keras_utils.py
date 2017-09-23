@@ -226,9 +226,11 @@ def flexible_neural_net(train_set, test_set, optimizer, loss, *layers, batch_siz
     for layer in layers:
         model.add(layer)
     # Compile model (declare loss function and optimizer)
-    model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
+    model.compile(optimizer=optimizer, loss=loss, metrics=["accuracy"])  # metrics can also be "precision" and "recall"
     t = clock()
     # Fit the model to train data
+    # It is also possible to set validation_split=0.1 and use 10% of training data as validation
+    # (which is probably better than using the same dataset for testing and validation)
     history = model.fit(train_set[0], train_set[1], batch_size=batch_size, epochs=epochs,
                         verbose=verbose, callbacks=callbacks, validation_data=test_set)
     # Evaluate the model on training and test data

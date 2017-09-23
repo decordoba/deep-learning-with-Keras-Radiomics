@@ -109,6 +109,7 @@ if __name__ == "__main__":
     # data = mnist.load_data
     data = cifar10.load_data
 
+    # We can also change the batch_size, early_stopping condition or verbose mode
     if len(sys.argv) == 1:
         experiments_runner(data, experiment)
     elif len(sys.argv) == 2:
