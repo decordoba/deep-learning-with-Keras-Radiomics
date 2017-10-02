@@ -81,9 +81,9 @@ def model_to_dot(model, show_shapes=False, show_layer_names=True, show_params=Fa
         if show_params:
             if "Conv2D" in class_name:
                 label += "|filters: {}\nkernel_size: {}".format(layer.filters, layer.kernel_size)
-                label += "\nstrides: {}\npadding: {}".format(layer.strides, layer.padding)
-                label += "\nuse_bias: {}\nactivation: {}".format(layer.use_bias,
-                                                                 str(layer.activation).split()[1])
+                label += "\nactivation: {}\npadding: {}".format(str(layer.activation).split()[1],
+                                                                layer.padding)
+                label += "\nstrides: {}\nuse_bias: {}".format(layer.strides, layer.use_bias)
                 try:
                     label += "\nkernel_reg: {}".format(str(layer.kernel_regularizer).split()[1])
                 except IndexError:
@@ -101,7 +101,7 @@ def model_to_dot(model, show_shapes=False, show_layer_names=True, show_params=Fa
                 label += "|units: {}\nactivation: {}".format(layer.units,
                                                               str(layer.activation).split()[1])
             elif "Activation" in class_name:
-                label += "|activation: {}".format(layer.units, str(layer.activation).split()[1])
+                label += "|activation: {}".format(str(layer.activation).split()[1])
             elif "BatchNormalization" in class_name:
                 try:
                     label += "\ngamma_reg: {}".format(str(layer.gamma_regularizer).split()[1])
