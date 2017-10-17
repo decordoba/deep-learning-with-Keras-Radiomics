@@ -177,7 +177,12 @@ def experiments_runner(data_generator, experiment_obj, folder=None, data_reducti
 
     print("Loading training and test sets ...")
     # Load into train and test sets
-    (x_train, y_train), (x_test, y_test) = data_generator()
+    try:
+        # In case data_generator has to be called to get the data
+        (x_train, y_train), (x_test, y_test) = data_generator()
+    except TypeError:
+        # In case data_generator already holds the loaded data (not callable)
+        (x_train, y_train), (x_test, y_test) = data_generator
 
     print("Reshaping training and test sets ...")
     train_set, test_set, input_shape, labels = format_dataset(x_train, y_train, x_test, y_test,
