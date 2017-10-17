@@ -23,7 +23,7 @@ def plot_model(model, to_file='model.png', show_shapes=False, show_layer_names=T
     # To avoid program crashing, we will not try to plot the model without Graphviz
     global GRAPHVIZ_NOT_INSTALLED
     if GRAPHVIZ_NOT_INSTALLED:
-        return
+        return False
     dot = model_to_dot(model, show_shapes, show_layer_names, show_params)
     _, extension = os.path.splitext(to_file)
     if not extension:
@@ -32,9 +32,12 @@ def plot_model(model, to_file='model.png', show_shapes=False, show_layer_names=T
         extension = extension[1:]
     try:
         dot.write(to_file, format=extension)
+        return True
     except Exception:  # A generic Exception is raised if Graphviz is not installed
         GRAPHVIZ_NOT_INSTALLED = True
         print("Graphviz is not installed, therefore models will not be generated")
+        return False
+
 
 def model_to_dot(model, show_shapes=False, show_layer_names=True, show_params=False):
     """Converts a Keras model to dot format.
@@ -99,7 +102,7 @@ def model_to_dot(model, show_shapes=False, show_layer_names=True, show_params=Fa
                 label += "|rate: {}".format(layer.rate)
             elif "Dense" in class_name:
                 label += "|units: {}\nactivation: {}".format(layer.units,
-                                                              str(layer.activation).split()[1])
+                                                             str(layer.activation).split()[1])
             elif "Activation" in class_name:
                 label += "|activation: {}".format(str(layer.activation).split()[1])
             elif "BatchNormalization" in class_name:
@@ -132,7 +135,6 @@ def model_to_dot(model, show_shapes=False, show_layer_names=True, show_params=Fa
 
     # Connect nodes with edges.
     for layer in layers:
-        layer_id = str(id(layer))
         for i, node in enumerate(layer.inbound_nodes):
             node_key = layer.name + '_ib-' + str(i)
             if node_key in model.container_nodes:
@@ -141,6 +143,25 @@ def model_to_dot(model, show_shapes=False, show_layer_names=True, show_params=Fa
                     layer_id = str(id(layer))
                     dot.add_edge(pydot.Edge(inbound_layer_id, layer_id))
     return dot
+
+
+def get_params_from_shape(shp):
+    # Expects a 2 or 3 or 4 params shape like (64, 64), or (32, 32, 3), or (60000, 32, 32, 3)
+    if len(shp) > 3:
+        shp = shp[-3:]
+    h = shp[0]
+    w = shp[1]
+    try:
+        d = shp[2]
+        if d > 4:
+            # Assume max depth is 4, so we got shp like (60000, 28, 28)
+            h = shp[1]
+            w = shp[2]
+            d = 1
+    except IndexError:
+        d = 1  # B/W
+    return h, w, d
+
 
 def format_dataset(x_train, y_train, x_test=None, y_test=None, data_reduction=None,
                    to_categorical=False, ret_labels=False, verbose=False):
@@ -209,6 +230,7 @@ def format_dataset(x_train, y_train, x_test=None, y_test=None, data_reduction=No
         return (X_train, Y_train), input_shape
     return (X_train, Y_train), (X_test, Y_test), input_shape
 
+
 def flexible_neural_net(train_set, test_set, optimizer, loss, *layers, batch_size=32, epochs=10,
                         callback=cbPlotEpoch, early_stopping=10, location=None, verbose=True):
     """
@@ -252,6 +274,7 @@ def flexible_neural_net(train_set, test_set, optimizer, loss, *layers, batch_siz
     save_model_data(model, train_score, test_score, t, location, save_weights=True, history=history)
     return train_score, test_score, t, location, len(history.history['acc'])
 
+
 def save_model_data(model, train_score, test_score, time, location, save_yaml=True, save_json=False,
                     save_image=True, save_weights=True, save_full_model=False, history=None):
     """
@@ -281,6 +304,7 @@ def save_model_data(model, train_score, test_score, time, location, save_yaml=Tr
         result += "test_loss_history: {}\n".format(history.history['val_loss'])
     with open(location + "/result.yaml", "w") as f:
         f.write(result)
+
 
 def unpack_layer(object_in_list):
     # Receives a list, where the first param is an object, and the next ones are the parameters,
