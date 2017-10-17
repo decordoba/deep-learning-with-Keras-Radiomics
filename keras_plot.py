@@ -1,6 +1,13 @@
 import matplotlib as mpl
+import os
+AGG = False
+r1 = os.system('python3 -c "import matplotlib.pyplot as plt;plt.figure()"')  # Linux
+r2 = os.system('py -c "import matplotlib.pyplot as plt;plt.figure()"')  # Windows
 # This line allows mpl to run with no DISPLAY defined
-mpl.use('Agg')
+if r1 != 0 and r2 != 0:
+    print("$DISPLAY not detected, matplotlib set to use 'Agg' backend")
+    mpl.use('Agg')
+    AGG = True
 import numpy as np
 from mpl_toolkits.mplot3d import proj3d
 from matplotlib import pyplot as plt
@@ -11,7 +18,8 @@ import math
 
 
 def plot_images(images, fig_num=0, labels=None, label_description="Label", labels2=None,
-                label2_description="Label", show_errors_only=False, cmap="Greys", no_axis=True):
+                label2_description="Label", show_errors_only=False, cmap="Greys", no_axis=True,
+                invert_colors=False, title=None):
     """
     Show all images in images list, one at a time, waiting for an ENTER to show the next one
     If q + ENTER is pressed, the function is terminated
@@ -19,13 +27,21 @@ def plot_images(images, fig_num=0, labels=None, label_description="Label", label
     plt.ion()  # Allows plots to be non-blocking
     fig = plt.figure(fig_num)
     fig.clear()
+    factor = 1 if not invert_colors else -1
     for i, img in enumerate(images):
         if show_errors_only and labels is not None and labels2 is not None and labels[i] == labels2[i]:
             continue
-        if cmap is None:
-            plt.imshow(img)
-        else:
-            plt.imshow(img, cmap=cmap)
+        try:
+            if cmap is None:
+                plt.imshow(img * factor)
+            else:
+                plt.imshow(img * factor, cmap=cmap)
+        except TypeError:
+            img = img[:, :, 0]
+            if cmap is None:
+                plt.imshow(img * factor)
+            else:
+                plt.imshow(img * factor, cmap=cmap)
         if labels is not None:
             if labels2 is None:
                 title = "{} = {}".format(label_description, labels[i])
@@ -33,9 +49,12 @@ def plot_images(images, fig_num=0, labels=None, label_description="Label", label
                 title = "{} = {} , {} = {}".format(label_description, labels[i],
                                                    label2_description, labels2[i])
             plt.title(title, fontsize="xx-large")
-            if no_axis:
-                plt.yticks([])
-                plt.xticks([])
+        elif title is not None:
+            # Title is only used if labels is None
+            plt.title(title, fontsize="xx-large")
+        if no_axis:
+            plt.yticks([])
+            plt.xticks([])
         plt.pause(0.001)
         s = input("Press ENTER to see the next image, or Q (q) to continue:  ")
         if len(s) > 0 and s[0].lower() == "q":
