@@ -23,6 +23,16 @@ def plot_images(images, fig_num=0, labels=None, label_description="Label", label
     """
     Show all images in images list, one at a time, waiting for an ENTER to show the next one
     If q + ENTER is pressed, the function is terminated
+
+    params: images is the list of images to show, fig_num is the figure number to use,
+            labels contain the #1 label corresponding to every image, and labels2 contain the
+            #2 label corresponding to every image (i.e. true_val and predicted_val).
+            label_description and label2_description contain the description for every label, so
+            the labels will be printed in the title as 'label_description = label' if labels2 is
+            None, or 'label_description = label , label2_description = label2' if it is not.
+            show_errors_only will skip the cases in which label[i] != labels2[i]
+            cmap is the color map used, no_axis will hide the axis, invert_colors will invert the
+            colors, and title will print the same title always if labels and labels2 is None.
     """
     plt.ion()  # Allows plots to be non-blocking
     fig = plt.figure(fig_num)
@@ -65,9 +75,21 @@ def plot_images(images, fig_num=0, labels=None, label_description="Label", label
 
 def plot_all_images(images, fig_num=0, filename=None, labels=None, label_description="Label",
                     labels2=None, label2_description="Label", cmap="Greys", no_axis=True,
-                    title=None, max_cols=5):
+                    invert_colors=False, suptitle=None, max_cols=5):
     """
     Show several images with labels at the same time (in the same figure)
+
+    params: images is the list of images to show in the same figure / save, fig_num is the
+            figure number that will be used, filename is the name under which the figure will be
+            saved, or if None, the figure will only be shown. labels contain the #1 label
+            corresponding to every image, and labels2 contain the #2 label corresponding to every
+            image (i.e. true_val and predicted_val). label_description and label2_description
+            contain the description for every label, so the labels will be printed in the title as
+            'label_description = label' if labels2 is None, or
+            'label_description = label , label2_description = label2' if it is not.
+            show_errors_only will skip the cases in which label[i] != labels2[i]
+            cmap is the color map used, no_axis will hide the axis, suptitle will be the title of
+            the whole figure, and max_cols is the max number of columns that the figure will have.
     """
     if filename is None:
         plt.ion()
@@ -88,24 +110,41 @@ def plot_all_images(images, fig_num=0, filename=None, labels=None, label_descrip
         fig_size[0] = max_cols
 
     margin_title = 0
-    if title is not None:
+    if suptitle is not None:
         margin_title = 0.5
     fig = plt.figure(fig_num, figsize=(1.6 * fig_size[0], 1.2 * fig_size[1] + margin_title))
     fig.clear()
 
+    factor = 1 if not invert_colors else -1
     for i, img in enumerate(images):
         ax = fig.add_subplot(fig_size[1], fig_size[0], i + 1)
-
-        if cmap is None:
-            ax.imshow(img)
-        else:
-            ax.imshow(img, cmap=cmap)
+        try:
+            if cmap is None:
+                ax.imshow(img * factor)
+            else:
+                ax.imshow(img * factor, cmap=cmap)
+        except TypeError:
+            img = img[:, :, 0]
+            if cmap is None:
+                ax.imshow(img * factor)
+            else:
+                ax.imshow(img * factor, cmap=cmap)
         if labels is not None:
             if labels2 is None:
-                subfig_title = "{} = {}".format(label_description, labels[i])
+                if label_description is not None:
+                    subfig_title = "{} = {}".format(label_description, labels[i])
+                else:
+                    subfig_title = "{}".format(labels[i])
             else:
-                subfig_title = "{} = {} , {} = {}".format(label_description, labels[i],
-                                                          label2_description, labels2[i])
+                if label_description is not None and label2_description is not None:
+                    subfig_title = "{} = {} , {} = {}".format(label_description, labels[i],
+                                                              label2_description, labels2[i])
+                elif label_description is not None:
+                    subfig_title = "{} = {} , {}".format(label_description, labels[i], labels2[i])
+                elif label2_description is not None:
+                    subfig_title = "{} , {} = {}".format(labels[i], label2_description, labels2[i])
+                else:
+                    subfig_title = "{} , {}".format(labels[i], labels2[i])
             ax.set_title(subfig_title)
             if no_axis:
                 plt.yticks([])
@@ -114,8 +153,8 @@ def plot_all_images(images, fig_num=0, filename=None, labels=None, label_descrip
     # fix overlaps numbers in axis
     plt.tight_layout()
 
-    if title is not None:
-        fig.suptitle(title, fontsize="xx-large")
+    if suptitle is not None:
+        fig.suptitle(suptitle, fontsize="xx-large")
         fig.subplots_adjust(top=0.9 - (margin_title * 0.42 / fig_size[1]))
 
     if filename is None:
@@ -123,6 +162,37 @@ def plot_all_images(images, fig_num=0, filename=None, labels=None, label_descrip
     else:
         fig.savefig(filename, bbox_inches="tight")
         fig.clear()
+
+def plot_two_images(images1, images2, fig_num=0, title1=None, title2=None,
+                    cmap="Greys", no_axis=True, invert_colors=False, suptitle=None):
+    """
+    Show all images in images1 and images2 list, one at a time side by side, waiting for an
+    ENTER to show the next one. If q + ENTER is pressed, the function is terminated
+
+    params: images1 and images2 are the list of images to show, fig_num is the
+            figure number that will be used, title1 and title2 are the titles that will be shown
+            over their respective images, cmap is the color map used, no_axis will hide the axis,
+            suptitle will be the title of the whole figure
+    """
+    titles = []
+    titles += [""] if title1 is None else [title1]
+    titles += [""] if title2 is None else [title2]
+    if titles == ["", ""]:
+        titles = None
+    plt.ion()  # Allows plots to be non-blocking
+    fig = plt.figure(fig_num)
+    fig.clear()
+    for img1, img2 in zip(images1, images2):
+        plot_all_images([img1, img2], fig_num=fig_num, filename=None, labels=titles,
+                        label_description=None, cmap=cmap, no_axis=no_axis,
+                        suptitle=suptitle, invert_colors=invert_colors)
+        plt.pause(0.001)
+        s = input("Press ENTER to see the next image, or Q (q) to continue:  ")
+        if len(s) > 0 and s[0].lower() == "q":
+            break
+    fig.clear()
+    plt.close()  # Hide plotting window
+    plt.ioff()  # Make plots blocking again
 
 def plot_weights(w, fig_num=0, filename=None, title=None, cmap=None):
     """

@@ -165,7 +165,7 @@ def observe_results(data_generator, folder=None, to_categorical=True, data_reduc
             # plot_images(x_test[indices], labels=y_test[indices], labels2=label_test[indices],
             #             label2_description="Predicted label", fig_num=1)
             plot_all_images(examples_set[indices], labels=title_labels, labels2=None, fig_num=1,
-                            title=title, max_cols=num_columns)
+                            suptitle=title, max_cols=num_columns)
 
 
     txt = input("Press ENTER to see all the misclassified examples unsorted one by one, or q to exit. ")
