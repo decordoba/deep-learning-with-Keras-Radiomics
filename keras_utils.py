@@ -232,7 +232,8 @@ def format_dataset(x_train, y_train, x_test=None, y_test=None, data_reduction=No
 
 
 def flexible_neural_net(train_set, test_set, optimizer, loss, *layers, batch_size=32, epochs=10,
-                        callback=cbPlotEpoch, early_stopping=10, location=None, verbose=True):
+                        callback=cbPlotEpoch, early_stopping=10, location=None, verbose=True,
+                        dry_run=False):
     """
     Layer to create a nn model, compile it, fit it, calculate train and test error, and
     save the model to location with only one function
@@ -261,14 +262,23 @@ def flexible_neural_net(train_set, test_set, optimizer, loss, *layers, batch_siz
     # Compile model (declare loss function and optimizer)
     model.compile(optimizer=optimizer, loss=loss, metrics=["accuracy"])  # metrics can also be "precision" and "recall"
     t = clock()
-    # Fit the model to train data
-    # It is also possible to set validation_split=0.1 and use 10% of training data as validation
-    # (which is probably better than using the same dataset for testing and validation)
-    history = model.fit(train_set[0], train_set[1], batch_size=batch_size, epochs=epochs,
-                        verbose=verbose, callbacks=callbacks, validation_data=test_set)
-    # Evaluate the model on training and test data
-    train_score = model.evaluate(train_set[0], train_set[1], verbose=verbose)
-    test_score = model.evaluate(test_set[0], test_set[1], verbose=verbose)
+    if not dry_run:
+        # Fit the model to train data
+        # It is possible too to set validation_split=0.1 and use 10% of training data as validation
+        # (which is probably better than using the same dataset for testing and validation)
+        history = model.fit(train_set[0], train_set[1], batch_size=batch_size, epochs=epochs,
+                            verbose=verbose, callbacks=callbacks, validation_data=test_set)
+        # Evaluate the model on training and test data
+        train_score = model.evaluate(train_set[0], train_set[1], verbose=verbose)
+        test_score = model.evaluate(test_set[0], test_set[1], verbose=verbose)
+    else:
+        class MockHistory:
+            def __init__(self):
+                tmp = [0, 1, 2, 3]
+                self.history = {"acc": tmp, "loss": tmp, "val_acc": tmp, "val_loss": tmp}
+        history = MockHistory()
+        train_score = (0, 0)
+        test_score = (0, 0)
     t = clock() - t
     # Save neural network model as an image, and also data
     save_model_data(model, train_score, test_score, t, location, save_weights=True, history=history)
