@@ -1,6 +1,5 @@
-import matplotlib as mpl
-# This line allows mpl to run with no DISPLAY defined
-mpl.use('Agg')
+# This line allows mpl to run with no DISPLAY defined (calls mpl.use('Agg') only if display fails)
+from keras_plot import AGG  # Get it from github.com/decordoba/deep-learning-with-Keras
 from matplotlib import pyplot as plt
 from keras.callbacks import Callback
 from time import clock
