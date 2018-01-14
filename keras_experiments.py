@@ -21,7 +21,8 @@ class Experiment(ABC):
         Example:
             self.experiments = {"filters1": [16, 32, 64],
                                 "filters2": [16, 32, 64],
-                                "losses1": [losses.MSE, losses.MAE, losses.hinge, losses.categorical_crossentropy],
+                                "losses1": [losses.MSE, losses.MAE, losses.hinge,
+                                            losses.categorical_crossentropy],
                                 "units1": [16, 32, 64],
                                 "optimizers1": [optimizers.Adam()],
                                 "kernel_sizes1": [(3, 3)],
@@ -92,7 +93,7 @@ class Experiment(ABC):
                     # val = val.__class__.__name__  # Returns class name (i.e. Adam)
                     val = str(type(val))
                     if val.startswith("<class '"):
-                        val = val.split("'")[1]     # Returns whole class name (i.e. keras.optimizers.Adam)
+                        val = val.split("'")[1]  # Returns class name (i.e. keras.optimizers.Adam)
                     # try:
                     #     opt_txt = str(opt).split(".")[2].split()[0]
                     # except:
@@ -104,7 +105,8 @@ class Experiment(ABC):
         # add informative parameters not related with the combination
         params["iteration_number"] = iter_num
         now = datetime.now()
-        params["date"] = "{} {:02d}:{:02d}:{:02d}".format(now.date(), now.hour, now.minute, now.second)
+        params["date"] = "{} {:02d}:{:02d}:{:02d}".format(now.date(), now.hour, now.minute,
+                                                          now.second)
         # params["location"] = location
 
         if verbose:
@@ -227,18 +229,18 @@ def experiments_runner(data_generator, experiment_obj, folder=None, data_reducti
 
         # skip experiments that are already found in old results.yaml
         skip_test = params_in_data(params, old_data)
-        if skip_test != False:
-            print("The folder {} already contains this model (found in {}). Model calculation skipped.".format(folder, skip_test))
+        if skip_test is not False:
+            print("The folder {} already contains this model (found in {}). "
+                  "Model calculation skipped.".format(folder, skip_test))
             num_skips += 1
             continue
 
         # run experiments (returns same as flexible_neural_network)
         optimizer, loss, *layers = experiment.run_experiment(input_shape, labels, params_comb)
-        [lTr, aTr], [lTe, aTe], time, location, n_epochs = flexible_neural_net(train_set, test_set,
-                                                               optimizer, loss, *layers,
-                                                               batch_size=batch_size, epochs=epochs,
-                                                               early_stopping=early_stopping,
-                                                               verbose=verbose)
+        parameters = flexible_neural_net(train_set, test_set, optimizer, loss, *layers,
+                                         batch_size=batch_size, epochs=epochs,
+                                         early_stopping=early_stopping, verbose=verbose)
+        [lTr, aTr], [lTe, aTe], time, location, n_epochs = parameters
 
         # originally run_experiment would call flexible_neural_net, or any other experiment
         # function. It was more flexible, but more complicated for the user. Comment the previous
@@ -286,10 +288,11 @@ def experiments_runner(data_generator, experiment_obj, folder=None, data_reducti
         print("\nResults:  Training:  Acc: {:<10}  Loss: {}".format(round(aTr, 8), round(lTr, 8)))
         print("          Test:      Acc: {:<10}  Loss: {}".format(round(aTe, 8), round(lTe, 8)))
         print("          Number of Epochs:   {}".format(n_epochs))
-        print("          Time taken:         {}  (fit & evaluation time: {})".format(timedelta(seconds=taken),
-                                                                                     timedelta(seconds=time)))
-        print("          Expected time left: {}  (mean time: {})".format(timedelta(seconds=avg_time * (num_iterations - it - 1)),
-                                                                         timedelta(seconds=avg_time)))
+        print("          Time taken:         {}  (fit & evaluation time: {})"
+              "".format(timedelta(seconds=taken), timedelta(seconds=time)))
+        print("          Expected time left: {}  (mean time: {})"
+              "".format(timedelta(seconds=avg_time * (num_iterations - it - 1)),
+                        timedelta(seconds=avg_time)))
 
     os.chdir("./..")
     return folder
