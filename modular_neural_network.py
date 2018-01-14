@@ -101,6 +101,82 @@ class SingleExperiment(MyFirstExperiment):
                             "pool_sizes1": (2, 2)}
 
 
+class CervicalCancer1(Experiment):
+    def __init__(self):
+        # create standard experiments structure
+        self.experiments = {"filters": [8, 16, 32, 64, 128],
+                            "units": [8, 16, 32, 64, 128],
+                            "activation": ["relu", "tanh"],
+                            "num_conv": [1, 2, 3],
+                            "losses": [losses.categorical_crossentropy],
+                            "optimizers": [optimizers.Adam()]}
+
+    def run_experiment(self, input_shape, labels, comb):
+        # comb holds values like (32, (2,2), optimizers-Adam()). We need to use self.keys_mapper
+        # which maps a name ("units", "kernel_sizes", "optimizers") to the position where it is
+        # in comb. I wonder if it would be more comprehensible with a function like
+        # get_element_from_comb(self, comb, key) { return comb[self.keys_mapper[key]] }
+        f = comb[self.keys_mapper["filters"]]
+        u = comb[self.keys_mapper["units"]]
+        a = comb[self.keys_mapper["activation"]]
+        num_conv = comb[self.keys_mapper["num_conv"]]
+        loss = comb[self.keys_mapper["losses"]]
+        opt = comb[self.keys_mapper["optimizers"]]
+        convolutional_layers = []
+        for n in range(num_conv):
+            if n == 0:
+                convolutional_layers.append(Conv2D(f, kernel_size=(3, 3), activation=a, input_shape=input_shape))
+            else:
+                convolutional_layers.append(Conv2D(f, kernel_size=(3, 3), activation=a))
+            convolutional_layers.append(MaxPooling2D(pool_size=(2, 2)))
+        return (opt, loss,
+                *convolutional_layers,
+                Flatten(),
+                Dense(u, activation=a),
+                Dense(len(labels), activation='softmax'))
+
+class CervicalCancer2(Experiment):
+    def __init__(self):
+        # create standard experiments structure
+        self.experiments = {"filters": [8, 16, 32, 64],
+                            "units": [8, 16, 32, 64],
+                            "activation": ["relu", "tanh"],
+                            "num_conv": [1, 2, 3],
+                            "losses": [losses.categorical_crossentropy],
+                            "optimizers": [optimizers.Adam()],
+                            "dropout1": [0, 0.25, 0.5],
+                            "dropout2": [0, 0.25, 0.5]}
+
+    def run_experiment(self, input_shape, labels, comb):
+        # comb holds values like (32, (2,2), optimizers-Adam()). We need to use self.keys_mapper
+        # which maps a name ("units", "kernel_sizes", "optimizers") to the position where it is
+        # in comb. I wonder if it would be more comprehensible with a function like
+        # get_element_from_comb(self, comb, key) { return comb[self.keys_mapper[key]] }
+        f = comb[self.keys_mapper["filters"]]
+        u = comb[self.keys_mapper["units"]]
+        a = comb[self.keys_mapper["activation"]]
+        num_conv = comb[self.keys_mapper["num_conv"]]
+        loss = comb[self.keys_mapper["losses"]]
+        opt = comb[self.keys_mapper["optimizers"]]
+        d1 = comb[self.keys_mapper["dropout1"]]
+        d2 = comb[self.keys_mapper["dropout2"]]
+        dropout1 = [] if d1 <= 0 else [Dropout(d1)]
+        dropout2 = [] if d2 <= 0 else [Dropout(d2)]
+        convolutional_layers = []
+        for n in range(num_conv):
+            if n == 0:
+                convolutional_layers.append(Conv2D(f, kernel_size=(3, 3), activation=a, input_shape=input_shape))
+            else:
+                convolutional_layers.append(Conv2D(f, kernel_size=(3, 3), activation=a))
+            convolutional_layers.append(MaxPooling2D(pool_size=(2, 2)))
+        return (opt, loss,
+                *convolutional_layers,
+                *dropout1,
+                Flatten(),
+                Dense(u, activation=a),
+                *dropout2,
+                Dense(len(labels), activation='softmax'))
+
 if __name__ == "__main__":
 
     t = clock()
