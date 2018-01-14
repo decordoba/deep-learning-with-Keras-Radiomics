@@ -5,12 +5,27 @@ from time import clock
 from datetime import timedelta, datetime
 import argparse
 from importlib import import_module
+from dataset_loader import load_dataset
+
+
+def get_experiment_names(library):
+    # Get all classes that can be experiments inside a module
+    library += ".py"
+    with open(library, "r") as f:
+        lines = f.readlines()
+    # Classes that inherit from Experiment (or from any class ending in *Experiment)
+    classes = [line for line in lines if line.lstrip().startswith("class") and
+               line.rstrip().endswith("Experiment):")]
+    class_names = [cl.split(" ", 2)[1].split("(", 1)[0] for cl in classes]
+    return class_names
 
 
 if __name__ == "__main__":
     # Available experiments names
     experiments = ["MyFirstExperiment", "MyFirstExperimentContinued", "SingleExperiment",
-                   "MyFirstExperimentShort"]
+                   "MyFirstExperimentShort", "CervicalCancer1", "CervicalCancer2"]
+    experiments = get_experiment_names("modular_neural_network")
+    datasets = ["mnist", "cifar10", "cifar100", "radiomics1", "radiomics2", "radiomics3"]
 
     # Parser to allow fancy command arguments input
     parser = argparse.ArgumentParser(description="Create and run experiments with modular_keras, and save results neatly")
@@ -38,13 +53,16 @@ if __name__ == "__main__":
     print("Arguments used:")
     for arg in args._get_kwargs():
         print("    {} : {}".format(arg[0], arg[1]))
-    print()
+    print(" ")
 
     # Imports that load the TensorFlow backend (slow, should only happen if we are going to use it)
     modular_NN = import_module("modular_neural_network")
-    experiment = getattr(modular_NN, experiments[args.experiment])  # Only import experiment used
+    experiment = getattr(modular_NN, args.experiment)  # Only import experiment used
     keras_datasets = import_module("keras.datasets")
-    data = getattr(keras_datasets, args.dataset).load_data  # Only import dataset used
+    try:
+        data = getattr(keras_datasets, args.dataset).load_data  # Only import dataset used
+    except AttributeError:
+        data = load_dataset(args.dataset)
     from results_plotter import plot_results
     from results_observer import observe_results
     from keras_experiments import experiments_runner
