@@ -226,7 +226,8 @@ def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0,
                               figsize=figsize, fig_num=0, save_without_prompt=save_without_prompt)
             # TODO: check why some plots are flat (in test_0703)
 
-    os.chdir("./..")
+    if folder is not None:
+        os.chdir("./..")
     return result
 
 
