@@ -41,7 +41,7 @@ def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0,
     for sample_key in result:
         sample = result[sample_key]
         for key in sample["params"]:
-            if not key in parameters:
+            if key not in parameters:
                 parameters[key] = set()
             parameters[key].add(sample["params"][key])
 

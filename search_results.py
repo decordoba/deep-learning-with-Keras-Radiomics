@@ -3,8 +3,6 @@
 import sys
 import os
 import yaml
-import numpy as np
-from keras_plot import plot_3D_bar_graph, plot_colormap, plot_graph_grid  # 'Library' by Daniel
 
 
 def search_results(folder=None, pause_in_every_result=True):
@@ -31,7 +29,7 @@ def search_results(folder=None, pause_in_every_result=True):
     for sample_key in result:
         sample = result[sample_key]
         for key in sample["params"]:
-            if not key in parameters:
+            if key not in parameters:
                 parameters[key] = set()
             parameters[key].add(sample["params"][key])
 
@@ -41,10 +39,16 @@ def search_results(folder=None, pause_in_every_result=True):
     params_values = []
 
     # Ask the users what variables to filter
-    print("Select the search values for every parameter. Leave blank to ignore parameter.")
+    print("Select the search values for every parameter.")
+    print("Leave blank (press ENTER) to ignore a parameter.")
+    print(" ")
     for key in params_keys:
-        val = input("Value for {}. Possible values: {}\n>> ".format(key, parameters[key]))
-        params_values.append(val)
+        if len(parameters[key]) <= 20 and len(parameters[key]) > 1:
+            print("Value for {}. Possible values: {}".format(key, sorted(list(parameters[key]))))
+            val = input(">> ")
+        else:
+            val = ""
+        params_values.append(val.strip())
 
     # Print results
     for sample_key in result:
@@ -76,6 +80,8 @@ if __name__ == "__main__":
     folder = None
     if len(sys.argv) > 1:
         folder = sys.argv[1]
+    search_results(folder)
+
     """
     Expects:
         py search_results.py
