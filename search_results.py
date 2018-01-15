@@ -58,17 +58,18 @@ def search_results(folder=None, pause_in_every_result=True):
             val = params_values[params_dict[key]]
             if val == "":
                 continue
-            if val != sample["params"][key]:
+            if val != str(sample["params"][key]):
                 sample_filtered = True
                 break
         if not sample_filtered:
             print("Sample {}:".format(sample_key))
-            print("Params:")
-            for key in sample["params"]:
-                print("{}: {}".format(key, sample["params"][key]))
-            print("Result:")
-            for key in sample["result"]:
-                print("{}: {}".format(key, sample["result"][key]))
+            print("---------------------------------------------------")
+            for key in sorted(sample["params"]):
+                print("  {:>20}: {}".format(key, sample["params"][key]))
+            print("---------------------------------------------------")
+            for key in sorted(sample["result"]):
+                print("  {:>20}: {}".format(key, sample["result"][key]))
+            print("---------------------------------------------------")
             if pause_in_every_result:
                 input("Press ENTER to see next result")
             print(" ")
