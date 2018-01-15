@@ -32,7 +32,12 @@ def observe_results(data_generator, folder=None, to_categorical=True, data_reduc
         folder = "."
 
     print("Loading training and test sets ...")
-    (x_train, y_train), (x_test, y_test) = data_generator()
+    try:
+        # In case data_generator has to be called to get the data
+        (x_train, y_train), (x_test, y_test) = data_generator()
+    except TypeError:
+        # In case data_generator already holds the loaded data (not callable)
+        (x_train, y_train), (x_test, y_test) = data_generator
 
     print("Reshaping training and test sets ...")
     train_set, test_set, input_shape, labels = format_dataset(x_train, y_train, x_test, y_test,
