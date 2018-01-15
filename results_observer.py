@@ -2,7 +2,7 @@
 
 import sys
 import numpy as np
-from keras.datasets import mnist
+from dataset_loader import load_dataset
 from keras.models import model_from_yaml
 from keras_plot import plot_images, plot_all_images, plot_confusion_matrix  # 'Library' by Daniel
 from keras_utils import format_dataset  # 'Library' by Daniel
@@ -178,7 +178,7 @@ def observe_results(data_generator, folder=None, to_categorical=True, data_reduc
 
 
 if __name__ == "__main__":
-    data = mnist.load_data
+    dataset_name = "mnist"  # default dataset used
     folder = None
     filename = None
     mode = 0
@@ -189,12 +189,15 @@ if __name__ == "__main__":
     if len(sys.argv) > 2 and sys.argv[2].lower() != "none":
         filename = sys.argv[2]
     if len(sys.argv) > 3:
-        mode = int(sys.argv[3])
+        dataset_name = sys.argv[3]
     if len(sys.argv) > 4:
-        observe_training = int(sys.argv[4])
+        mode = int(sys.argv[4])
     if len(sys.argv) > 5:
-        num_columns = int(sys.argv[5])
+        observe_training = int(sys.argv[5])
+    if len(sys.argv) > 6:
+        num_columns = int(sys.argv[6])
 
+    data = load_dataset(dataset_name)
     observe_results(data, folder=folder, filename=filename, mode=mode, data_reduction=None,
                     observe_training=observe_training, num_columns=num_columns)
 
@@ -202,8 +205,8 @@ if __name__ == "__main__":
     Expects:
         py results_observer.py
         py results_observer.py folder
-        py results_observer.py folder filename
-        py results_observer.py folder filename mode(0-2)
-        py results_observer.py folder filename mode(0-2) test(0)/training(1)/both(2)
-        py results_observer.py folder filename mode(0-2) test(0)/training(1)/both(2) num_cols
+        py results_observer.py folder filename dataset_name
+        py results_observer.py folder filename dataset_name mode(0-2)
+        py results_observer.py folder filename dataset_name mode(0-2) test(0)/training(1)/both(2)
+        py results_observer.py folder filename dataset_name mode(0-2) test(0)/training(1)/both(2) num_cols
     """

@@ -72,11 +72,7 @@ if __name__ == "__main__":
     # Imports that load the TensorFlow backend (slow, should only happen if we are going to use it)
     modular_NN = import_module("modular_neural_network")
     experiment = getattr(modular_NN, args.experiment)  # Only import experiment used
-    keras_datasets = import_module("keras.datasets")
-    try:
-        data = getattr(keras_datasets, args.dataset).load_data  # Only import dataset used
-    except AttributeError:
-        data = load_dataset(args.dataset)
+    data = load_dataset(args.dataset)
     from results_plotter import plot_results
     from results_observer import observe_results
     from keras_experiments import experiments_runner
