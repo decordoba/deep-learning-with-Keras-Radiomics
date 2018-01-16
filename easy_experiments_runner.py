@@ -42,7 +42,7 @@ if __name__ == "__main__":
                              "folder is named with the current date & time.")
     parser.add_argument('-ne', '--number_epochs', type=int, default=100,
                         help="Maximum number of epochs before termination. Default is 100.")
-    parser.add_argument('-es', '--early_stopping', dest="stopping", type=int, default=10,
+    parser.add_argument('-es', '--early_stopping', metadata="number_epochs", type=int, default=10,
                         help="After how many epochs without any improvement should the training be"
                              "interrupted. Set it to 0 to disable early_stopping. Default is 10.")
     parser.add_argument('-dr', '--data_reduction', type=int, default=None,
@@ -83,8 +83,9 @@ if __name__ == "__main__":
     # Run all experiments (according to the chosen experiment, performed over the chosen dataset)
     # and save results into folder with chosen folder name. #epochs and dr can also be set
     t = clock()  # Start measure of time taken
-    folder = experiments_runner(data, experiment, folder=args.folder, early_stopping=args.stopping,
-                                data_reduction=args.data_reduction, epochs=args.number_epochs)
+    folder = experiments_runner(data, experiment, folder=args.folder,
+                                data_reduction=args.data_reduction, epochs=args.number_epochs,
+                                early_stopping=args.early_stopping)
     print("\nTime Taken to perform Experiment: {} s\n\n".format(timedelta(seconds=clock() - t)))
 
     # Parse created folder and save all existing combinations of figures for accTr and accTe.
