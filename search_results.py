@@ -10,11 +10,16 @@ def filter_by_params(parameters, result, params_keys, params_values, params_dict
     # Ask the users what variables to filter
     print("Select the search values for every parameter.")
     print("Leave blank (press ENTER) to ignore a parameter.")
-    print(" ")
-    for key in params_keys:
+    for i, key in enumerate(params_keys):
         if len(parameters[key]) <= 20 and len(parameters[key]) > 1:
-            print("Value for {}. Possible values: {}".format(key, sorted(list(parameters[key]))))
-            val = input(">> ")
+            possible_values = [str(x) for x in parameters[key]]
+            val = None
+            while val != "" and val not in possible_values:
+                print("{}. Value for {}. Possible values: {}".format(i + 1, key,
+                                                                     sorted(list(parameters[key]))))
+                val = input(">> ").strip()
+                if val != "" and val not in possible_values:
+                    print("Impossible value {}. Leave blank to ignore {}.".format(val, key))
         else:
             val = ""
         params_values.append(val.strip())
@@ -150,6 +155,7 @@ def search_results(folder=None, pause_in_every_result=True):
                 num = int(input(">> "))
             except ValueError:
                 num = -1
+        print(" ")
         if num == 0:
             break
         elif num == 1:
