@@ -15,11 +15,11 @@ def filter_by_params(parameters, result, params_keys, params_values, params_dict
             possible_values = [str(x) for x in parameters[key]]
             val = None
             while val != "" and val not in possible_values:
-                print("{}. Value for {}. Possible values: {}".format(i + 1, key,
-                                                                     sorted(list(parameters[key]))))
+                print("{}. Value for '{}'. Possible values: {}".format(i + 1, key,
+                                                                    sorted(list(parameters[key]))))
                 val = input(">> ").strip()
                 if val != "" and val not in possible_values:
-                    print("Impossible value {}. Leave blank to ignore {}.".format(val, key))
+                    print("Error, value '{}' not valid".format(val))
         else:
             val = ""
         params_values.append(val.strip())
@@ -49,7 +49,7 @@ def filter_by_params(parameters, result, params_keys, params_values, params_dict
             print(" ")
 
 
-def filter_by_result(parameters, result, result_keys, pause_in_every_result=True):
+def filter_by_result(result, result_keys, pause_in_every_result=True):
     # Ask the users what variables to filter
     print("Select the result variable that will be used to filter.")
     print("0. Exit")
@@ -162,8 +162,7 @@ def search_results(folder=None, pause_in_every_result=True):
             filter_by_params(parameters, result, params_keys, params_values, params_dict,
                              pause_in_every_result=pause_in_every_result)
         else:
-            filter_by_result(parameters, result, params_keys, params_values, params_dict,
-                             pause_in_every_result=pause_in_every_result)
+            filter_by_result(result, result_keys, pause_in_every_result=pause_in_every_result)
 
 
 if __name__ == "__main__":
