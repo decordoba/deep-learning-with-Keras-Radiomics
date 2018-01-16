@@ -54,7 +54,7 @@ def filter_by_result(result, result_keys, pause_in_every_result=True):
     print("Select the result variable that will be used to filter.")
     print("0. Exit")
     for i, key in enumerate(result_keys):
-        print("{}. {}", format(i + 1, key))
+        print("{}. {}".format(i + 1, key))
     num = -1
     while num < 0 or num > len(result_keys):
         try:
