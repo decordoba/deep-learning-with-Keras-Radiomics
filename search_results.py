@@ -61,6 +61,7 @@ def filter_by_result(result, result_keys, pause_in_every_result=True):
             num = int(input(">> "))
         except ValueError:
             num = -1
+    print(" ")
     if num == 0:
         return
     param = result_keys[num - 1]
@@ -72,16 +73,18 @@ def filter_by_result(result, result_keys, pause_in_every_result=True):
             num = int(input(">> "))
         except ValueError:
             num = -1
+    print(" ")
     if num == 0:
         return
     sign = (num == 1)
     print("Select how many experiments you want to see.")
     num = -1
-    while num < 0 or num > 2:
+    while num < 0:
         try:
             num = int(input(">> "))
         except ValueError:
             num = -1
+    print(" ")
     if num == 0:
         return
 
@@ -92,7 +95,7 @@ def filter_by_result(result, result_keys, pause_in_every_result=True):
         sample = result[sample_key]
         sample_keys.append(sample_key)
         sample_values.append(sample["result"][param])
-    sorted_keys = [x for _, x in sorted(zip(sample_values, sample_keys), reversed=sign)]
+    sorted_keys = [x for _, x in sorted(zip(sample_values, sample_keys), reverse=sign)]
 
     # Print results
     for sample_key in sorted_keys[:num]:
@@ -144,7 +147,8 @@ def search_results(folder=None, pause_in_every_result=True):
     params_keys = sorted(parameters.keys())
     params_dict = dict(zip(params_keys, range(len(params_keys))))
     params_values = []
-    result_keys = sorted(result[sample_key]["result"].keys())
+    a_result = result[sample_key]["result"]
+    result_keys = sorted([key for key in a_result if type(a_result[key]) != str])
 
     while True:
         print("Select what to do:")
