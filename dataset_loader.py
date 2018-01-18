@@ -1,8 +1,18 @@
 import numpy as np
 from importlib import import_module
+import pickle
 
 
 PATH = "data/"
+
+
+def load_patients_dataset(name, test_percentage=10):
+    if name  == "radiomics1" or name == "radiomics2" or name == "radiomics3":
+        with open(PATH + name + "/" + name + "_patients.pkl", 'rb') as f:
+            patients = pickle.load(f)
+        n = int(np.round(len(patients) * (1 - test_percentage / 100)))
+        return patients[:n], patients[n:]
+    return None
 
 
 def load_custom_dataset(name, test_percentage=10):
