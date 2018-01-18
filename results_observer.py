@@ -95,6 +95,7 @@ def observe_results(data_generator, folder=None, to_categorical=True, data_reduc
         ignore_patient = ""
         if observe_training == 1:
             patients = patients_train
+            ignore_patient = patients_test[0]
         elif observe_training == 2:
             patients = patients_train + patients_test
         else:
@@ -102,6 +103,7 @@ def observe_results(data_generator, folder=None, to_categorical=True, data_reduc
             ignore_patient = patients_train[-1]
         prev_patient = ""
         new_true_labels = []
+        unique_patients = []
         for i, patient in enumerate(patients):
             if patient not in classification_per_patient:
                 classification_per_patient[patient] = {}
@@ -114,10 +116,11 @@ def observe_results(data_generator, folder=None, to_categorical=True, data_reduc
                 score_per_patient[patient] = pred_percents[i]
             if prev_patient != patient and patient != ignore_patient:
                 new_true_labels.append(true_labels[i])
+                unique_patients.append(patient)
             prev_patient = patient
 
         pred_labels = []
-        for patient in classification_per_patient:
+        for patient in unique_patients:
             # Ignore patients that have half the 3D image in test and other half in training
             if patient == ignore_patient:
                 continue
@@ -136,8 +139,8 @@ def observe_results(data_generator, folder=None, to_categorical=True, data_reduc
                 print(keys)
                 input("This should never happen!")
                 continue
-        print(pred_labels)
-        print(new_true_labels)
+        print("Predictions:", pred_labels)
+        print("True labels:", new_true_labels)
         true_labels = np.array(new_true_labels)
         pred_labels = np.array(pred_labels)
 
@@ -171,7 +174,6 @@ def observe_results(data_generator, folder=None, to_categorical=True, data_reduc
     errors_by_expected_label = dict([(label, []) for label in labels])
 
     for idx in errors_indices:
-        print(idx, true_labels[idx][0])
         errors_by_expected_label[true_labels[idx][0]].append(idx[0])
         errors_by_predicted_label[pred_labels[idx][0]].append(idx[0])
 
