@@ -22,8 +22,6 @@ def get_experiment_names(library):
 
 if __name__ == "__main__":
     # Available experiments names
-    experiments = ["MyFirstExperiment", "MyFirstExperimentContinued", "SingleExperiment",
-                   "MyFirstExperimentShort", "CervicalCancer1", "CervicalCancer2"]
     experiments = get_experiment_names("modular_neural_network")
     datasets = ["mnist", "cifar10", "cifar100", "radiomics1", "radiomics2", "radiomics3"]
 
