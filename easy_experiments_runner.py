@@ -40,7 +40,7 @@ if __name__ == "__main__":
                              "folder is named with the current date & time.")
     parser.add_argument('-ne', '--number_epochs', type=int, default=100,
                         help="Maximum number of epochs before termination. Default is 100.")
-    parser.add_argument('-es', '--early_stopping', metadata="number_epochs", type=int, default=10,
+    parser.add_argument('-es', '--early_stopping', metavar="NUMBER_EPOCHS", type=int, default=10,
                         help="After how many epochs without any improvement should the training be"
                              "interrupted. Set it to 0 to disable early_stopping. Default is 10.")
     parser.add_argument('-dr', '--data_reduction', type=int, default=None,
