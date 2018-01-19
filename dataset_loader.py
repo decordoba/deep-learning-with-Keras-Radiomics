@@ -6,22 +6,52 @@ import pickle
 PATH = "data/"
 
 
-def load_patients_dataset(name, test_percentage=10):
-    if name  == "radiomics1" or name == "radiomics2" or name == "radiomics3":
-        with open(PATH + name + "/" + name + "_patients.pkl", 'rb') as f:
+def get_end_pos_patient(num=-10, patients=None, name="radiomics2"):
+    if patients is None:
+        with open(PATH + "radiomics1" + "/" + "radiomics1" + "_patients.pkl", 'rb') as f:
             patients = pickle.load(f)
-        n = int(np.round(len(patients) * (1 - test_percentage / 100)))
+    unique_patients = np.unique(patients)
+    if num < 0:
+        num = len(unique_patients) + num
+    prev = ""
+    c = 0
+    for i, p in enumerate(patients):
+        if p != prev:
+            c += 1
+            if c >= num:
+                break
+        prev = p
+    return i
+
+
+def load_patients_dataset(name):
+    if name  == "radiomics1" or name == "radiomics2" or name == "radiomics3":
+        with open(PATH + "radiomics1" + "/" + "radiomics1" + "_patients.pkl", 'rb') as f:
+            patients = pickle.load(f)
+        if name == "radiomics1":
+            test_percentage = 10
+            n = int(np.round(len(patients) * (1 - test_percentage / 100)))
+        elif name == "radiomics2":
+            n = get_end_pos_patient(-11, patients)
+        else:
+            print("Not implemented yet!")
         return patients[:n], patients[n:]
     return None
 
 
-def load_custom_dataset(name, test_percentage=10):
+def load_custom_dataset(name):
     if name  == "radiomics1" or name == "radiomics2" or name == "radiomics3":
-        f = np.load(PATH + name + "/" + name + ".npz")
+        f = np.load(PATH + "radiomics1" + "/" + "radiomics1" + ".npz")
         x = f["arr_0"]
         y = f["arr_1"]
         f.close()
-        n = int(np.round(len(y) * (1 - test_percentage / 100)))
+        if name == "radiomics1":
+            test_percentage = 10
+            n = int(np.round(len(y) * (1 - test_percentage / 100)))
+        elif name == "radiomics2":
+            n = get_end_pos_patient(-11)
+        else:
+            print("Not implemented yet!")
         x_train = x[:n]
         y_train = y[:n]
         x_test = x[n:]

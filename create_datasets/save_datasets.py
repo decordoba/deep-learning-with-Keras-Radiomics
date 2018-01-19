@@ -18,7 +18,7 @@ np.random.seed(123)  # for reproducibility
 
 
 def save_data(x_set, y_set, patients, number):
-    if number == 1:
+    if number == 1 or number == 2:
         # Split volumes in slices_per_sample (3) layers images
         counter = 0
         rotations = 4
