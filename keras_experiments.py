@@ -190,7 +190,8 @@ def experiments_runner(data_generator, experiment_obj, folder=None, data_reducti
     train_set, test_set, input_shape, labels = format_dataset(x_train, y_train, x_test, y_test,
                                                               data_reduction=data_reduction,
                                                               verbose=True, ret_labels=True,
-                                                              to_categorical=to_categorical)
+                                                              to_categorical=to_categorical,
+                                                              old_way=False)
 
     # create folder and cd into it
     if folder is None:

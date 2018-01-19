@@ -164,7 +164,7 @@ def get_params_from_shape(shp):
 
 
 def format_dataset(x_train, y_train, x_test=None, y_test=None, data_reduction=None,
-                   to_categorical=False, ret_labels=False, verbose=False):
+                   to_categorical=False, ret_labels=False, verbose=False, old_way=False):
     """
     Reformat input: change dimensions, scale and cast so it can be fed into our model
     """
@@ -208,8 +208,10 @@ def format_dataset(x_train, y_train, x_test=None, y_test=None, data_reduction=No
     # Convert data type to float32 and normalize data values to range [0, 1]
     X_train = X_train.astype('float32')
     X_test = X_test.astype('float32')
-    X_train /= 255
-    X_test /= 255
+    if old_way:
+        X_train /= 255
+        X_test /= 255
+
 
     # Reshape input labels
     if to_categorical:

@@ -26,7 +26,7 @@ def apply_custom_observation(custom_observation):
 
 def observe_results(data_generator, folder=None, to_categorical=True, data_reduction=None,
                     mode=0, observe_training=0, filename=None, num_columns=None,
-                    misclassified_wizard=True, custom_observation=None):
+                    misclassified_wizard=True, custom_observation=None, old_way=False):
     """
     :param data_generator: where to get the data from (keras.datasets.mnist.load_data, cifar...)
     :param folder: name of folder where results are found
@@ -52,7 +52,8 @@ def observe_results(data_generator, folder=None, to_categorical=True, data_reduc
     train_set, test_set, input_shape, labels = format_dataset(x_train, y_train, x_test, y_test,
                                                               verbose=True, ret_labels=True,
                                                               data_reduction=data_reduction,
-                                                              to_categorical=to_categorical)
+                                                              to_categorical=to_categorical,
+                                                              old_way=old_way)
     if data_reduction is not None:
         x_test = x_test[:x_test.shape[0] // data_reduction]
         y_test = y_test[:y_test.shape[0] // data_reduction]
@@ -258,6 +259,7 @@ def observe_results(data_generator, folder=None, to_categorical=True, data_reduc
 if __name__ == "__main__":
     dataset_name = "radiomics1"  # default dataset used
     custom_observation = "radiomics1"  # set to None to see regular accuracy
+    old_way = False  # Set this to true to evaluate folders which used the old way
     folder = None
     filename = None
     mode = 0
@@ -279,7 +281,7 @@ if __name__ == "__main__":
     data = load_dataset(dataset_name)
     observe_results(data, folder=folder, filename=filename, mode=mode, data_reduction=None,
                     observe_training=observe_training, num_columns=num_columns,
-                    custom_observation=custom_observation)
+                    custom_observation=custom_observation, old_way=old_way)
 
     """
     Expects:
