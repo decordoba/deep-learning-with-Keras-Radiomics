@@ -21,15 +21,15 @@ def load_model(location):
     return model
 
 
-def add_custom_metric(folder=None, old_way=False, verbose=True):
+def add_custom_metric(folder=None, dataset="radiomics1", old_way=False, verbose=True):
     """
     I am hardcoding all this for now
     This should only work for datasets similar to radiomics1 (where a 3D volume is divided
     in 3 channel 2D slices)
     """
 
-    (x_train, y_train), (x_test, y_test) = load_dataset("radiomics1")
-    patients_train, patients_test = load_patients_dataset("radiomics1")
+    (x_train, y_train), (x_test, y_test) = load_dataset(dataset)
+    patients_train, patients_test = load_patients_dataset(dataset)
 
     # Navigate to folder and load result.yaml
     if folder is not None:
@@ -58,9 +58,8 @@ def add_custom_metric(folder=None, old_way=False, verbose=True):
             print("volAccTr:", result[id]["result"]["volAccTr"])
             print("volAccTe:", result[id]["result"]["volAccTe"])
             print(" ")
-    with open("new_results.yaml", "a") as f:
-        for location in folders:
-            f.write(yaml.dump_all([{location: result[location]}],
+        with open("new_results.yaml", "a") as f:
+            f.write(yaml.dump_all([{id: result[id]}],
                                   default_flow_style=False,
                                   explicit_start=False))
 
@@ -162,15 +161,19 @@ def calc_vol_acc_Tr_Te(x_train, y_train, x_test, y_test, patients_train, patient
 if __name__ == "__main__":
     folder = None
     old_way = False
+    dataset = "radiomics1"
     if len(sys.argv) > 1:
         folder = sys.argv[1]
-    if len(sys.argv) > 2 and sys.argv[2].lower() != "false":
+    if len(sys.argv) > 2:
+        dataset = sys.argv[2]
+    if len(sys.argv) > 3 and sys.argv[3].lower() != "false":
         old_way = True
-    add_custom_metric(folder=folder, old_way=old_way)
+    add_custom_metric(folder=folder, old_way=old_way, dataset=dataset)
 
     """
     Expects:
         py add_custom_metric.py
         py add_custom_metric.py folder
-        py add_custom_metric.py folder old_way
+        py add_custom_metric.py folder dataset
+        py add_custom_metric.py folder dataset old_way
     """
