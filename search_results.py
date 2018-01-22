@@ -113,7 +113,7 @@ def filter_by_result(result, result_keys, pause_in_every_result=True):
         print(" ")
 
 
-def search_results(folder=None, pause_in_every_result=True):
+def search_results(folder=None, filename="results.yaml", pause_in_every_result=True):
     """
     From the selected folder (or current folder if folder == None), filter results according to
     result.yaml
@@ -122,11 +122,11 @@ def search_results(folder=None, pause_in_every_result=True):
     # Navigate to folder and load result.yaml
     if folder is not None:
         os.chdir(folder)
-    with open("results.yaml") as f:
+    with open(filename) as f:
         try:
             result = yaml.load(f)
         except yaml.YAMLError as YamlError:
-            print("There was an error parsing 'results.yaml'. Plotting aborted.")
+            print("There was an error parsing '{}'. Plotting aborted.".format(filename))
             print(YamlError)
             if folder is not None:
                 os.chdir("./..")
@@ -171,12 +171,16 @@ def search_results(folder=None, pause_in_every_result=True):
 
 if __name__ == "__main__":
     folder = None
+    filename = "results.yaml"
     if len(sys.argv) > 1:
         folder = sys.argv[1]
-    search_results(folder)
+    if len(sys.argv) > 2:
+        filename = sys.argv[2]
+    search_results(folder, filename)
 
     """
     Expects:
         py search_results.py
         py search_results.py folder
+        py search_results.py folder filename
     """
