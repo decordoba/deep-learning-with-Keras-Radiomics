@@ -44,19 +44,33 @@ def add_custom_metric(folder=None, dataset="radiomics1", old_way=False, verbose=
                 os.chdir("./..")
             return
 
+    try:
+        os.remove("new_results.yaml")
+        print("File 'new_results.yaml' removed")
+    except FileNotFoundError:
+        pass
+
     folders = sorted(result.keys())
     for id in folders:
         print("Folder:", id)
-        vol_acc_Tr, vol_acc_Te = calc_vol_acc_Tr_Te(x_train, y_train, x_test, y_test,
-                                                    patients_train, patients_test, old_way,
-                                                    folder=id)
+        custom_params = calc_vol_acc_Tr_Te(x_train, y_train, x_test, y_test, patients_train,
+                                           patients_test, old_way, folder=id)
+        vol_acc_Tr, vol_acc_Te, num_volTr, num_volTe, num_Tr, num_Te = custom_params
         result[id]["result"]["volAccTr"] = float(vol_acc_Tr)
         result[id]["result"]["volAccTe"] = float(vol_acc_Te)
+        result[id]["result"]["num2dImagesTr"] = num_Tr
+        result[id]["result"]["num2dImagesTe"] = num_Te
+        result[id]["result"]["num3dVolumesTr"] = num_volTr
+        result[id]["result"]["num3dVolumesTe"] = num_volTe
         if verbose:
             print("accTr:", result[id]["result"]["accTr"])
             print("accTe:", result[id]["result"]["accTe"])
             print("volAccTr:", result[id]["result"]["volAccTr"])
             print("volAccTe:", result[id]["result"]["volAccTe"])
+            print("num2dImagesTr:", result[id]["result"]["num2dImagesTr"])
+            print("num2dImagesTe:", result[id]["result"]["num2dImagesTe"])
+            print("num3dVolumesTr:", result[id]["result"]["num3dVolumesTr"])
+            print("num3dVolumesTe:", result[id]["result"]["num3dVolumesTe"])
             print(" ")
         with open("new_results.yaml", "a") as f:
             f.write(yaml.dump_all([{id: result[id]}],
@@ -99,10 +113,12 @@ def calculate_volume_accuracy(pred_labels, true_labels, pred_percents, observe_t
         prev_patient = patient
 
     pred_labels = []
+    num_patients = 0
     for patient in unique_patients:
         # Ignore patients that have half the 3D image in test and other half in training
         if patient == ignore_patient:
             continue
+        num_patients += 1
         # Assume there are only 2 labels: 0 and 1
         keys = list(classification_per_patient[patient].keys())
         if len(keys) == 1:
@@ -124,7 +140,7 @@ def calculate_volume_accuracy(pred_labels, true_labels, pred_percents, observe_t
     errors_vector = (pred_labels != true_labels)
     num_errors = np.sum(errors_vector)
     size_set = pred_labels.size
-    return 1 - num_errors / size_set
+    return 1 - num_errors / size_set, num_patients
 
 
 def calc_vol_acc_Tr_Te(x_train, y_train, x_test, y_test, patients_train, patients_test, old_way,
@@ -143,20 +159,24 @@ def calc_vol_acc_Tr_Te(x_train, y_train, x_test, y_test, patients_train, patient
 
     model = load_model(folder)
 
+    num_Tr = len(y_train)
+    num_Te = len(y_test)
+
     # calculate for training set
     pred_percents = model.predict(train_set[0])
     true_labels = y_train
     pred_labels = np.argmax(pred_percents, axis=1)
-    vol_accTr = calculate_volume_accuracy(pred_labels, true_labels, pred_percents, 1,
-                                          patients_train, patients_test)
+    vol_accTr, num_volTr = calculate_volume_accuracy(pred_labels, true_labels, pred_percents, 1,
+                                                     patients_train, patients_test)
 
     # calculate for test set
     pred_percents = model.predict(test_set[0])
     true_labels = y_test
     pred_labels = np.argmax(pred_percents, axis=1)
-    vol_accTe = calculate_volume_accuracy(pred_labels, true_labels, pred_percents, 0,
-                                          patients_train, patients_test)
-    return vol_accTr, vol_accTe
+    vol_accTe, num_volTe = calculate_volume_accuracy(pred_labels, true_labels, pred_percents, 0,
+                                                     patients_train, patients_test)
+    return vol_accTr, vol_accTe, num_volTr, num_volTe, num_Tr, num_Te
+
 
 if __name__ == "__main__":
     folder = None
