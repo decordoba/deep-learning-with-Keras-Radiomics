@@ -9,7 +9,8 @@ from keras_plot import plot_3D_bar_graph, plot_colormap, plot_graph_grid  # 'Lib
 
 def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0,
                  shared_color_scale=True, static_z_scale=False, save_without_prompt=False,
-                 secondary_plot=["train_accuracy_history", "test_accuracy_history"]):
+                 secondary_plot=["train_accuracy_history", "test_accuracy_history"],
+                 results_file="results.yaml"):
     """
     From the selected folder (or current folder if folder == None), plot result found in
     result.yaml
@@ -26,11 +27,11 @@ def plot_results(folder=None, height_keys=["accTr", "accTe"], plot_mode=0,
     # Navigate to folder and load result.yaml
     if folder is not None:
         os.chdir(folder)
-    with open("results.yaml") as f:
+    with open(results_file) as f:
         try:
             result = yaml.load(f)
         except yaml.YAMLError as YamlError:
-            print("There was an error parsing 'results.yaml'. Plotting aborted.")
+            print("There was an error parsing '{}'. Plotting aborted.".format(results_file))
             print(YamlError)
             if folder is not None:
                 os.chdir("./..")
@@ -237,6 +238,7 @@ if __name__ == "__main__":
     metric = None  # if left None, the metrics used will be ["accTr", "accTe"]
     static_z_scale = False
     secondary_plot = False
+    results_file = "results.yaml"
     if len(sys.argv) > 1:
         folder = sys.argv[1]
     if len(sys.argv) > 2:
@@ -252,28 +254,33 @@ if __name__ == "__main__":
                 mode -= 3
                 static_z_scale = True
     if len(sys.argv) > 3:
-        metric = sys.argv[3]
+        results_file = sys.argv[3]
+    if len(sys.argv) > 4:
+        metric = sys.argv[4:]
 
     if secondary_plot:
         if metric is not None:
             plot_results(folder=folder, height_keys=metric, plot_mode=mode,
-                         static_z_scale=static_z_scale)
+                         static_z_scale=static_z_scale, results_file=results_file)
         else:
-            plot_results(folder=folder, plot_mode=mode, static_z_scale=static_z_scale)
+            plot_results(folder=folder, plot_mode=mode, static_z_scale=static_z_scale,
+                         results_file=results_file)
     else:
         if metric is not None:
             plot_results(folder=folder, height_keys=metric, plot_mode=mode,
-                         static_z_scale=static_z_scale, secondary_plot=None)
+                         static_z_scale=static_z_scale, secondary_plot=None,
+                         results_file=results_file)
         else:
             plot_results(folder=folder, plot_mode=mode, static_z_scale=static_z_scale,
-                         secondary_plot=None)
+                         secondary_plot=None, results_file=results_file)
 
     """
     Expects:
         py results_plotter.py
         py results_plotter.py folder
         py results_plotter.py folder mode
-        py results_plotter.py folder mode metric
+        py results_plotter.py folder mode results_file
+        py results_plotter.py folder mode results_file metric
 
     * MODE: 0,1,2... !secondary_plot, !static_z_scale
             3,4,5... !secondary_plot,  static_z_scale
