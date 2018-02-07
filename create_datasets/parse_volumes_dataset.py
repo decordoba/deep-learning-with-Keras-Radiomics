@@ -13,6 +13,7 @@ dataset.pkl
 dataset_images.pkl
 dataset_labels.pkl
 dataset_patients.pkl
+It requires a volumes.pkl file
 """
 
 
@@ -195,13 +196,13 @@ def atenuate_image_from_soft_mask2(image, mask, width=13):
 def atenuate_image_from_soft_mask(image, mask):
     kernel_3d = [
                   [[.125, .25, .125],
-                   [ .25,  .5,  .25],
+                   [.025, .05, .025],
                    [.125, .25, .125]],
-                  [[ .25,  .5,  .25],
-                   [  .5,   1,   .5],
-                   [ .25,  .5,  .25]],
+                  [[.025, .05, .025],
+                   [.005,   1, .005],
+                   [.025, .05, .025]],
                   [[.125, .25, .125],
-                   [ .25,  .5,  .25],
+                   [.025, .05, .025],
                    [.125, .25, .125]]
                 ]
     new_mask = ndimage.convolve(mask, kernel_3d, mode='constant', cval=0.0)
@@ -294,16 +295,17 @@ if __name__ == "__main__":
         # get 3D image of patient (first element in volumes[patient])
         pet_image = volumes[patient][0]
         image_shape = pet_image.shape
-        print(i, "/", len(patients), "Patient {}, dimensions ({}, {}, {})".format(patient, *image_shape))
+        print(i, "/", len(patients), "Patient {}, dimensions ({}, {}, {})".format(patient,
+                                                                                  *image_shape))
         number_images = 0
         # go thorough all contours for this patient in volumes
         for mtv_volume in volumes[patient][1:]:
             if mtv_volume == ():  # skip empty contours
                 continue
             mask, label, box, folder = mtv_volume
-            # this function will return false (and skip it) if we get a contour that has to be ignored. 
+            # this will return false (and skip it) if we get a contour that has to be ignored.
             # WARNING: this function is custom for this dataset, it will not work for other data
-            if check_contour_location(patient, folder, label) == False:
+            if check_contour_location(patient, folder, label) is False:
                 continue
             number_images += 1
             print("Label:  {}".format(label))
@@ -392,8 +394,12 @@ if __name__ == "__main__":
             ignored_patients.append(patient)
 
     print("{} patients ignored".format(len(ignored_patients)))
-    
-    # Save data: dataset has all data together, and 
+
+    answer = ""
+    while len(answer) < 0 or answer[0].lower() != "y":
+        answer = input("Type 'y' to save data to Ctrl-C to abort")
+
+    # Save data
     # dataset_images, dataset_labels and dataset_patients hold in the same order
     # the 3D images, the label (0 or 1) and the patient id
     print("Saving data, this may take a few minutes")
