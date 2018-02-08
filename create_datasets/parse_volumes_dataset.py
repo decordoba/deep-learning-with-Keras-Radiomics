@@ -17,6 +17,23 @@ It requires a volumes.pkl file
 """
 
 
+def get_big_mask(pet_image, mask=None, mask_offset=None):
+    """
+    Generate big mask from contour mask and offset
+    Basically, we return the mask but resize it with the size of pet_image (which will be bigger)
+    """
+    big_mask = None
+    if mask is not None:
+        if mask_offset is not None:
+            big_mask = np.zeros(pet_image.shape)
+            w, h, d = mask.shape
+            for x in range(w):
+                for y in range(h):
+                    for z in range(d):
+                        big_mask[mask_offset[0] + x, mask_offset[1] + y, mask_offset[2] + z] = mask[x, y, z]
+    return big_mask
+
+
 def plot_pet_slice(pet_image, center=None, box=None, mask=None, mask_offset=None, label=None):
     """
     mask and pent image should be same size,
@@ -133,6 +150,39 @@ def cut_image(pet_image, box_center, box_size, min_box_size):
         z0 = box_center[2] - int(min_box_size[2] / 2)
         z1 = z0 + min_box_size[2]
     return pet_image[x0:x1 + 1, y0:y1 + 1, z0:z1 + 1], ((x0, y0, z0), (x1, y1, z1))
+
+
+def expand_mask(mask):
+    # receives a mask and adds 1s to its border (to any position that is at Manhattan distance
+    # of offset or less of a 1)
+    # This code is a bit embarassing, but it was easier to do it like this than to use recursion
+    new_mask = np.zeros(mask.shape)
+    for x in range(new_mask.shape[0]):
+        for y in range(new_mask.shape[1]):
+            for z in range(new_mask.shape[2]):
+                if mask[x, y, z] == 1:
+                    pos = (x, y, z)
+                    new_mask[pos] = 1
+                    off = [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)]
+                    for ox, oy, oz in off:
+                        pos1 = (pos[0] + ox, pos[1] + oy, pos[2] + oz)
+                        try:
+                            new_mask[pos1] = 1
+                            for oox, ooy, ooz in off:
+                                pos2 = (pos1[0] + oox, pos1[1] + ooy, pos1[2] + ooz)
+                                try:
+                                    new_mask[pos2] = 1
+                                    for ooox, oooy, oooz in off:
+                                        pos3 = (pos2[0] + oox, pos2[1] + ooy, pos2[2] + ooz)
+                                        try:
+                                            new_mask[pos3] = 1
+                                        except IndexError:
+                                            pass
+                                except IndexError:
+                                    pass
+                        except IndexError:
+                            pass
+    return new_mask
 
 
 def find_centroid(image, discretize=False):
@@ -267,6 +317,14 @@ if __name__ == "__main__":
     with open('volumes.pkl', 'rb') as f:
         volumes = pickle.load(f)
 
+    # 0: original volume is unchanged (just put into smaller box)
+    # 1: volume is cut exactly by contour
+    # 2: volume is cut by contour but adding margin of 3 pixels
+    dataset_format = 0
+    file_suffix = ""
+    if dataset_format > 0:
+        file_suffix = str(dataset_format)
+
     # find box where we can fit all tumors
     max_box = [0, 0, 0]
     for patient in volumes:
@@ -333,11 +391,10 @@ if __name__ == "__main__":
             tumor_box_size = np.array(box[1]) - np.array(box[0])
             for j in range(3):
                 max_box[j] = max(max_box[j], tumor_box_size[j])
-            new_centroid = np.array(centroid) - new_box[0]  # used only for plotting
-            # big_mask = plot_pet_slice(box_image, center=new_centroid, box=None,
-            #                           mask=mask, mask_offset=np.array(box[0]) - new_box[0],
-            #                           label="{}, {}, {}".format(patient, folder.split("/")[-1],
-            #                                                     label))
+            # new_centroid = np.array(centroid) - new_box[0]  # used only for plotting
+            # plot_pet_slice(box_image, center=new_centroid, box=None,
+            #                mask=mask, mask_offset=np.array(box[0]) - new_box[0],
+            #                label="{}, {}, {}".format(patient, folder.split("/")[-1], label))
             # print("Radial attenuation")
             # dist = get_distance_center_corners(centroid, box)
             # image1 = atenuate_image_radially(box_image, new_centroid, dist)
@@ -345,10 +402,17 @@ if __name__ == "__main__":
             #                 mask=mask, mask_offset=np.array(box[0]) - new_box[0],
             #                 label="{}, {}, {}".format(patient, folder.split("/")[-1], label))
             # print("Clean cut")
-            # image2 = atenuate_image_from_mask(box_image, big_mask)
+            big_mask = get_big_mask(box_image, mask, mask_offset=np.array(box[0]) - new_box[0])
+            image2 = atenuate_image_from_mask(box_image, big_mask)
             # plot_pet_slice(image2, center=np.array(centroid) - new_box[0], box=None,
-            #                 mask=mask, mask_offset=np.array(box[0]) - new_box[0],
-            #                 label="{}, {}, {}".format(patient, folder.split("/")[-1], label))
+            #                mask=mask, mask_offset=np.array(box[0]) - new_box[0],
+            #                label="{}, {}, {}".format(patient, folder.split("/")[-1], label))
+            # print("Clean cut with expanded mask")
+            expanded_big_mask = expand_mask(big_mask)
+            image5 = atenuate_image_from_mask(box_image, expanded_big_mask)
+            # plot_pet_slice(image5, center=np.array(centroid) - new_box[0], box=None,
+            #                mask=mask, mask_offset=np.array(box[0]) - new_box[0],
+            #                label="{}, {}, {}".format(patient, folder.split("/")[-1], label))
             # print("1 pixel quadratic mask")
             # image3 = atenuate_image_from_soft_mask(box_image, big_mask)
             # plot_pet_slice(image3, center=np.array(centroid) - new_box[0], box=None,
@@ -361,7 +425,12 @@ if __name__ == "__main__":
             #                 label="{}, {}, {}".format(patient, folder.split("/")[-1], label))
         # skip all patients that have more or less than one contour
         if number_images == 1:
-            dataset[patient] = box_image
+            if dataset_format == 1:
+                dataset[patient] = image2
+            elif dataset_format == 2:
+                dataset[patient] = image5
+            else:
+                dataset[patient] = box_image
         print(" ")
 
     print("Max tumor box size: {}".format(np.array(max_box) + 1))
@@ -395,27 +464,28 @@ if __name__ == "__main__":
 
     print("{} patients ignored".format(len(ignored_patients)))
 
+    print(" ")
     answer = ""
-    while len(answer) < 0 or answer[0].lower() != "y":
-        answer = input("Type 'y' to save data to Ctrl-C to abort")
+    while len(answer) <= 0 or answer[0].strip().lower() != "y":
+        answer = input("Type 'y' to save data or Ctrl-C to abort.\n>> ")
 
     # Save data
     # dataset_images, dataset_labels and dataset_patients hold in the same order
     # the 3D images, the label (0 or 1) and the patient id
     print("Saving data, this may take a few minutes")
     # Save the volumes
-    with open('dataset.pkl', 'wb') as f:
+    with open('dataset{}.pkl'.format(file_suffix), 'wb') as f:
         pickle.dump(dataset, f)
-    print("Data saved in 'dataset.pkl'.")
+    print("Data saved in 'dataset{}.pkl'.".format(file_suffix))
 
-    with open('dataset_images.pkl', 'wb') as f:
+    with open('dataset{}_images.pkl'.format(file_suffix), 'wb') as f:
         pickle.dump(dataset_images, f)
-    print("Data saved in 'dataset_images.pkl'.")
+    print("Data saved in 'dataset{}_images.pkl'.".format(file_suffix))
 
-    with open('dataset_labels.pkl', 'wb') as f:
+    with open('dataset{}_labels.pkl'.format(file_suffix), 'wb') as f:
         pickle.dump(dataset_labels, f)
-    print("Data saved in 'dataset_labels.pkl'.")
+    print("Data saved in 'dataset{}_labels.pkl'.".format(file_suffix))
 
-    with open('dataset_patients.pkl', 'wb') as f:
+    with open('dataset{}_patients.pkl'.format(file_suffix), 'wb') as f:
         pickle.dump(dataset_patients, f)
-    print("Data saved in 'dataset_patients.pkl'.")
+    print("Data saved in 'dataset{}_patients.pkl'.".format(file_suffix))
