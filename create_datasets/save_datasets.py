@@ -17,7 +17,7 @@ or separate the 3D volumes in 3 channels 2D slices.
 np.random.seed(123)  # for reproducibility
 
 
-def save_data(x_set, y_set, patients, number):
+def save_data(x_set, y_set, patients, number, suffix=""):
     if number == 1 or number == 2:
         # Split volumes in slices_per_sample (3) layers images
         counter = 0
@@ -53,9 +53,9 @@ def save_data(x_set, y_set, patients, number):
             os.mkdir("data")
         except OSError:
             pass
-        full_path = "data/".format(number)
-        folder_path = full_path + "radiomics{}".format(number)
-        file_path = "{}/radiomics{}".format(folder_path, number)
+        full_path = "data/"
+        folder_path = full_path + "radiomics{}{}".format(suffix, number)
+        file_path = "{}/radiomics{}{}".format(folder_path, suffix, number)
         try:
             os.mkdir(folder_path)
         except OSError:
@@ -70,18 +70,33 @@ def save_data(x_set, y_set, patients, number):
 
 
 if __name__ == "__main__":
+    # 0: original volume is unchanged (just put into smaller box)
+    # 1: volume is cut exactly by contour
+    # 2: volume is cut by contour but adding margin of 3 pixels
+    dataset_format = 2
+    file_suffix = ""
+    name_suffix = ""
+    if dataset_format > 0:
+        file_suffix = str(dataset_format)
+        if dataset_format == 1:
+            name_suffix = "_cut"
+        elif dataset_format == 2:
+            name_suffix = "_margincut"
+        else:
+            name_suffix = "_unknown"
+
     # Load data
-    print("Reading 'dataset_images.pkl'")
-    with open('dataset_images.pkl', 'rb') as f:
+    print("Reading 'dataset{}_images.pkl'".format(file_suffix))
+    with open('dataset{}_images.pkl'.format(file_suffix), 'rb') as f:
         x = pickle.load(f)
-    print("Reading 'dataset_labels.pkl'")
-    with open('dataset_labels.pkl', 'rb') as f:
+    print("Reading 'dataset{}_labels.pkl'".format(file_suffix))
+    with open('dataset{}_labels.pkl'.format(file_suffix), 'rb') as f:
         y = pickle.load(f)
-    print("Reading 'dataset_patients.pkl'")
-    with open('dataset_patients.pkl', 'rb') as f:
+    print("Reading 'dataset{}_patients.pkl'".format(file_suffix))
+    with open('dataset{}_patients.pkl'.format(file_suffix), 'rb') as f:
         patients = pickle.load(f)
     # Make sure x and y are the same length
     assert(len(x) == len(y))
     assert(len(x) == len(patients))
 
-    save_data(x, y, patients, number=1)
+    save_data(x, y, patients, number=1, suffix=name_suffix)
