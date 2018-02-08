@@ -23,7 +23,9 @@ def get_experiment_names(library):
 if __name__ == "__main__":
     # Available experiments names
     experiments = get_experiment_names("modular_neural_network")
-    datasets = ["mnist", "cifar10", "cifar100", "radiomics1", "radiomics2", "radiomics3"]
+    datasets = ["mnist", "cifar10", "cifar100", "radiomics1", "radiomics2", "radiomics3",
+                "radiomics_cut1", "radiomics_cut2", "radiomics_cut3",
+                "radiomic_margincut1", "radiomics_margincut2", "radiomics_margincut3"]
 
     # Parser to allow fancy command arguments input
     parser = argparse.ArgumentParser(description="Create and run experiments with modular_keras, "
