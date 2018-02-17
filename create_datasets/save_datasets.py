@@ -2,6 +2,9 @@
 import os
 import numpy as np
 import pickle
+from matplotlib import pyplot as plt
+import scipy.stats as stats
+from collections import Counter
 
 
 """
@@ -31,7 +34,7 @@ def save_data(x_set, y_set, patients, number, suffix=""):
             if normalize:
                 volume = (volume - minv) / (maxv - minv)
             for r in range(rotations):
-                # If rotations=4, rotate image 4 times (0, 90, 180 and 270 deg) to increase sample size
+                # If rotations=4, rotate img 4 times (0, 90, 180 and 270 deg) to incr. sample size
                 vol = np.rot90(volume, k=r)
                 for idx in range(vol.shape[2] - slices_per_sample + 1):
                     image = vol[:, :, idx:idx + slices_per_sample]
@@ -69,13 +72,334 @@ def save_data(x_set, y_set, patients, number, suffix=""):
         print("Dataset number '{}' unknown, data was not saved".format(number))
 
 
+def get_size_mask(mask):
+    """Get size box of mask where we can fit all 1s."""
+    pixel_shape = mask.shape
+    mask_range = [[pixel_shape[0], pixel_shape[1], pixel_shape[2]], [-1, -1, -1]]
+    volume = 0
+    for xx in range(pixel_shape[0]):
+        for yy in range(pixel_shape[1]):
+            for zz in range(pixel_shape[2]):
+                if mask[xx, yy, zz]:
+                    volume += 1
+                    mask_range[0][0] = min(mask_range[0][0], xx)
+                    mask_range[0][1] = min(mask_range[0][1], yy)
+                    mask_range[0][2] = min(mask_range[0][2], zz)
+                    mask_range[1][0] = max(mask_range[1][0], xx)
+                    mask_range[1][1] = max(mask_range[1][1], yy)
+                    mask_range[1][2] = max(mask_range[1][2], zz)
+    box_size = np.array(mask_range[1]) - np.array(mask_range[0]) + 1
+    return box_size, volume
+
+
+def plot_histogram(data, title=None, figure=0):
+    """Docstring for plot_histogram."""
+    sorted_data = sorted(data)
+
+    # this is a fitting indeed
+    fit = stats.norm.pdf(sorted_data, np.mean(sorted_data), np.std(sorted_data))
+    plt.figure(figure)
+    plt.plot(sorted_data, fit, '-o')
+    # use this to draw histogram of your data
+    plt.hist(sorted_data, normed=True)
+    if title is not None:
+        plt.title(title)
+    plt.show()
+
+
+def plot_boxplot(data, title=None, figure=0):
+    """Docstring for plot_boxplot."""
+    fig = plt.figure(figure)
+    ax = fig.add_subplot(111)
+    ax.boxplot(data, showmeans=True)
+    if title is not None:
+        plt.title(title)
+    plt.show()
+
+
+def analyze_data(volumes, labels, patients, masks, plot_data=True):
+    """Docstring for analyze_data."""
+    num_labels = [0, 0]
+    sizes_masks = [np.zeros(3), np.zeros(3)]
+    all_sizes_masks = [[], []]
+    all_sizes = [[], []]
+    all_slices = [[], []]
+    for label, patient, volume, mask in zip(labels, patients, volumes, masks):
+        if volume.shape[2] < 3:
+            continue  # patient ignored, it is too small
+        size_mask, granular_volume = get_size_mask(mask)
+        all_sizes[label].append(granular_volume)
+        sizes_masks[label] += size_mask
+        all_sizes_masks[label].append(np.prod(size_mask))
+        all_slices[label].append(volume.shape[2])
+        num_labels[label] += 1
+    sizes_masks_mean = [s/n for s, n in zip(sizes_masks, num_labels)]
+    print("Number patients:", num_labels[0] + num_labels[1])
+    print(" ")
+    print("LABEL 1")
+    print("  NUMBER SAMPLES: {}".format(num_labels[1]))
+    print("  TUMOR BOX VOLUME (px^3 of tumor box)")
+    print("    Mean:     {} (in 3 directions: {})".format(np.prod(sizes_masks_mean[1]),
+                                                          sizes_masks_mean[1]))
+    print("    Median:   {}".format(np.median(all_sizes_masks[1])))
+    print("    Variance: {}".format(np.var(all_sizes_masks[1])))
+    print("    Min:      {}".format(np.min(all_sizes_masks[1])))
+    print("    Max:      {}".format(np.max(all_sizes_masks[1])))
+    print("  NUMBER SLICES")
+    print("    Mean:     {}".format(np.mean(all_slices[1])))
+    print("    Median:   {}".format(np.median(all_slices[1])))
+    print("    Variance: {}".format(np.var(all_slices[1])))
+    print("    Min:      {}".format(np.min(all_slices[1])))
+    print("    Max:      {}".format(np.max(all_slices[1])))
+    print("  GRANULAR VOLUME (px^3 that were labeled as tumor)")
+    print("    Mean:     {}".format(np.mean(all_sizes[1])))
+    print("    Median:   {}".format(np.median(all_sizes[1])))
+    print("    Variance: {}".format(np.var(all_sizes[1])))
+    print("    Min:      {}".format(np.min(all_sizes[1])))
+    print("    Max:      {}".format(np.max(all_sizes[1])))
+    print(" ")
+    print("LABEL 0")
+    print("  NUMBER SAMPLES: {}".format(num_labels[0]))
+    print("  TUMOR BOX VOLUME (px^3 of tumor box)")
+    print("    Mean:     {} (in 3 directions: {})".format(np.prod(sizes_masks_mean[0]),
+                                                          sizes_masks_mean[0]))
+    print("    Median:   {}".format(np.median(all_sizes_masks[0])))
+    print("    Variance: {}".format(np.var(all_sizes_masks[0])))
+    print("    Min:      {}".format(np.min(all_sizes_masks[0])))
+    print("    Max:      {}".format(np.max(all_sizes_masks[0])))
+    print("  NUMBER SLICES")
+    print("    Mean:     {}".format(np.mean(all_slices[0])))
+    print("    Median:   {}".format(np.median(all_slices[0])))
+    print("    Variance: {}".format(np.var(all_slices[0])))
+    print("    Min:      {}".format(np.min(all_slices[0])))
+    print("    Max:      {}".format(np.max(all_slices[0])))
+    print("  GRANULAR VOLUME (px^3 that were labeled as tumor)")
+    print("    Mean:     {}".format(np.mean(all_sizes[0])))
+    print("    Median:   {}".format(np.median(all_sizes[0])))
+    print("    Variance: {}".format(np.var(all_sizes[0])))
+    print("    Min:      {}".format(np.min(all_sizes[0])))
+    print("    Max:      {}".format(np.max(all_sizes[0])))
+    if plot_data:
+        plt.ion()
+        plot_histogram(all_sizes[0], "Sizes 0", 0)
+        plot_histogram(all_sizes[1], "Sizes 1", 1)
+        plot_histogram(all_slices[0], "Slices 0", 2)
+        plot_histogram(all_slices[1], "Slices 1", 3)
+        plot_boxplot(all_sizes[0], "Sizes 0", 4)
+        plot_boxplot(all_sizes[1], "Sizes 1", 5)
+        plot_boxplot(all_slices[0], "Slices 0", 6)
+        plot_boxplot(all_slices[1], "Slices 1", 7)
+        plot_boxplot(all_sizes_masks[0], "Sizes box 0", 8)
+        plot_boxplot(all_sizes_masks[1], "Sizes box 1", 9)
+        plt.ioff()
+        input("Press ENTER to close all figures and continue.")
+        plt.close("all")
+    return (num_labels[0], num_labels[1]), (np.median(all_slices[0]), np.median(all_slices[1]))
+
+
+def get_bucket(bucket0, bucket1, ratio=0.5):
+    """Get size of two buckets and tell what bucket to put next obj to get closer to buckets ratio.
+
+    For example, if buckets=[2, 3] and ratio=0.5, returns 0 to get [3, 3],
+    but if ratio=0.66 returns 1 to obtain [2, 4]
+    Assumes only 2 buckets, will ignore any other buckets
+    Assumes numbers in buckets >= 0
+    """
+    try:
+        current_ratio = bucket0 / (bucket0 + bucket1)
+    except ZeroDivisionError:
+        current_ratio = 0
+    return 0 if current_ratio < ratio else 1
+
+
+def generate_2D_dataset(samples, labels, patients, masks, slices_per_sample=3, rotate_data=False,
+                        normalize=True):
+    """From 3D volumes generates a 2D dataset."""
+    counter = 0
+    rotations = 4 if rotate_data else 1
+    for volume, label, patient, mask in zip(samples, labels, patients, masks):
+        # Normalize values from 0 to 1
+        if normalize:
+            maxv = np.max(volume)
+            minv = np.min(volume)
+            volume = (volume - minv) / (maxv - minv)
+        for r in range(rotations):
+            # If rotations=4, rotate image 4 times (0, 90, 180 and 270 deg) to increase sample size
+            vol = np.rot90(volume, k=r)
+            msk = np.rot90(mask, k=r)
+            for idx in range(vol.shape[2] - slices_per_sample + 1):
+                image = vol[:, :, idx:idx + slices_per_sample]
+                mask_image = msk[:, :, idx:idx + slices_per_sample]
+                try:
+                    x_dataset = np.concatenate((x_dataset, [image]))
+                    y_dataset = np.concatenate((y_dataset, [label]))
+                    masks_dataset = np.concatenate((masks_dataset, [mask_image]))
+                    patients_dataset.append(patient + (str(r * 90) if r != 0 else ""))
+                except NameError:
+                    x_dataset = np.array([image])
+                    y_dataset = np.array([label])
+                    masks_dataset = np.array([mask_image])
+                    patients_dataset = [patient + (str(r * 90) if r != 0 else "")]
+        counter += 1
+        print("{} / {} patients processed".format(counter, len(patients)))
+    return x_dataset, y_dataset, patients_dataset, patients_dataset
+
+
+def save_dataset_correctly(x, y, patients, masks, parent_folder="data", dataset_name="organized",
+                           dataset_subname="training_set"):
+    """Docstring for save_dataset_correctly."""
+    # Create folder data if it does not exist
+    full_path = parent_folder + "/"
+    try:
+        os.mkdir(full_path)
+    except OSError:
+        pass
+    folder_path = full_path + dataset_name + "/"
+    try:
+        os.mkdir(folder_path)
+    except OSError:
+        pass
+    file_path = "{}{}".format(folder_path, dataset_subname)
+    np.savez(file_path, x=x, y=y)
+    print("Dataset saved in: '{}.npz'".format(file_path))
+    with open("{}_patients.pkl".format(file_path), "wb") as f:
+        pickle.dump(patients, f)
+    print("Patients saved in '{}_patients.pkl'.".format(file_path))
+    with open("{}_masks.pkl".format(file_path), "wb") as f:
+        pickle.dump(masks, f)
+    print("Masks saved in '{}_masks.pkl'.".format(file_path))
+
+
+def improved_save_data(x_set, y_set, patients, masks, suffix=""):
+    """Save dataset so labels & slices medians are equally distributed in training and test set."""
+    # Analyze data and plot some statistics
+    num_patients_by_label, medians_by_label = analyze_data(x_set, y_set, patients, masks,
+                                                           plot_data=False)
+
+    # After analyze_data, we see that we have 77 patients
+    # Label 1: NUMBER SAMPLES: 20
+    #          MEAN TUMOR BOX VOLUME: 3174
+    #          MEAN NUMBER SLICES: 17
+    #          MEAN GRANULAR VOLUME: 867
+    # LABEL 0: NUMBER SAMPLES: 57
+    #          MEAN TUMOR BOX VOLUME: 1440
+    #          MEAN NUMBER SLICES: 11
+    #          MEAN GRANULAR VOLUME: 486
+    # Based on this data, we sample the dataset in the best possible way so all kinds of data is
+    # represented in the train and test set. We split data in in 4 groups: label 0 / label 1, and
+    # above / below median, and put an equal percentage of everything in train and test set
+
+    train_to_total_ratio = 63 / 77  # 77 patients, let's do training+validation = 63, test = 14
+    train_nums = [[0, 0], [0, 0]]
+    test_nums = [[0, 0], [0, 0]]
+
+    test_set_x = []
+    train_set_x = []
+    test_set_y = []
+    train_set_y = []
+    test_set_patients = []
+    train_set_patients = []
+    test_set_masks = []
+    train_set_masks = []
+
+    # Distribute data in train and test set
+    median_indices = [[], []]
+    for i, (label, patient, volume, mask) in enumerate(zip(y_set, patients, x_set, masks)):
+        num_slices = volume.shape[2]
+        if num_slices < 3:
+            continue  # patient ignored, it is too small
+        if num_slices < medians_by_label[label]:
+            if get_bucket(train_nums[0][label], test_nums[0][label], train_to_total_ratio) == 0:
+                train_nums[0][label] += 1
+                train_set_x.append(volume)
+                train_set_y.append(label)
+                train_set_patients.append(patient)
+                train_set_masks.append(mask)
+            else:
+                test_nums[0][label] += 1
+                test_set_x.append(volume)
+                test_set_y.append(label)
+                test_set_patients.append(patient)
+                test_set_masks.append(mask)
+        elif num_slices > medians_by_label[label]:
+            if get_bucket(train_nums[1][label], test_nums[1][label], train_to_total_ratio) == 0:
+                train_nums[1][label] += 1
+                train_set_x.append(volume)
+                train_set_y.append(label)
+                train_set_patients.append(patient)
+                train_set_masks.append(mask)
+            else:
+                test_nums[1][label] += 1
+                test_set_x.append(volume)
+                test_set_y.append(label)
+                test_set_patients.append(patient)
+                test_set_masks.append(mask)
+        else:
+            median_indices[label].append(i)
+    for label, indices in enumerate(median_indices):
+        for index in indices:
+            volume = x_set[index]
+            patient = patients[index]
+            mask = masks[index]
+            if get_bucket(train_nums[0][label] + train_nums[1][label],
+                          test_nums[0][label] + test_nums[1][label], train_to_total_ratio) == 0:
+                train_nums[0][label] += 1
+                train_set_x.append(volume)
+                train_set_y.append(label)
+                train_set_patients.append(patient)
+                train_set_masks.append(mask)
+            else:
+                test_nums[0][label] += 1
+                test_set_x.append(volume)
+                test_set_y.append(label)
+                test_set_patients.append(patient)
+                test_set_masks.append(mask)
+    ratio = abs(len(train_set_x) / (len(train_set_x) + len(test_set_x)) - train_to_total_ratio)
+    ratio0 = abs((len(train_set_x) + 1) / (len(train_set_x) + len(test_set_x)) - train_to_total_ratio)
+    ratio1 = abs((len(train_set_x) - 1) / (len(train_set_x) + len(test_set_x)) - train_to_total_ratio)
+    if ratio0 < ratio:
+        train_set_x.append(test_set_x.pop())
+        train_set_y.append(test_set_y.pop())
+        train_set_patients.append(test_set_patients.pop())
+        train_set_masks.append(test_set_masks.pop())
+    elif ratio1 < ratio:
+        test_set_x.append(train_set_x.pop())
+        test_set_y.append(train_set_y.pop())
+        test_set_patients.append(train_set_patients.pop())
+        test_set_masks.append(train_set_masks.pop())
+
+    # Print results
+    print("\nDATASET DIVIDED IN TRAINING AND TEST SET")
+    print("  TRAINING SET")
+    print("    Number of samples: {}".format(len(train_set_x)))
+    print("    Label frequency: {}".format(dict(Counter(train_set_y))))
+    print("  TEST SET")
+    print("    Number of samples: {}".format(len(test_set_x)))
+    print("    Label frequency: {}\n".format(dict(Counter(test_set_y))))
+
+    # Convert 3D dataset into 2D dataset and save data
+    train_data = generate_2D_dataset(train_set_x, train_set_y, train_set_patients, train_set_masks)
+    x, y, patients_dataset, masks_dataset = train_data
+    print(" ")
+    save_dataset_correctly(x, y, patients_dataset, masks_dataset,
+                           dataset_name="organized", dataset_subname="training_set")
+    print(" ")
+
+    test_data = generate_2D_dataset(test_set_x, test_set_y, test_set_patients, test_set_masks)
+    x, y, patients_dataset, masks_dataset = test_data
+    print(" ")
+    save_dataset_correctly(x, y, patients_dataset, masks_dataset,
+                           dataset_name="organized", dataset_subname="test_set")
+
+
 if __name__ == "__main__":
     # 0: original volume is unchanged (just put into smaller box)
     # 1: volume is cut exactly by contour
     # 2: volume is cut by contour but adding margin of 3 pixels
-    dataset_format = 2
+    dataset_format = 0
     file_suffix = ""
     name_suffix = ""
+    old_format = False
     if dataset_format > 0:
         file_suffix = str(dataset_format)
         if dataset_format == 1:
@@ -95,8 +419,14 @@ if __name__ == "__main__":
     print("Reading 'dataset{}_patients.pkl'".format(file_suffix))
     with open('dataset{}_patients.pkl'.format(file_suffix), 'rb') as f:
         patients = pickle.load(f)
+    if not old_format:
+        print("Reading 'dataset{}_masks.pkl'".format(file_suffix))
+        with open('dataset{}_masks.pkl'.format(file_suffix), 'rb') as f:
+            masks = pickle.load(f)
     # Make sure x and y are the same length
     assert(len(x) == len(y))
     assert(len(x) == len(patients))
-
-    save_data(x, y, patients, number=1, suffix=name_suffix)
+    if old_format:
+        save_data(x, y, patients, number=1, suffix=name_suffix)
+    else:
+        improved_save_data(x, y, patients, masks, suffix=name_suffix)
