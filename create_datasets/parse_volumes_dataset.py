@@ -304,7 +304,6 @@ def check_contour_location(patient, folder, label):
         return True
     data = patient_dictionary[patient]
     if isinstance(data, tuple):
-        print(label, data[1])
         if folder.endswith(data[0]) and label == data[1]:
             return True
     else:
@@ -314,7 +313,8 @@ def check_contour_location(patient, folder, label):
 
 
 if __name__ == "__main__":
-    with open('volumes.pkl', 'rb') as f:
+    path = ""  # "../data/sources/"
+    with open(path + 'volumes.pkl', 'rb') as f:
         volumes = pickle.load(f)
 
     # 0: original volume is unchanged (just put into smaller box)
@@ -328,9 +328,13 @@ if __name__ == "__main__":
     # find box where we can fit all tumors
     max_box = [0, 0, 0]
     for patient in volumes:
+        if patient == "11101955":  # Skip patients with errors in their images
+            continue
         for mtv_volume in volumes[patient][1:]:
             if mtv_volume != ():
-                box = mtv_volume[2]
+                mask, label, box, folder = mtv_volume
+                if check_contour_location(patient, folder, label) is False:
+                    continue
                 box_size = np.array(box[1]) - np.array(box[0])
                 for i in range(3):
                     max_box[i] = max(max_box[i], box_size[i])
@@ -343,6 +347,7 @@ if __name__ == "__main__":
     # create dataset with 3D cuts of 40x40xN
     box_size = [39, 39, None]
     dataset = {}
+    patient_masks = {}
     plt.ion()
     patients = sorted(volumes.keys())
     for i, patient in enumerate(patients):
@@ -425,6 +430,7 @@ if __name__ == "__main__":
             #                 label="{}, {}, {}".format(patient, folder.split("/")[-1], label))
         # skip all patients that have more or less than one contour
         if number_images == 1:
+            patient_masks[patient] = big_mask
             if dataset_format == 1:
                 dataset[patient] = image2
             elif dataset_format == 2:
@@ -449,6 +455,7 @@ if __name__ == "__main__":
     dataset_patients = []
     dataset_labels = []
     dataset_images = []
+    dataset_masks = []
     patients = sorted(dataset.keys())
     i = 1
     for patient in patients:
@@ -456,6 +463,7 @@ if __name__ == "__main__":
             dataset_images.append(dataset[patient])
             dataset_labels.append(labels[patient])
             dataset_patients.append(patient)
+            dataset_masks.append(patient_masks[patient])
             print("{} Patient {} has label {}".format(i, dataset_patients[-1], dataset_labels[-1]))
             print(dataset[patient].shape)
             i += 1
@@ -489,3 +497,7 @@ if __name__ == "__main__":
     with open('dataset{}_patients.pkl'.format(file_suffix), 'wb') as f:
         pickle.dump(dataset_patients, f)
     print("Data saved in 'dataset{}_patients.pkl'.".format(file_suffix))
+
+    with open('dataset{}_masks.pkl'.format(file_suffix), 'wb') as f:
+        pickle.dump(dataset_masks, f)
+    print("Data saved in 'dataset{}_masks.pkl'.".format(file_suffix))
