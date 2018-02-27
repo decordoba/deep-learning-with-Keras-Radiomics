@@ -212,7 +212,6 @@ def format_dataset(x_train, y_train, x_test=None, y_test=None, data_reduction=No
         X_train /= 255
         X_test /= 255
 
-
     # Reshape input labels
     if to_categorical:
         Y_train = np_utils.to_categorical(y_train, N_LABELS)
@@ -268,6 +267,9 @@ def flexible_neural_net(train_set, test_set, optimizer, loss, *layers, batch_siz
     model = Sequential()
     for layer in layers:
         model.add(layer)
+    if initial_weights is not None:
+        model.set_weights(initial_weights)
+    initial_weights = model.get_weights()
     # Compile model (declare loss function and optimizer)
     model.compile(optimizer=optimizer, loss=loss, metrics=["accuracy"])  # metrics can also be "precision" and "recall"
     t = clock()

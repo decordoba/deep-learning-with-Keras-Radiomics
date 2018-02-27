@@ -223,6 +223,7 @@ def experiments_runner(data_generator, experiment_obj, folder=None, data_reducti
     iterator, num_iterations = experiment.get_experiments()
     avg_time = 0
     num_skips = 0
+    init_weights = None  # This makes sure that the weight for every layer are reset every fold
     for it, params_comb in enumerate(iterator):
         t = clock()
         print("\niteration: {}/{}".format(it + 1, num_iterations))
@@ -240,8 +241,9 @@ def experiments_runner(data_generator, experiment_obj, folder=None, data_reducti
         optimizer, loss, *layers = experiment.run_experiment(input_shape, labels, params_comb)
         parameters = flexible_neural_net(train_set, test_set, optimizer, loss, *layers,
                                          batch_size=batch_size, epochs=epochs,
-                                         early_stopping=early_stopping, verbose=verbose)
-        [lTr, aTr], [lTe, aTe], time, location, n_epochs = parameters
+                                         early_stopping=early_stopping, verbose=verbose,
+                                         initial_weights=init_weights)
+        [lTr, aTr], [lTe, aTe], time, location, n_epochs, init_weights = parameters
 
         # originally run_experiment would call flexible_neural_net, or any other experiment
         # function. It was more flexible, but more complicated for the user. Comment the previous
