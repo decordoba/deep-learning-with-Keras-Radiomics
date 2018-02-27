@@ -35,6 +35,7 @@ def observe_results(data_generator, folder=None, to_categorical=True, data_reduc
     :param mode: plotting mode, 0 shows color in the main diagonal, 1 does not, 2-3 adds the matrix transposed and only shows lower half of result
     :param observe_training: 0, we observe results for training set, 1 for test set, 2 for both
     :param misclassified_wizard: if True, shows the wizard to see mistakes, else skips this
+    :param custom_observation: made specially to look at patients in radiomics dataset, look at full patient instad of only slices
     :return:
     """
     if folder is None:
