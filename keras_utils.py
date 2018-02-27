@@ -235,10 +235,17 @@ def format_dataset(x_train, y_train, x_test=None, y_test=None, data_reduction=No
 
 def flexible_neural_net(train_set, test_set, optimizer, loss, *layers, batch_size=32, epochs=10,
                         callback=cbPlotEpoch, early_stopping=10, location=None, verbose=True,
-                        dry_run=False):
+                        dry_run=False, files_suffix="", initial_weights=None, return_more=False):
     """
     Layer to create a nn model, compile it, fit it, calculate train and test error, and
     save the model to location with only one function
+
+    return_more returns model and history too
+
+    initial_weights: when set to some weights, it will initialize all weights in the model to such
+                     values. This is important because if we use the same layers twice, the old
+                     weights remain and we have to reset the model weights to some default to avoid
+                     two models depending on each other
     """
     # If location is None, create folder with generic name
     if location is None:
@@ -283,38 +290,43 @@ def flexible_neural_net(train_set, test_set, optimizer, loss, *layers, batch_siz
         test_score = (0, 0)
     t = clock() - t
     # Save neural network model as an image, and also data
-    save_model_data(model, train_score, test_score, t, location, save_weights=True, history=history)
-    return train_score, test_score, t, location, len(history.history['acc'])
+    save_model_data(model, train_score, test_score, t, location, save_weights=True,
+                    history=history, files_suffix=files_suffix)
+    if return_more:
+        return (train_score, test_score, t, location, len(history.history['acc']), initial_weights,
+                model, history)
+    return train_score, test_score, t, location, len(history.history['acc']), initial_weights
 
 
-def save_model_data(model, train_score, test_score, time, location, save_yaml=True, save_json=False,
-                    save_image=True, save_weights=True, save_full_model=False, history=None):
+def save_model_data(model, train_score, test_score, time, location, save_yaml=True,
+                    save_json=False, save_image=True, save_weights=True, save_full_model=False,
+                    history=None, files_suffix=""):
     """
     Save in location some information about the model (location needs to exist!)
     """
     if save_image:
         plot_model(model, show_shapes=True, show_layer_names=False, show_params=True,
-                   to_file=location + "/model.png")
+                   to_file=location + "/model{}.png".format(files_suffix))
     if save_yaml:
-        with open(location + "/model.yaml", "w") as f:
+        with open(location + "/model{}.yaml".format(files_suffix), "w") as f:
             f.write(model.to_yaml())  # Load it with model = model_from_yaml(yaml_string)
     if save_json:
-        with open(location + "/model.json", "w") as f:
+        with open(location + "/model{}.json".format(files_suffix), "w") as f:
             f.write(model.to_json())  # Load it with model = model_from_json(json_string)
     if save_weights:
-        model.save_weights(location + '/weights.h5')  # Load it with model.load_weights('w.h5')
+        model.save_weights(location + "/weights{}.h5".format(files_suffix))  # Load it with model.load_weights('w.h5')
     if save_full_model:
-        model.save(location + '/model.h5')  # Load it with model = load_model('my_model.h5')
+        model.save(location + "/model{}.h5".format(files_suffix))  # Load it with model = load_model('my_model.h5')
     result = "train_loss: {}\ntrain_accuracy: {}\n".format(train_score[0], train_score[1])
     result += "test_loss: {}\ntest_accuracy: {}\n".format(test_score[0], test_score[1])
     result += "time_taken: {}\n".format(time)
     if history is not None:
-        plot_history(history, filename=location + "/history.png")
+        plot_history(history, filename=location + "/history{}.png".format(files_suffix))
         result += "train_accuracy_history: {}\n".format(history.history['acc'])
         result += "train_loss_history: {}\n".format(history.history['loss'])
         result += "test_accuracy_history: {}\n".format(history.history['val_acc'])
         result += "test_loss_history: {}\n".format(history.history['val_loss'])
-    with open(location + "/result.yaml", "w") as f:
+    with open(location + "/result{}.yaml".format(files_suffix), "w") as f:
         f.write(result)
 
 
