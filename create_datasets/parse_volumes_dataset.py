@@ -182,7 +182,7 @@ def expand_mask(mask):
                                 try:
                                     new_mask[pos2] = 1
                                     for ooox, oooy, oooz in off:
-                                        pos3 = (pos2[0] + oox, pos2[1] + ooy, pos2[2] + ooz)
+                                        pos3 = (pos2[0] + ooox, pos2[1] + oooy, pos2[2] + oooz)
                                         try:
                                             new_mask[pos3] = 1
                                         except IndexError:
@@ -402,8 +402,8 @@ if __name__ == "__main__":
         # get 3D image of patient (first element in volumes[patient])
         pet_image = volumes[patient][0]
         image_shape = pet_image.shape
-        print(i, "/", len(patients), "Patient {}, dimensions ({}, {}, {})".format(patient,
-                                                                                  *image_shape))
+        print("{}/{} Patient {}, dimensions ({}, {}, {})".format(i + 1, len(patients), patient,
+                                                                 *image_shape))
         number_images = 0
         # go thorough all contours for this patient in volumes
         for mtv_volume in volumes[patient][1:]:
@@ -495,7 +495,6 @@ if __name__ == "__main__":
             patient, label = line.split()
             labels[patient] = int(label)
             line = f.readline()
-    print(labels)
     ignored_patients = []
     dataset_patients = []
     dataset_labels = []
