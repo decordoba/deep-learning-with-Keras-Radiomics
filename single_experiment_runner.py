@@ -14,7 +14,7 @@ import numpy as np
 from keras import losses, optimizers
 from keras.layers import Conv2D, Dense, Dropout, Flatten, MaxPooling2D
 from keras.utils import np_utils
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix, roc_curve, auc
 
 from keras_utils import flexible_neural_net
 
@@ -75,6 +75,42 @@ def plot_multiple_accuracy_curves(accs, val_accs=None, title=None, fig_num=0, fi
         plt.legend()
     if title is None:
         title = "Model Accuracy History"
+    fig.suptitle(title)
+    fig.canvas.set_window_title("Figure {} - {}".format(fig_num, title))
+    if filename is None:
+        if show:
+            plt.show()
+            plt.ioff()
+    else:
+        fig.savefig(filename, bbox_inches="tight")
+        fig.clear()
+
+
+def plot_multiple_roc_curves(rocs, title=None, fig_num=0, filename=None, show=True):
+    """Docstring for plot_multiple_roc_curves."""
+    if filename is None and show:
+        plt.ion()
+    num_curves = len(rocs)
+    if num_curves % 5 == 0:
+        h = int(num_curves / 5)
+        w = 5
+    else:
+        h = int(np.floor(np.sqrt(num_curves)))
+        w = int(np.ceil(np.sqrt(num_curves)))
+    fig = plt.figure(fig_num, figsize=(8 * w, 6 * h))
+    for j, (fpr, tpr, roc_auc) in enumerate(rocs):
+        subfig = fig.add_subplot(h, w, j + 1)
+        for i, color in zip(range(2), ['aqua', 'darkorange']):
+            subfig.plot(fpr[i], tpr[i], color=color, lw=2,
+                        label='ROC curve of class {} (area = {:0.2f})'.format(i, roc_auc[i]))
+        subfig.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        subfig.set_xlabel('False Positive Rate')
+        subfig.set_ylabel('True Positive Rate')
+        plt.legend(loc="lower right")
+    if title is None:
+        title = "ROC Curves"
     fig.suptitle(title)
     fig.canvas.set_window_title("Figure {} - {}".format(fig_num, title))
     if filename is None:
@@ -329,7 +365,7 @@ def get_confusion_matrix(model, x_set, y_set):
     print("    Precision: {}".format(precision))
     print("    Recall: {}".format(recall))
     print("   ", classification_report(true_labels, pred_labels).replace("\n", "\n    "))
-    return accuracy, precision, recall, num_true_labels
+    return accuracy, precision, recall, num_true_labels, y_set, pred_percents
 
 
 def calculate_patients_label(slices_labels, patients):
@@ -422,6 +458,7 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
         size_fold = x_whole.shape[0] / num_folds
     historic_acc = None
     historic_val_acc = None
+    rocs = []
     tr_all_data_log = {"history_acc": [], "history_val_acc": [], "accuracy": [], "recall0": [],
                        "recall1": [], "precision0": [], "precision1": [], "num_label0": [],
                        "num_label1": [], "num_labels": []}
@@ -454,6 +491,8 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
         patients_test_cv = patients_whole[idx0:idx1]
 
         # Train model
+        # callbacks = [cbPlotEpoch, cbROC(training_data=(x_train_cv, y_train_cv),
+        #                                 validation_data=(x_test_cv, y_test_cv))]
         parameters = flexible_neural_net((x_train_cv, y_train_cv), (x_test_cv, y_test_cv),
                                          optimizer, loss, *layers,
                                          batch_size=32, epochs=5, initial_weights=weights,
@@ -471,7 +510,8 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
 
         # Save statistical data for cross val set
         print("Cross Validation Statistics:")
-        accuracy, precision, recall, num_labels = get_confusion_matrix(model, x_test_cv, y_test_cv)
+        params = get_confusion_matrix(model, x_test_cv, y_test_cv)
+        accuracy, precision, recall, num_labels, true_cv, pred_cv = params
         all_data_log["history_acc"].append(history.history['acc'])
         all_data_log["history_val_acc"].append(history.history['val_acc'])
         all_data_log["accuracy"].append(accuracy)
@@ -485,8 +525,8 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
 
         # Save statistical data for training set
         print("Training Statistics:")
-        accuracy, precision, recall, num_labels = get_confusion_matrix(model, x_train_cv,
-                                                                       y_train_cv)
+        params = get_confusion_matrix(model, x_train_cv, y_train_cv)
+        accuracy, precision, recall, num_labels, true_tr, pred_tr = params
         tr_all_data_log["accuracy"].append(accuracy)
         tr_all_data_log["recall0"].append(recall[0])
         tr_all_data_log["precision0"].append(precision[0])
@@ -516,6 +556,19 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
         print("Accuracy Test:     {}".format(aTe))
         print("Time taken:        {0:.3f} seconds".format(time))
         print("Location:          {}".format(location))
+
+        # Compute ROC curve and ROC area for each class
+        fpr = dict()
+        tpr = dict()
+        roc_auc = dict()
+        for i in range(2):  # Only 2 classes
+            fpr[i], tpr[i], _ = roc_curve(true_cv[:, i], pred_cv[:, i])
+            roc_auc[i] = auc(fpr[i], tpr[i])
+        # Compute micro-average ROC curve and ROC area
+        fpr["micro"], tpr["micro"], _ = roc_curve(true_cv.ravel(), pred_cv.ravel())
+        roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
+        rocs.append((fpr, tpr, roc_auc))
+
     # Convert historic_acc into average value
     historic_acc = historic_acc / num_folds
     historic_val_acc = historic_val_acc / num_folds
@@ -619,6 +672,11 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
             split_label = "Cross validation split"
         plot_line([0, 1], [split, split], fig_num=f, label=split_label, color="#00ff00",
                   style="--", linewidth=2, show=show_plots)
+    # Fig 11
+    f = 11
+    plot_multiple_roc_curves(rocs, title="ROC Curve for Cross Validation", fig_num=f,
+                             show=show_plots)
+
     # Save all figures to a PDF called figures.pdf
     save_plt_figures_to_pdf(location + "/figures.pdf")
     if show_plots:
