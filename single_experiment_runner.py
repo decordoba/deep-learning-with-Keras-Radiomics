@@ -432,6 +432,18 @@ def get_confusion_matrix_for_patient(model, x_set, y_set, patient_set):
 def parse_arguments():
     """Parse arguments in code."""
     parser = argparse.ArgumentParser(description="Run single experiment on organized dataset.")
+    parser.add_argument('-e', '--epochs', default=50, type=int,
+                        help="number of epochs when training (default: 50).")
+    parser.add_argument('--filters', default=False, action="store_true", help="test different "
+                        "number of filters for the convolutional layers.")
+    parser.add_argument('--units', default=False, action="store_true", help="test different "
+                        "number of units for the fully connected layer.")
+    parser.add_argument('--num_conv', default=False, action="store_true", help="test different "
+                        "number of the convolutional layers.")
+    parser.add_argument('--dropout1', default=False, action="store_true", help="test different "
+                        "values for dropout after the convolutional layers.")
+    parser.add_argument('--dropout2', default=False, action="store_true", help="test different "
+                        "values for dropout after the fully connected layer.")
     parser.add_argument('-plcv', '--patient_level_cross_validation', default=False,
                         action="store_true", help="split dataset cross validation at the patient "
                         "level.")
@@ -439,7 +451,8 @@ def parse_arguments():
 
 
 def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whole, num_patients,
-                        location="cross_validation_results", patient_level_cv=False):
+                        location="cross_validation_results", patient_level_cv=False,
+                        num_epochs=50, suffix=""):
     """Do cross validation on dataset."""
     # Do 10-fold CV in whole set
     num_folds = 10
@@ -499,7 +512,7 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
         #                                 validation_data=(x_test_cv, y_test_cv))]
         parameters = flexible_neural_net((x_train_cv, y_train_cv), (x_test_cv, y_test_cv),
                                          optimizer, loss, *layers,
-                                         batch_size=32, epochs=5, initial_weights=weights,
+                                         batch_size=32, epochs=num_epochs, initial_weights=weights,
                                          early_stopping=None, verbose=False,
                                          files_suffix=i, location=location, return_more=True)
         [lTr, aTr], [lTe, aTe], time, location, n_epochs, weights, model, history = parameters
@@ -684,11 +697,11 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
                              show=show_plots)
 
     # Save all figures to a PDF called figures.pdf
-    save_plt_figures_to_pdf(location + "/figures.pdf")
+    save_plt_figures_to_pdf(location + "/figures{}.pdf".format(suffix))
     if show_plots:
         input("Press ENTER to close figures")
         plt.close("all")
-    return all_data_log, tr_all_data_log, pat_all_data_log
+    return all_data_log, tr_all_data_log, pat_all_data_log, (historic_acc, historic_val_acc)
 
 
 def create_layers(input_shape, labels, filters=16, units=16, num_convolutions=1, dropout1=0,
@@ -773,11 +786,30 @@ def main():
             break
         n += 1
 
-    filters = [8, 16, 32]
+    # Define parameters we want to try in our experiments
+    s = ""
+    filters = [16]
     units = [16]
     num_convolutions = [1]
     dropout1 = [0]
     dropout2 = [0]
+    if args.filters:
+        filters = [8, 16, 32]
+        s += "-filters"
+    if args.units:
+        units = [8, 16, 32]
+        s += "-units"
+    if args.num_conv:
+        num_convolutions = [1, 2, 3]
+        s += "-num_conv"
+    if args.dropout1:
+        dropout1 = [0, 0.25, 0.5]
+        s += "-dropout1"
+    if args.dropout2:
+        dropout2 = [0, 0.25, 0.5]
+        s += "-dropout2"
+
+    # Try all combinations of the parameters
     all_data = []
     for comb in itertools.product(filters, units, num_convolutions, dropout1, dropout2):
         # Create layers list that will define model
