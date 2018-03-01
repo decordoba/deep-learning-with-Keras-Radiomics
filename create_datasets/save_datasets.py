@@ -99,22 +99,26 @@ def plot_histogram(data, title=None, figure=0):
 
     # this is a fitting indeed
     fit = stats.norm.pdf(sorted_data, np.mean(sorted_data), np.std(sorted_data))
-    plt.figure(figure)
-    plt.plot(sorted_data, fit, '-o')
+    fig = plt.figure(figure)
+    plt.plot(sorted_data, fit, '.-')
     # use this to draw histogram of your data
     plt.hist(sorted_data, normed=True)
     if title is not None:
         plt.title(title)
+        fig.canvas.set_window_title("Figure {} - {}".format(figure, title))
     plt.show()
 
 
-def plot_boxplot(data, title=None, figure=0):
+def plot_boxplot(data, title=None, figure=0, ylim=None):
     """Docstring for plot_boxplot."""
     fig = plt.figure(figure)
     ax = fig.add_subplot(111)
     ax.boxplot(data, showmeans=True)
+    if ylim is not None:
+        plt.ylim(ylim)
     if title is not None:
         plt.title(title)
+        fig.canvas.set_window_title("Figure {} - {}".format(figure, title))
     plt.show()
 
 
@@ -186,12 +190,25 @@ def analyze_data(volumes, labels, patients, masks, plot_data=True):
         plot_histogram(all_sizes[1], "Sizes 1", 1)
         plot_histogram(all_slices[0], "Slices 0", 2)
         plot_histogram(all_slices[1], "Slices 1", 3)
-        plot_boxplot(all_sizes[0], "Sizes 0", 4)
-        plot_boxplot(all_sizes[1], "Sizes 1", 5)
-        plot_boxplot(all_slices[0], "Slices 0", 6)
-        plot_boxplot(all_slices[1], "Slices 1", 7)
-        plot_boxplot(all_sizes_masks[0], "Sizes box 0", 8)
-        plot_boxplot(all_sizes_masks[1], "Sizes box 1", 9)
+        constant_factor = 0.05
+        max_val = max(max(all_sizes[0]), max(all_sizes[1]))
+        min_val = min(min(all_sizes[0]), min(all_sizes[1]))
+        max_val += (max_val - min_val) * constant_factor
+        min_val -= (max_val - min_val) * constant_factor
+        plot_boxplot(all_sizes[0], "Sizes 0", 4, ylim=(min_val, max_val))
+        plot_boxplot(all_sizes[1], "Sizes 1", 5, ylim=(min_val, max_val))
+        max_val = max(max(all_slices[0]), max(all_slices[1]))
+        min_val = min(min(all_slices[0]), min(all_slices[1]))
+        max_val += (max_val - min_val) * constant_factor
+        min_val -= (max_val - min_val) * constant_factor
+        plot_boxplot(all_slices[0], "Slices 0", 6, ylim=(min_val, max_val))
+        plot_boxplot(all_slices[1], "Slices 1", 7, ylim=(min_val, max_val))
+        max_val = max(max(all_sizes_masks[0]), max(all_sizes_masks[1]))
+        min_val = min(min(all_sizes_masks[0]), min(all_sizes_masks[1]))
+        max_val += (max_val - min_val) * constant_factor
+        min_val -= (max_val - min_val) * constant_factor
+        plot_boxplot(all_sizes_masks[0], "Sizes box 0", 8, ylim=(min_val, max_val))
+        plot_boxplot(all_sizes_masks[1], "Sizes box 1", 9, ylim=(min_val, max_val))
         plt.ioff()
         input("Press ENTER to close all figures and continue.")
         plt.close("all")
@@ -356,8 +373,10 @@ def improved_save_data(x_set, y_set, patients, masks, suffix="", plot_data=False
                 test_set_patients.append(patient)
                 test_set_masks.append(mask)
     ratio = abs(len(train_set_x) / (len(train_set_x) + len(test_set_x)) - train_to_total_ratio)
-    ratio0 = abs((len(train_set_x) + 1) / (len(train_set_x) + len(test_set_x)) - train_to_total_ratio)
-    ratio1 = abs((len(train_set_x) - 1) / (len(train_set_x) + len(test_set_x)) - train_to_total_ratio)
+    ratio0 = abs((len(train_set_x) + 1) /
+                 (len(train_set_x) + len(test_set_x)) - train_to_total_ratio)
+    ratio1 = abs((len(train_set_x) - 1) /
+                 (len(train_set_x) + len(test_set_x)) - train_to_total_ratio)
     if ratio0 < ratio:
         train_set_x.append(test_set_x.pop())
         train_set_y.append(test_set_y.pop())
