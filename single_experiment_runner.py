@@ -138,7 +138,7 @@ def plot_image(location, title=None, fig_num=0, show=True):
     img = mpimg.imread(location)
     if show:
         plt.ion()
-    fig = plt.figure(fig_num, figsize=(8 * 8, 6 * 8), dpi=300)
+    fig = plt.figure(fig_num, figsize=(8 * 2, 6 * 2), dpi=300)
     plt.imshow(img)
     plt.axis("off")
     if title is not None:
@@ -233,7 +233,7 @@ def plot_line(y_pts, x_pts=None, y_label=None, x_label=None, title=None, axis=No
         fig.clear()
 
 
-def plot_binary_backgorund(y_pts, first_x=0, y_label=None, x_label=None, title=None, axis=None,
+def plot_binary_background(y_pts, first_x=0, y_label=None, x_label=None, title=None, axis=None,
                            color0="red", color1="blue", fig_num=0, show=True, filename=None,
                            n_ticks=None, labels=("0s", "1s")):
     """Plot binary data as background colors: 0 as color0, and 1 as color1.
@@ -662,7 +662,7 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
               show=show_plots, x_label="Cross Validation Fold Number", n_ticks=[10, None])
     # Fig 9
     f = 9
-    plot_binary_backgorund(pat_all_data_log["true_percentages"], fig_num=f, show=show_plots,
+    plot_binary_background(pat_all_data_log["true_percentages"], fig_num=f, show=show_plots,
                            x_label="Patient Number", title="Label Conviction per Patient")
     plot_line([0.5, 0.5], [0, num_patients], fig_num=f, show=show_plots, color="black")
     plot_line(pat_all_data_log["pred_percentages"],
@@ -682,7 +682,7 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
             prev_patient = patient
             prev_label = abs(prev_label - 1)
         patient_changes.append(prev_label)
-    plot_binary_backgorund(patient_changes, fig_num=f, show=show_plots, x_label="Slice number",
+    plot_binary_background(patient_changes, fig_num=f, show=show_plots, x_label="Slice number",
                            title="Dataset patient distribution vs. cross validation dataset split",
                            labels=("Odd index patients", "Even index patients"))
     for i, split in enumerate(data_splits):
