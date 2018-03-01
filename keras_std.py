@@ -2,7 +2,9 @@
 from keras_plot import AGG  # Get it from github.com/decordoba/deep-learning-with-Keras
 from matplotlib import pyplot as plt
 from keras.callbacks import Callback
+from sklearn.metrics import roc_auc_score
 from time import clock
+import numpy as np
 import math
 
 
@@ -162,7 +164,8 @@ class cbPlotEpochBatch(Callback):
         if SHOW_PLOTS:
             plt.pause(0.001)
         else:
-            self.batch_fig.savefig(self.location + "loss-acc_batch_epoch{}.png".format(self.epoch), bbox_inches="tight")
+            self.batch_fig.savefig(self.location + "loss-acc_batch_epoch{}.png".format(self.epoch),
+                                   bbox_inches="tight")
 
 
 class cbPlotEpoch(cbPlotEpochBatch):
@@ -177,3 +180,50 @@ class cbPlotEpoch(cbPlotEpochBatch):
 
     def on_batch_end(self, batch, logs={}):
         pass
+
+
+class cbROC(Callback):
+    def __init__(self, training_data, validation_data):
+        self.x = training_data[0]
+        self.y = training_data[1]
+        self.x_val = validation_data[0]
+        self.y_val = validation_data[1]
+        self.roc_auc = []
+        self.roc_auc_val = []
+
+    def on_train_begin(self, logs={}):
+        return
+
+    def on_train_end(self, logs={}):
+        print(len(self.roc_auc))
+        print(len(self.roc_auc_val))
+        plt.figure(42)
+        plt.plot(self.roc_auc)
+        plt.title("ROC Areas")
+        plt.plot(self.roc_auc_val)
+        plt.show()
+        return
+
+    def on_epoch_begin(self, epoch, logs={}):
+        return
+
+    def on_epoch_end(self, epoch, logs={}):
+        y_pred = self.model.predict(self.x)
+        try:
+            roc = roc_auc_score(self.y, y_pred)
+            self.roc_auc.append(roc)
+        except ValueError:
+            self.roc_auc.append(np.nan)
+        y_pred_val = self.model.predict(self.x_val)
+        try:
+            roc_val = roc_auc_score(self.y_val, y_pred_val)
+            self.roc_auc_val.append(roc_val)
+        except ValueError:
+            self.roc_auc_val.append(np.nan)
+        return
+
+    def on_batch_begin(self, batch, logs={}):
+        return
+
+    def on_batch_end(self, batch, logs={}):
+        return
