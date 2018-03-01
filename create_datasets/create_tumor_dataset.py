@@ -1,3 +1,4 @@
+import argparse
 import dicom
 import nibabel as nib
 import numpy as np
@@ -167,7 +168,7 @@ def get_pet_location(patient, options):
     return None
 
 
-def get_volumes(patient, pet_folder, struct_folders, number, volumes):
+def get_volumes(patient, pet_folder, struct_folders, number, volumes, plot_data=False):
     """
     volumes is where the function writes the volumes found
     it is a dictionary, where keys are the names of the patients, and each value is a list
@@ -261,17 +262,51 @@ def get_volumes(patient, pet_folder, struct_folders, number, volumes):
         # Add volumes to patient_volumes
         patient_volumes.append((current_mask, mtv_label, mask_range, mtv_folder))
         # Plot volumes
-        # plot_pet_volume(current_volume, pixel_shape, pixel_spacing, mask=current_mask)
+        if plot_data:
+            plot_pet_volume(current_volume, pixel_shape, pixel_spacing, mask=current_mask,
+                            patient=patient, mask_name=mtv_label.split("/")[-1])
     volumes[patient] = patient_volumes
     return mtv_variables, volumes
+
+
+def parse_arguments(root_path):
+    """Parse arguments in code."""
+    parser = argparse.ArgumentParser(description="The goal of this code is to loop through all "
+                                     "the patients in the folder root_path (default: '{}') and "
+                                     "show their PET images and their respective MTV shapes "
+                                     "(if the plot argument is toggled). The code also saves a "
+                                     "file 'volumes.pkl' with the full volumes and MTV shapes. "
+                                     "This .pkl file can then be read by "
+                                     "'parse_volumes_dataset.py' to generate the final numpy "
+                                     "dataset.".format(root_path))
+    parser.add_argument('-p', '--plot', default=False, action="store_true",
+                        help="show figures before saving them")
+    parser.add_argument('-rp', '--root_path', default=None, type=str,
+                        help="root path to search for files (default is '{}')".format(root_path))
+    parser.add_argument('--patients', default=None, type=str,
+                        help="enter the list of patients that you want to see and save, separated"
+                        "with spaces, and surroud them with ' or \" (i.e. 11111874 or "
+                        "'02092013 11110482')")
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
     # path for all patients
     root_path = "/home/dani/Documents/disease-detection/Cervical Radiomic Images"
+    args = parse_arguments(root_path)
+    if args.root_path is not None:
+        root_path = args.root_path
 
     # get all patients in dataset
     patient_folders = sorted(next(os.walk(root_path))[1])
+
+    if args.patients is not None:
+        tmp_patients = []
+        my_patients = args.patients.split()
+        for patient in patient_folders:
+            if patient in my_patients:
+                tmp_patients.append(patient)
+        patient_folders = tmp_patients
 
     # create structure to ignore patients that have an unexpected folder structure
     ignored_patients = {p: False for p in patient_folders}
@@ -331,7 +366,8 @@ if __name__ == "__main__":
         i += 1
         # This function does all the volumes extraction, and also plots the tumors
         mtv_variables, volumes = get_volumes(patient, pet_folders[patient][0],
-                                             struct_folders[patient], i, volumes)
+                                             struct_folders[patient], i, volumes,
+                                             plot_data=args.plot)
         # Track all the names found
         for mtv_idx, mtv_label, mtv_folder in mtv_variables:
             contour_names.add(mtv_label)

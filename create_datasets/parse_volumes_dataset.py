@@ -1,4 +1,5 @@
 #!/usr/bin/env python3.5
+import argparse
 import numpy as np
 import pickle
 from matplotlib import pyplot as plt
@@ -315,15 +316,50 @@ def check_contour_location(patient, folder, label):
     return False
 
 
+def parse_arguments():
+    """Parse arguments in code."""
+    parser = argparse.ArgumentParser(description="This code uses the file 'volumes.pkl' created by"
+                                     " 'create_tumor_dataset.py' to create five files, where the "
+                                     "chosen contour has already been cut: 'dataset.pkl', "
+                                     "'dataset_images.pkl', 'dataset_labels.pkl', "
+                                     "'dataset_patients.pkl' and 'dataset_masks.pkl'. What "
+                                     "the code does it to find the centroid of the contour "
+                                     "and create a box of 40x40xNumSlicesInTheTumor representing "
+                                     "the tumor of the patient. After that it checks the file "
+                                     "'patients.txt' and saves only the patients that have a label"
+                                     " assigned to them in such file. It saves images,"
+                                     "labels, patients and masks separately.")
+    parser.add_argument('-p', '--plot', default=False, action="store_true",
+                        help="show figures before saving them")
+    parser.add_argument('-f', '--format', default=0, type=int, choices=[0, 1, 2],
+                        help="select how to save the volumes: 0=the original volume is unchanged"
+                        " (just put into smaller box), 1=the volume is cut exactly by contour, "
+                        "2=the volume is cut by contour but adding margin of 3 pixels "
+                        "(default: 0)")
+    parser.add_argument('--patients', default=None, type=str,
+                        help="enter the list of patients that you want to see and save, separated"
+                        "with spaces, and surroud them with ' or \" (i.e. 11111874 or "
+                        "'02092013 11110482')")
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
+    args = parse_arguments()
+
     path = ""  # "../data/sources/"
     with open(path + 'volumes.pkl', 'rb') as f:
         volumes = pickle.load(f)
 
+    if args.patients is not None:
+        tmp_volumes = {}
+        for patient in args.patients.split():
+            tmp_volumes[patient] = volumes[patient]
+        volumes = tmp_volumes
+
     # 0: original volume is unchanged (just put into smaller box)
     # 1: volume is cut exactly by contour
     # 2: volume is cut by contour but adding margin of 3 pixels
-    dataset_format = 0
+    dataset_format = args.format
     file_suffix = ""
     if dataset_format > 0:
         file_suffix = str(dataset_format)
@@ -399,38 +435,39 @@ if __name__ == "__main__":
             tumor_box_size = np.array(box[1]) - np.array(box[0])
             for j in range(3):
                 max_box[j] = max(max_box[j], tumor_box_size[j])
-            # new_centroid = np.array(centroid) - new_box[0]  # used only for plotting
-            # plot_pet_slice(box_image, center=new_centroid, box=None,
-            #                mask=mask, mask_offset=np.array(box[0]) - new_box[0],
-            #                label="{}, {}, {}".format(patient, folder.split("/")[-1], label))
-            # print("Radial attenuation")
-            # dist = get_distance_center_corners(centroid, box)
-            # image1 = atenuate_image_radially(box_image, new_centroid, dist)
-            # plot_pet_slice(image1, center=np.array(centroid) - new_box[0], box=None,
-            #                 mask=mask, mask_offset=np.array(box[0]) - new_box[0],
-            #                 label="{}, {}, {}".format(patient, folder.split("/")[-1], label))
-            # print("Clean cut")
             big_mask = get_big_mask(box_image, mask, mask_offset=np.array(box[0]) - new_box[0])
             image2 = atenuate_image_from_mask(box_image, big_mask)
-            # plot_pet_slice(image2, center=np.array(centroid) - new_box[0], box=None,
-            #                mask=mask, mask_offset=np.array(box[0]) - new_box[0],
-            #                label="{}, {}, {}".format(patient, folder.split("/")[-1], label))
-            # print("Clean cut with expanded mask")
             expanded_big_mask = expand_mask(big_mask)
             image5 = atenuate_image_from_mask(box_image, expanded_big_mask)
-            # plot_pet_slice(image5, center=np.array(centroid) - new_box[0], box=None,
-            #                mask=mask, mask_offset=np.array(box[0]) - new_box[0],
-            #                label="{}, {}, {}".format(patient, folder.split("/")[-1], label))
-            # print("1 pixel quadratic mask")
-            # image3 = atenuate_image_from_soft_mask(box_image, big_mask)
-            # plot_pet_slice(image3, center=np.array(centroid) - new_box[0], box=None,
-            #                 mask=mask, mask_offset=np.array(box[0]) - new_box[0],
-            #                 label="{}, {}, {}".format(patient, folder.split("/")[-1], label))
-            # print("Gaussian mask")
-            # image4 = atenuate_image_from_soft_mask2(box_image, big_mask)
-            # plot_pet_slice(image4, center=np.array(centroid) - new_box[0], box=None,
-            #                 mask=mask, mask_offset=np.array(box[0]) - new_box[0],
-            #                 label="{}, {}, {}".format(patient, folder.split("/")[-1], label))
+            if args.plot:
+                new_centroid = np.array(centroid) - new_box[0]  # used only for plotting
+                plot_pet_slice(box_image, center=new_centroid, box=None,
+                               mask=mask, mask_offset=np.array(box[0]) - new_box[0],
+                               label="{}, {}, {}".format(patient, folder.split("/")[-1], label))
+                # print("Radial attenuation")
+                # dist = get_distance_center_corners(centroid, box)
+                # image1 = atenuate_image_radially(box_image, new_centroid, dist)
+                # plot_pet_slice(image1, center=np.array(centroid) - new_box[0], box=None,
+                #                 mask=mask, mask_offset=np.array(box[0]) - new_box[0],
+                #                 label="{}, {}, {}".format(patient, folder.split("/")[-1], label))
+                print("Clean cut")
+                plot_pet_slice(image2, center=np.array(centroid) - new_box[0], box=None,
+                               mask=mask, mask_offset=np.array(box[0]) - new_box[0],
+                               label="{}, {}, {}".format(patient, folder.split("/")[-1], label))
+                print("Clean cut with expanded mask")
+                plot_pet_slice(image5, center=np.array(centroid) - new_box[0], box=None,
+                               mask=mask, mask_offset=np.array(box[0]) - new_box[0],
+                               label="{}, {}, {}".format(patient, folder.split("/")[-1], label))
+                # print("1 pixel quadratic mask")
+                # image3 = atenuate_image_from_soft_mask(box_image, big_mask)
+                # plot_pet_slice(image3, center=np.array(centroid) - new_box[0], box=None,
+                #                 mask=mask, mask_offset=np.array(box[0]) - new_box[0],
+                #                 label="{}, {}, {}".format(patient, folder.split("/")[-1], label))
+                # print("Gaussian mask")
+                # image4 = atenuate_image_from_soft_mask2(box_image, big_mask)
+                # plot_pet_slice(image4, center=np.array(centroid) - new_box[0], box=None,
+                #                 mask=mask, mask_offset=np.array(box[0]) - new_box[0],
+                #                 label="{}, {}, {}".format(patient, folder.split("/")[-1], label))
         # skip all patients that have more or less than one contour
         if number_images == 1:
             patient_masks[patient] = big_mask
