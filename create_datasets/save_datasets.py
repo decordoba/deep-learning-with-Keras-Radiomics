@@ -378,6 +378,10 @@ def improved_save_data(x_set, y_set, patients, masks, suffix=""):
     print("    Label frequency: {}\n".format(dict(Counter(test_set_y))))
 
     # Convert 3D dataset into 2D dataset and save data
+    answer = ""
+    while len(answer) <= 0 or answer[0].strip().lower() != "y":
+        print("Are you sure you want to save? This may overwrite some files.")
+        answer = input("Type 'y' to save data or Ctrl-C to abort.\n>> ")
     train_data = generate_2D_dataset(train_set_x, train_set_y, train_set_patients, train_set_masks)
     x, y, patients_dataset, masks_dataset = train_data
     print(" ")

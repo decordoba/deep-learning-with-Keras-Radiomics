@@ -376,6 +376,13 @@ if __name__ == "__main__":
         i += 1
 
     # Save the volumes
+    print(" ")
+    if os.path.isfile('volumes.pkl'):
+        answer = ""
+        while len(answer) <= 0 or answer[0].strip().lower() != "y":
+            print("Continuing will overwrite the existing 'volumes.pkl' file.")
+            answer = input("Type 'y' to overwrite data or Ctrl-C to abort.\n>> ")
+    print(" ")
     print("Saving data, this may take a few minutes")
     with open('volumes.pkl', 'wb') as f:
         pickle.dump(volumes, f)

@@ -478,6 +478,7 @@ if __name__ == "__main__":
     print(" ")
     answer = ""
     while len(answer) <= 0 or answer[0].strip().lower() != "y":
+        print("Are you sure you want to save? This may overwrite some files.")
         answer = input("Type 'y' to save data or Ctrl-C to abort.\n>> ")
 
     # Save data
