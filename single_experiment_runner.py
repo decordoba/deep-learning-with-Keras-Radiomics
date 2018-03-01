@@ -819,8 +819,59 @@ def main():
         subfolder = "-".join([str(x) for x in comb])
         params = do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whole,
                                      num_patients, location=location + "/" + subfolder,
-                                     patient_level_cv=args.patient_level_cross_validation)
-        all_data.append(params)
+                                     patient_level_cv=args.patient_level_cross_validation,
+                                     num_epochs=args.epochs, suffix="-{}".format(comb))
+        all_data.append((comb, *params))
+
+    # Plot summary of results
+    show_plots = False
+    plt.close("all")
+    for comb, all_cv, all_train, pat_cv, history in all_data:
+        plot_line(all_cv["accuracy"], label=str(comb), fig_num=0, show=show_plots,
+                  title="Cross Validation Accuracy")
+        plot_line(all_cv["recall0"], label=str(comb), fig_num=1, show=show_plots,
+                  title="Cross Validation Recall (0)")
+        plot_line(all_cv["recall1"], label=str(comb), fig_num=2, show=show_plots,
+                  title="Cross Validation Recall (1)")
+        plot_line(all_cv["precision0"], label=str(comb), fig_num=3, show=show_plots,
+                  title="Cross Validation Precision (0)")
+        plot_line(all_cv["precision1"], label=str(comb), fig_num=4, show=show_plots,
+                  title="Cross Validation Precision (1)")
+
+        plot_line(all_train["accuracy"], label=str(comb), fig_num=5, show=show_plots,
+                  title="Training Accuracy")
+        plot_line(all_train["recall0"], label=str(comb), fig_num=6, show=show_plots,
+                  title="Training Recall (0)")
+        plot_line(all_train["recall1"], label=str(comb), fig_num=7, show=show_plots,
+                  title="Training Recall (1)")
+        plot_line(all_train["precision0"], label=str(comb), fig_num=8, show=show_plots,
+                  title="Training Precision (0)")
+        plot_line(all_train["precision1"], label=str(comb), fig_num=9, show=show_plots,
+                  title="Training Precision (1)")
+
+        plot_line(pat_cv["accuracy"], label=str(comb), fig_num=10, show=show_plots,
+                  title="Cross Validation Patient Accuracy")
+        plot_line(pat_cv["recall0"], label=str(comb), fig_num=11, show=show_plots,
+                  title="Cross Validation Patient Recall (0)")
+        plot_line(pat_cv["recall1"], label=str(comb), fig_num=12, show=show_plots,
+                  title="Cross Validation Patient Recall (1)")
+        plot_line(pat_cv["precision0"], label=str(comb), fig_num=13, show=show_plots,
+                  title="Cross Validation Patient Precision (0)")
+        plot_line(pat_cv["precision1"], label=str(comb), fig_num=14, show=show_plots,
+                  title="Cross Validation Patient Precision (1)")
+
+        plot_line(history[0], label=str(comb) + " training", fig_num=15, show=show_plots,
+                  title="Training History")
+        plot_line(history[1], label=str(comb) + " test", fig_num=15, show=show_plots,
+                  title="Training History")
+    if show_plots:
+        plt.ion()
+        plt.show()
+        input("Press ENTER to close all figures.")
+        plt.close("all")
+        plt.ioff()
+    # Save PDF results
+    save_plt_figures_to_pdf(location + "/figures{}.pdf".format(s))
 
 
 if __name__ == "__main__":
