@@ -259,7 +259,10 @@ def flexible_neural_net(train_set, test_set, optimizer, loss, *layers, batch_siz
     except OSError:
         pass  # In case the dir already exists
 
-    callbacks = [callback(location)]
+    if isinstance(callback, list):
+        callbacks = [callback[0](location)] + callback[1:]
+    else:
+        callbacks = [callback(location)]
     if early_stopping is not None and early_stopping > 0:
         callbacks.append(EarlyStopping(monitor="val_loss", patience=early_stopping, verbose=True))
 
