@@ -52,13 +52,17 @@ def plot_pet_volume(pet_image, pixel_shape, pixel_spacing, mask=None, patient="?
                            rasterized=True, linewidth=0)
             title += " - Contour Name: {}".format(mask_name)
             fig.canvas.set_window_title("Figure {} - {}".format(fig_num, title))
-        c = input("ENTER=continue, Q=quit, M=median, R=repeat, N=start over. ")
+        c = input("ENTER=continue, Q=quit, M=median, R=repeat, P=previous, N=start over. ")
         if c.startswith("q"):
             break
         elif c.startswith("m"):
             i = int(pet_image.shape[2] / 2) - 1
         elif c.startswith("r"):
             i -= 1
+        elif c.startswith("p"):
+            i -= 2
+            if i < -1:
+                i = -1
         elif c.startswith("n"):
             i = -1
         i += 1

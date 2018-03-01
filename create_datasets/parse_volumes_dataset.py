@@ -89,9 +89,14 @@ def plot_pet_slice(pet_image, center=None, box=None, mask=None, mask_offset=None
             plt.figure(0)
             plt.pcolormesh(masked_pet_image[:, :, i], vmin=vmin, vmax=vmax, cmap=cmap,
                            rasterized=True, linewidth=0)
-        c = input("ENTER=continue, R=repeat, N=see all, Q=quit. ")
+        c = input("ENTER=continue, R=repeat, N=see all, P=previous, Q=quit. ")
         if c.startswith("r"):
             i -= 1
+        elif c.startswith("p"):
+            i -= 2
+            if i < -1:
+                i = -1
+            center = None
         elif c.startswith("n"):
             i = -1
             center = None
