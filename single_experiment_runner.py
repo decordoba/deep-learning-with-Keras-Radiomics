@@ -235,7 +235,7 @@ def plot_line(y_pts, x_pts=None, y_label=None, x_label=None, title=None, axis=No
 
 def plot_binary_backgorund(y_pts, first_x=0, y_label=None, x_label=None, title=None, axis=None,
                            color0="red", color1="blue", fig_num=0, show=True, filename=None,
-                           n_ticks=None):
+                           n_ticks=None, labels=("0s", "1s")):
     """Plot binary data as background colors: 0 as color0, and 1 as color1.
 
     :param y_pts: y coordinates (only 0s or 1s, please)
@@ -264,9 +264,11 @@ def plot_binary_backgorund(y_pts, first_x=0, y_label=None, x_label=None, title=N
             new_x.append(i + first_x)
         new_y.append(y)
         new_x.append(i + first_x)
+    new_y.append(new_y[-1])
+    new_x.append(new_x[-1] + 1)
     new_y.append(0)
     new_x.append(new_x[-1])
-    plt.fill(new_x, new_y, color=color1, alpha=0.5, label="1s", lw=0)
+    plt.fill(new_x, new_y, color=color1, alpha=0.5, label=labels[1], lw=0)
     new_y = []
     new_x = []
     prev = 1
@@ -277,9 +279,11 @@ def plot_binary_backgorund(y_pts, first_x=0, y_label=None, x_label=None, title=N
             new_x.append(i + first_x)
         new_y.append(y)
         new_x.append(i + first_x)
+    new_y.append(new_y[-1])
+    new_x.append(new_x[-1] + 1)
     new_y.append(1)
     new_x.append(new_x[-1])
-    plt.fill(new_x, new_y, color=color0, alpha=0.5, label="0s", lw=0)
+    plt.fill(new_x, new_y, color=color0, alpha=0.5, label=labels[0], lw=0)
     if y_label is not None:
         plt.ylabel(y_label)
     if x_label is not None:
@@ -647,8 +651,9 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
     f = 9
     plot_binary_backgorund(pat_all_data_log["true_percentages"], fig_num=f, show=show_plots,
                            x_label="Patient Number", title="Label Conviction per Patient")
-    plot_line([0.5, 0.5], [0, num_patients], fig_num=f, show=show_plots)
-    plot_line(pat_all_data_log["pred_percentages"], np.array(range(0, num_patients)) + 0.5,
+    plot_line([0.5, 0.5], [0, num_patients], fig_num=f, show=show_plots, color="black")
+    plot_line(pat_all_data_log["pred_percentages"],
+              np.array(range(len(pat_all_data_log["pred_percentages"]))) + 0.5,
               label="Label conviction", color="#00ff00", fig_num=f, show=show_plots,
               axis=(None, None, -0.005, 1.005))
     # Fig 0
@@ -665,7 +670,8 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
             prev_label = abs(prev_label - 1)
         patient_changes.append(prev_label)
     plot_binary_backgorund(patient_changes, fig_num=f, show=show_plots, x_label="Slice number",
-                           title="Dataset patient distribution vs. cross validation dataset split")
+                           title="Dataset patient distribution vs. cross validation dataset split",
+                           labels=("Odd index patients", "Even index patients"))
     for i, split in enumerate(data_splits):
         split_label = None
         if i == 0:
