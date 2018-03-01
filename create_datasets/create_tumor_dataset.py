@@ -16,7 +16,7 @@ final numpy dataset.
 """
 
 
-def plot_pet_volume(pet_image, pixel_shape, pixel_spacing, mask=None):
+def plot_pet_volume(pet_image, pixel_shape, pixel_spacing, mask=None, patient="?", mask_name="?"):
     """
     The transparent option makes all zeros transparent, and all ones red (expects image with only
     1s and 0s)
@@ -36,16 +36,21 @@ def plot_pet_volume(pet_image, pixel_shape, pixel_spacing, mask=None):
     i = 0
     while i < pet_image.shape[2]:
         # show images
-        plt.figure(0)
+        fig_num = 0
+        fig = plt.figure(fig_num)
         plt.clf()
         plt.pcolormesh(x, y, pet_image[:, :, i], vmin=vmin, vmax=vmax, cmap=cmap)
         plt.xlabel('y')
         plt.ylabel('x')
+        title = "Patient: {} - Slice: {}/{}".format(patient, i + 1, pet_image.shape[2])
+        fig.canvas.set_window_title("Figure {} - {}".format(fig_num, title))
         if mask is not None:
-            input("Press ENTER to see reveal contour. ")
-            plt.figure(0)
+            input("Press ENTER to reveal contour. ")
+            fig = plt.figure(fig_num)
             plt.pcolormesh(x, y, masked_pet_image[:, :, i], vmin=vmin, vmax=vmax, cmap=cmap,
                            rasterized=True, linewidth=0)
+            title += " - Contour Name: {}".format(mask_name)
+            fig.canvas.set_window_title("Figure {} - {}".format(fig_num, title))
         c = input("ENTER=continue, Q=quit, M=median, R=repeat, N=start over. ")
         if c.startswith("q"):
             break

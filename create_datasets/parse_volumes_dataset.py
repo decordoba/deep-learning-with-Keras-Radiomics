@@ -76,7 +76,10 @@ def plot_pet_slice(pet_image, center=None, box=None, mask=None, mask_offset=None
         # show images
         fig = plt.figure(0)
         if label is not None:
-            fig.canvas.set_window_title(label)
+            fig.canvas.set_window_title(label + " - slice: {}/{}".format(i + 1,
+                                                                         boxed_pet_image.shape[2]))
+        else:
+            fig.canvas.set_window_title("slice: {}/{}".format(i + 1, boxed_pet_image.shape[2]))
         plt.clf()
         plt.pcolormesh(boxed_pet_image[:, :, i], vmin=vmin, vmax=vmax, cmap=cmap)
         print("Slice: {}/{}".format(i + 1, boxed_pet_image.shape[2]))
