@@ -4,6 +4,7 @@ import os
 import numpy as np
 import pickle
 from matplotlib import pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 import scipy.stats as stats
 from collections import Counter
 
@@ -21,7 +22,19 @@ or separate the 3D volumes in 3 channels 2D slices.
 np.random.seed(123)  # for reproducibility
 
 
+def save_plt_figures_to_pdf(filename, figs=None, dpi=200):
+    """Save all matplotlib figures in a single PDF file."""
+    pp = PdfPages(filename)
+    if figs is None:
+        figs = [plt.figure(n) for n in plt.get_fignums()]
+    for fig in figs:
+        fig.savefig(pp, format='pdf')
+    pp.close()
+    print("PDF file saved in '{}'.".format(filename))
+
+
 def save_data(x_set, y_set, patients, number, suffix=""):
+    """Save information from x_set and y_set. Old method (naive one)."""
     if number == 1 or number == 2:
         # Split volumes in slices_per_sample (3) layers images
         counter = 0
@@ -93,7 +106,7 @@ def get_size_mask(mask):
     return box_size, volume
 
 
-def plot_histogram(data, title=None, figure=0):
+def plot_histogram(data, title=None, figure=0, bins=10, percentages=(0.1, 0.25, 0.75, 0.9)):
     """Docstring for plot_histogram."""
     sorted_data = sorted(data)
 
@@ -102,10 +115,28 @@ def plot_histogram(data, title=None, figure=0):
     fig = plt.figure(figure)
     plt.plot(sorted_data, fit, '.-')
     # use this to draw histogram of your data
-    plt.hist(sorted_data, normed=True)
+    plt.hist(sorted_data, normed=True, bins=bins)
     if title is not None:
         plt.title(title)
         fig.canvas.set_window_title("Figure {} - {}".format(figure, title))
+    # Add vertical lines in percentages
+    if percentages is not None:
+        for i, p in enumerate(percentages):
+            pos = int(np.round(len(sorted_data) * p))
+            if p == 0.1 or p == 0.9:
+                linestyle = "-."
+                linecolor = "#904040"
+            else:
+                linestyle = "--"
+                linecolor = "#409040"
+            label = None
+            if p == 0.1:
+                label = "10 % - 90 %"
+            elif p == 0.25:
+                label = "25 % - 75 %"
+            plt.axvline(x=sorted_data[pos], linestyle=linestyle, color=linecolor, lw=1,
+                        label=label)
+        plt.legend()
     plt.show()
 
 
@@ -186,32 +217,58 @@ def analyze_data(volumes, labels, patients, masks, plot_data=True):
     print("    Max:      {}".format(np.max(all_sizes[0])))
     if plot_data:
         plt.ion()
-        plot_histogram(all_sizes[0], "Sizes 0", 0)
-        plot_histogram(all_sizes[1], "Sizes 1", 1)
-        plot_histogram(all_slices[0], "Slices 0", 2)
-        plot_histogram(all_slices[1], "Slices 1", 3)
+        num_bins = 20
+        # plot_histogram(range(1, 101), "Test", 69, num_bins)
+        # input("...")
+        f = 0
+        plot_histogram(all_sizes[0], "Sizes 0", f, num_bins)
+        f += 1
+        plot_histogram(all_sizes[1], "Sizes 1", f, num_bins)
+        f += 1
+        plot_histogram(all_sizes[0] + all_sizes[1], "Sizes Total", f, num_bins)
+        f += 1
+        plot_histogram(all_sizes_masks[0], "Sizes Box 0", f, num_bins)
+        f += 1
+        plot_histogram(all_sizes_masks[1], "Sizes Box 1", f, num_bins)
+        f += 1
+        plot_histogram(all_sizes_masks[0] + all_sizes_masks[1], "Sizes Box Total", f, num_bins)
+        f += 1
+        plot_histogram(all_slices[0], "Slices 0", f, num_bins)
+        f += 1
+        plot_histogram(all_slices[1], "Slices 1", f, num_bins)
+        f += 1
+        plot_histogram(all_slices[0] + all_slices[1], "Slices Total", f, num_bins)
         constant_factor = 0.05
         max_val = max(max(all_sizes[0]), max(all_sizes[1]))
         min_val = min(min(all_sizes[0]), min(all_sizes[1]))
         max_val += (max_val - min_val) * constant_factor
         min_val -= (max_val - min_val) * constant_factor
-        plot_boxplot(all_sizes[0], "Sizes 0", 4, ylim=(min_val, max_val))
-        plot_boxplot(all_sizes[1], "Sizes 1", 5, ylim=(min_val, max_val))
+        f += 1
+        plot_boxplot(all_sizes[0], "Sizes 0", f, ylim=(min_val, max_val))
+        f += 1
+        plot_boxplot(all_sizes[1], "Sizes 1", f, ylim=(min_val, max_val))
         max_val = max(max(all_slices[0]), max(all_slices[1]))
         min_val = min(min(all_slices[0]), min(all_slices[1]))
         max_val += (max_val - min_val) * constant_factor
         min_val -= (max_val - min_val) * constant_factor
-        plot_boxplot(all_slices[0], "Slices 0", 6, ylim=(min_val, max_val))
-        plot_boxplot(all_slices[1], "Slices 1", 7, ylim=(min_val, max_val))
+        f += 1
+        plot_boxplot(all_slices[0], "Slices 0", f, ylim=(min_val, max_val))
+        f += 1
+        plot_boxplot(all_slices[1], "Slices 1", f, ylim=(min_val, max_val))
         max_val = max(max(all_sizes_masks[0]), max(all_sizes_masks[1]))
         min_val = min(min(all_sizes_masks[0]), min(all_sizes_masks[1]))
         max_val += (max_val - min_val) * constant_factor
         min_val -= (max_val - min_val) * constant_factor
-        plot_boxplot(all_sizes_masks[0], "Sizes box 0", 8, ylim=(min_val, max_val))
-        plot_boxplot(all_sizes_masks[1], "Sizes box 1", 9, ylim=(min_val, max_val))
-        plt.ioff()
+        f += 1
+        plot_boxplot(all_sizes_masks[0], "Sizes box 0", f, ylim=(min_val, max_val))
+        f += 1
+        plot_boxplot(all_sizes_masks[1], "Sizes box 1", f, ylim=(min_val, max_val))
+        # Save PDF results
+        save_plt_figures_to_pdf("data/organized/results.pdf")
+        print("PDF file saved in 'data/organized/results.pdf'")
         input("Press ENTER to close all figures and continue.")
         plt.close("all")
+        plt.ioff()
     return (num_labels[0], num_labels[1]), (np.median(all_slices[0]), np.median(all_slices[1]))
 
 
@@ -265,7 +322,7 @@ def generate_2D_dataset(samples, labels, patients, masks, slices_per_sample=3, r
 
 def save_dataset_correctly(x, y, patients, masks, parent_folder="data", dataset_name="organized",
                            dataset_subname="training_set"):
-    """Docstring for save_dataset_correctly."""
+    """Save data in a not naive way, balancing labels and medians in the training and test set."""
     # Create folder data if it does not exist
     full_path = parent_folder + "/"
     try:
