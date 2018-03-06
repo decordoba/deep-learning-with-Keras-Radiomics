@@ -87,7 +87,7 @@ def save_data(x_set, y_set, patients, number, suffix=""):
 
 
 def get_size_mask(mask):
-    """Get size box of mask where we can fit all 1s."""
+    """Get size box and volume of mask where we can fit all 1s in contour."""
     pixel_shape = mask.shape
     mask_range = [[pixel_shape[0], pixel_shape[1], pixel_shape[2]], [-1, -1, -1]]
     volume = 0
@@ -106,19 +106,26 @@ def get_size_mask(mask):
     return box_size, volume
 
 
-def plot_histogram(data, title=None, figure=0, bins=10, percentages=(0.1, 0.25, 0.75, 0.9)):
+def plot_histogram(data, title=None, figure=0, subfigure=None, bins=10, xlim=None,
+                   percentages=(0.1, 0.25, 0.75, 0.9), figsize=(8 * 2, 6 * 2), window_title=None):
     """Docstring for plot_histogram."""
     sorted_data = sorted(data)
 
     # this is a fitting indeed
     fit = stats.norm.pdf(sorted_data, np.mean(sorted_data), np.std(sorted_data))
-    fig = plt.figure(figure)
+    fig = plt.figure(figure, figsize=figsize)
+    if subfigure is not None:
+        fig.add_subplot(subfigure)
     plt.plot(sorted_data, fit, '.-')
     # use this to draw histogram of your data
     plt.hist(sorted_data, normed=True, bins=bins)
+    if xlim is not None:
+        plt.xlim(xlim)
     if title is not None:
         plt.title(title)
         fig.canvas.set_window_title("Figure {} - {}".format(figure, title))
+    if window_title is not None:
+        fig.canvas.set_window_title("Figure {} - {}".format(figure, window_title))
     # Add vertical lines in percentages
     if percentages is not None:
         for i, p in enumerate(percentages):
@@ -126,9 +133,12 @@ def plot_histogram(data, title=None, figure=0, bins=10, percentages=(0.1, 0.25, 
             if p == 0.1 or p == 0.9:
                 linestyle = "-."
                 linecolor = "#904040"
-            else:
+            elif p == 0.25 or p == 0.75:
                 linestyle = "--"
                 linecolor = "#409040"
+            else:
+                linestyle = ":"
+                linecolor = "#404090"
             label = None
             if p == 0.1:
                 label = "10 % - 90 %"
@@ -137,24 +147,94 @@ def plot_histogram(data, title=None, figure=0, bins=10, percentages=(0.1, 0.25, 
             plt.axvline(x=sorted_data[pos], linestyle=linestyle, color=linecolor, lw=1,
                         label=label)
         plt.legend()
+        # plt.tight_layout()  # Avoids overlap text and figures
     plt.show()
 
 
-def plot_boxplot(data, title=None, figure=0, ylim=None):
+def plot_boxplot(data, title=None, figure=0, subfigure=None, ylim=None, hide_axis_labels=False,
+                 window_title=None):
     """Docstring for plot_boxplot."""
     fig = plt.figure(figure)
-    ax = fig.add_subplot(111)
+    if subfigure is None:
+        subfigure = 111
+    ax = fig.add_subplot(subfigure)
     ax.boxplot(data, showmeans=True)
     if ylim is not None:
         plt.ylim(ylim)
     if title is not None:
         plt.title(title)
         fig.canvas.set_window_title("Figure {} - {}".format(figure, title))
+    if window_title is not None:
+        fig.canvas.set_window_title("Figure {} - {}".format(figure, window_title))
+    if hide_axis_labels:
+        ax.tick_params(labelleft='off')
+    ax.tick_params(labelbottom='off')
     plt.show()
 
 
-def analyze_data(volumes, labels, patients, masks, plot_data=True):
-    """Docstring for analyze_data."""
+def trim_edges(array_sort, sort_method, x_set, y_set, patients, masks, trim_pos=(0.1, 0.9)):
+    """Remove top and bottom data (data further from average).
+
+    array_sort: array that determines how data is sorted, which determines what stays or is trimmed
+    sort_method: 3 possible values: "slices", "sizes" and "sizes_masks"
+    """
+    arr = np.array(array_sort)
+    num_left = int(np.round(len(array_sort) * trim_pos[0]))
+    num_right = int(np.round(len(array_sort) * (1 - trim_pos[1] + trim_pos[0])) - num_left)
+    val_left = array_sort[arr.argsort()[num_left - 1]]
+    val_right = array_sort[arr.argsort()[-num_right]]
+    new_x_set = []
+    new_y_set = []
+    new_patients = []
+    new_masks = []
+    n_trimmed_pts = 0
+    print("\nDISCARDED DATA POINTS BASED ON '{}':".format(sort_method))
+    for i, (x, y, p, m) in enumerate(zip(x_set, y_set, patients, masks)):
+        slices = len(x[0][0])
+        dimensions_mask, size = get_size_mask(m)
+        size_box = np.prod(dimensions_mask)
+        trim_it = True
+        if sort_method == "slices":
+            if slices > val_left and slices < val_right:
+                trim_it = False
+        elif sort_method == "sizes":
+            if size > val_left and size < val_right:
+                trim_it = False
+        elif sort_method == "sizes_masks":
+            if size_box > val_left and size_box < val_right:
+                trim_it = False
+        else:
+            print("Error, only parameters accepted: {}".format(["slices", "sizes", "sizes_masks"]))
+            return None
+        if not trim_it:
+            new_x_set.append(x)
+            new_y_set.append(y)
+            new_patients.append(p)
+            new_masks.append(m)
+        else:
+            n_trimmed_pts += 1
+            print("  {}: Index: {}, Slices: {}, Size: {}, Box Size: {}".format(n_trimmed_pts, i,
+                                                                               slices, size,
+                                                                               size_box))
+    print("\nREMAINING DATA DIMENSIONS:")
+    print("  Removed data with '{0}' <= {1}, or '{0}' >= {2}".format(sort_method, val_left,
+                                                                     val_right))
+    print("  Size new dataset: {}".format(len(new_y_set)))
+    return new_x_set, new_y_set, new_patients, new_masks
+
+
+def calculate_shared_axis(data1, data2, constant_factor=0.05):
+    """Get shared axis of data1 and data2: [min(data1, data2), max(data1, data2]]."""
+    max_val = max(max(data1), max(data2))
+    min_val = min(min(data1), min(data2))
+    max_val += (max_val - min_val) * constant_factor
+    min_val -= (max_val - min_val) * constant_factor
+    return (min_val, max_val)
+
+
+def analyze_data(volumes, labels, patients, masks, plot_data=True, initial_figure=0, suffix="",
+                 title_suffix=""):
+    """Print statistics of data and maybe plot them if plot_data is True."""
     num_labels = [0, 0]
     sizes_masks = [np.zeros(3), np.zeros(3)]
     all_sizes_masks = [[], []]
@@ -170,7 +250,7 @@ def analyze_data(volumes, labels, patients, masks, plot_data=True):
         all_slices[label].append(volume.shape[2])
         num_labels[label] += 1
     sizes_masks_mean = [s/n for s, n in zip(sizes_masks, num_labels)]
-    print("Number patients:", num_labels[0] + num_labels[1])
+    print("\nNumber patients:", num_labels[0] + num_labels[1])
     print(" ")
     print("LABEL 1")
     print("  NUMBER SAMPLES: {}".format(num_labels[1]))
@@ -218,58 +298,47 @@ def analyze_data(volumes, labels, patients, masks, plot_data=True):
     if plot_data:
         plt.ion()
         num_bins = 20
-        # plot_histogram(range(1, 101), "Test", 69, num_bins)
-        # input("...")
-        f = 0
-        plot_histogram(all_sizes[0], "Sizes 0", f, num_bins)
+        f = initial_figure
+        xlim = calculate_shared_axis(all_slices[0], all_slices[1])
+        plot_histogram(all_slices[0], "Slices 0", f, 311, num_bins, xlim)
+        plot_histogram(all_slices[1], "Slices 1", f, 312, num_bins, xlim)
+        plot_histogram(all_slices[0] + all_slices[1], "Slices Total", f, 313, num_bins, xlim,
+                       window_title="Slices " + title_suffix)
         f += 1
-        plot_histogram(all_sizes[1], "Sizes 1", f, num_bins)
+        xlim = calculate_shared_axis(all_sizes[0], all_sizes[1])
+        plot_histogram(all_sizes[0], "Sizes 0", f, 311, num_bins, xlim)
+        plot_histogram(all_sizes[1], "Sizes 1", f, 312, num_bins, xlim)
+        plot_histogram(all_sizes[0] + all_sizes[1], "Sizes Total", f, 313, num_bins, xlim,
+                       window_title="Sizes " + title_suffix)
         f += 1
-        plot_histogram(all_sizes[0] + all_sizes[1], "Sizes Total", f, num_bins)
+        xlim = calculate_shared_axis(all_sizes_masks[0], all_sizes_masks[1])
+        plot_histogram(all_sizes_masks[0], "Sizes Box 0", f, 311, num_bins, xlim)
+        plot_histogram(all_sizes_masks[1], "Sizes Box 1", f, 312, num_bins, xlim)
+        plot_histogram(all_sizes_masks[0] + all_sizes_masks[1], "Sizes Box Total", f, 313,
+                       num_bins, xlim, window_title="Sizes Box " + title_suffix)
         f += 1
-        plot_histogram(all_sizes_masks[0], "Sizes Box 0", f, num_bins)
+        ylim = calculate_shared_axis(all_slices[0], all_slices[1])
+        plot_boxplot(all_slices[0], "Slices 0", f, 121, ylim)
+        plot_boxplot(all_slices[1], "Slices 1", f, 122, ylim, True,
+                     window_title="Slices " + title_suffix)
         f += 1
-        plot_histogram(all_sizes_masks[1], "Sizes Box 1", f, num_bins)
+        ylim = calculate_shared_axis(all_sizes[0], all_sizes[1])
+        plot_boxplot(all_sizes[0], "Sizes 0", f, 121, ylim)
+        plot_boxplot(all_sizes[1], "Sizes 1", f, 122, ylim, True,
+                     window_title="Sizes " + title_suffix)
         f += 1
-        plot_histogram(all_sizes_masks[0] + all_sizes_masks[1], "Sizes Box Total", f, num_bins)
-        f += 1
-        plot_histogram(all_slices[0], "Slices 0", f, num_bins)
-        f += 1
-        plot_histogram(all_slices[1], "Slices 1", f, num_bins)
-        f += 1
-        plot_histogram(all_slices[0] + all_slices[1], "Slices Total", f, num_bins)
-        constant_factor = 0.05
-        max_val = max(max(all_sizes[0]), max(all_sizes[1]))
-        min_val = min(min(all_sizes[0]), min(all_sizes[1]))
-        max_val += (max_val - min_val) * constant_factor
-        min_val -= (max_val - min_val) * constant_factor
-        f += 1
-        plot_boxplot(all_sizes[0], "Sizes 0", f, ylim=(min_val, max_val))
-        f += 1
-        plot_boxplot(all_sizes[1], "Sizes 1", f, ylim=(min_val, max_val))
-        max_val = max(max(all_slices[0]), max(all_slices[1]))
-        min_val = min(min(all_slices[0]), min(all_slices[1]))
-        max_val += (max_val - min_val) * constant_factor
-        min_val -= (max_val - min_val) * constant_factor
-        f += 1
-        plot_boxplot(all_slices[0], "Slices 0", f, ylim=(min_val, max_val))
-        f += 1
-        plot_boxplot(all_slices[1], "Slices 1", f, ylim=(min_val, max_val))
-        max_val = max(max(all_sizes_masks[0]), max(all_sizes_masks[1]))
-        min_val = min(min(all_sizes_masks[0]), min(all_sizes_masks[1]))
-        max_val += (max_val - min_val) * constant_factor
-        min_val -= (max_val - min_val) * constant_factor
-        f += 1
-        plot_boxplot(all_sizes_masks[0], "Sizes box 0", f, ylim=(min_val, max_val))
-        f += 1
-        plot_boxplot(all_sizes_masks[1], "Sizes box 1", f, ylim=(min_val, max_val))
+        ylim = calculate_shared_axis(all_sizes_masks[0], all_sizes_masks[1])
+        plot_boxplot(all_sizes_masks[0], "Sizes box 0", f, 121, ylim)
+        plot_boxplot(all_sizes_masks[1], "Sizes box 1", f, 122, ylim, True,
+                     window_title="Sizes Box " + title_suffix)
         # Save PDF results
-        save_plt_figures_to_pdf("data/organized/results.pdf")
-        print("PDF file saved in 'data/organized/results.pdf'")
+        save_plt_figures_to_pdf("data/organized/results{}.pdf".format(suffix))
+        print("PDF file saved in 'data/organized/results{}.pdf'".format(suffix))
         input("Press ENTER to close all figures and continue.")
         plt.close("all")
         plt.ioff()
-    return (num_labels[0], num_labels[1]), (np.median(all_slices[0]), np.median(all_slices[1]))
+    return ((num_labels[0], num_labels[1]), (np.median(all_slices[0]), np.median(all_slices[1])),
+            (all_slices, all_sizes, all_sizes_masks))
 
 
 def get_bucket(bucket0, bucket1, ratio=0.5):
@@ -345,11 +414,39 @@ def save_dataset_correctly(x, y, patients, masks, parent_folder="data", dataset_
     print("Masks saved in '{}_masks.pkl'.".format(file_path))
 
 
-def improved_save_data(x_set, y_set, patients, masks, suffix="", plot_data=False):
+def improved_save_data(x_set, y_set, patients, masks, suffix="", plot_data=False, trim_data=True):
     """Save dataset so labels & slices medians are equally distributed in training and test set."""
     # Analyze data and plot some statistics
-    num_patients_by_label, medians_by_label = analyze_data(x_set, y_set, patients, masks,
-                                                           plot_data=plot_data)
+    num_patients_by_label, medians_by_label, results = analyze_data(x_set, y_set, patients, masks,
+                                                                    plot_data=plot_data)
+    if trim_data:
+        slices, sizes, box_sizes = results
+        slices = slices[0] + slices[1]
+        sizes = sizes[0] + sizes[1]
+        box_sizes = box_sizes[0] + box_sizes[1]
+        x_set1, y_set1, patients1, masks1 = trim_edges(slices, "slices", x_set, y_set, patients,
+                                                       masks, trim_pos=(0.1, 0.9))
+        _, medians_by_label1, results1 = analyze_data(x_set1, y_set1, patients1, masks1,
+                                                      plot_data=plot_data, initial_figure=6,
+                                                      suffix="_trimmed_slices",
+                                                      title_suffix="(Trimmed Slices)")
+
+        x_set2, y_set2, patients2, masks2 = trim_edges(sizes, "sizes", x_set, y_set, patients,
+                                                       masks, trim_pos=(0.11, 0.89))
+        _, medians_by_label2, results2 = analyze_data(x_set2, y_set2, patients2, masks2,
+                                                      plot_data=plot_data, initial_figure=12,
+                                                      suffix="_trimmed_sizes",
+                                                      title_suffix="(Trimmed Sizes)")
+
+        x_set3, y_set3, patients3, masks3 = trim_edges(box_sizes, "sizes_masks", x_set, y_set,
+                                                       patients, masks, trim_pos=(0.11, 0.89))
+        _, medians_by_label3, results3 = analyze_data(x_set3, y_set3, patients3, masks3,
+                                                      plot_data=plot_data, initial_figure=18,
+                                                      suffix="_trimmed_box_sizes",
+                                                      title_suffix="(Trimmed Box Sizes)")
+
+        x_set, y_set, patients, masks = x_set1, y_set1, patients1, masks1
+        medians_by_label = medians_by_label1
 
     # After analyze_data, we see that we have 77 patients
     # Label 1: NUMBER SAMPLES: 20
@@ -364,7 +461,10 @@ def improved_save_data(x_set, y_set, patients, masks, suffix="", plot_data=False
     # represented in the train and test set. We split data in in 4 groups: label 0 / label 1, and
     # above / below median, and put an equal percentage of everything in train and test set
 
-    train_to_total_ratio = 63 / 77  # 77 patients, let's do training+validation = 63, test = 14
+    if not trim_data:
+        train_to_total_ratio = 63 / 77  # 77 patients, let's do training+validation = 63, test = 14
+    else:
+        train_to_total_ratio = 0.1
     train_nums = [[0, 0], [0, 0]]
     test_nums = [[0, 0], [0, 0]]
 
