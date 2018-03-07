@@ -403,7 +403,7 @@ def generate_2D_dataset(samples, labels, patients, masks, slices_per_sample=3, r
                     patients_dataset = [patient + (str(r * 90) if r != 0 else "")]
         counter += 1
         print("{} / {} patients processed".format(counter, len(patients)))
-    return x_dataset, y_dataset, patients_dataset, patients_dataset
+    return x_dataset, y_dataset, patients_dataset, masks_dataset
 
 
 def save_dataset_correctly(x, y, patients, masks, parent_folder="data", dataset_name="organized",
