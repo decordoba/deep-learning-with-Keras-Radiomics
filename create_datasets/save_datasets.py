@@ -24,6 +24,11 @@ np.random.seed(123)  # for reproducibility
 
 def save_plt_figures_to_pdf(filename, figs=None, dpi=200):
     """Save all matplotlib figures in a single PDF file."""
+    dirname = os.path.dirname(filename)
+    try:
+        os.mkdir(dirname)
+    except OSError:
+        pass
     pp = PdfPages(filename)
     if figs is None:
         figs = [plt.figure(n) for n in plt.get_fignums()]
@@ -106,18 +111,21 @@ def get_size_mask(mask):
     return box_size, volume
 
 
-def plot_histogram(data, title=None, figure=0, subfigure=None, bins=10, xlim=None,
-                   percentages=(0.1, 0.25, 0.75, 0.9), figsize=(8 * 2, 6 * 2), window_title=None):
-    """Docstring for plot_histogram."""
+def plot_histogram(data, title=None, figure=0, subfigure=None, bins=10, xlim=None, show=True,
+                   percentages=(0.1, 0.25, 0.75, 0.9), figsize=(8 * 2, 6 * 2), window_title=None,
+                   close_all=False):
+    """Plot histogram of data."""
     sorted_data = sorted(data)
-
-    # this is a fitting indeed
+    # Close and erase all old figures
+    if close_all:
+        plt.close("all")
+    # This is a fitting indeed (draws normal distribution centered at mean)
     fit = stats.norm.pdf(sorted_data, np.mean(sorted_data), np.std(sorted_data))
     fig = plt.figure(figure, figsize=figsize)
     if subfigure is not None:
         fig.add_subplot(subfigure)
     plt.plot(sorted_data, fit, '.-')
-    # use this to draw histogram of your data
+    # Use this to draw histogram of the data
     plt.hist(sorted_data, normed=True, bins=bins)
     if xlim is not None:
         plt.xlim(xlim)
@@ -148,12 +156,17 @@ def plot_histogram(data, title=None, figure=0, subfigure=None, bins=10, xlim=Non
                         label=label)
         plt.legend()
         # plt.tight_layout()  # Avoids overlap text and figures
-    plt.show()
+    if show:
+        plt.show()
 
 
 def plot_boxplot(data, title=None, figure=0, subfigure=None, ylim=None, hide_axis_labels=False,
-                 window_title=None):
-    """Docstring for plot_boxplot."""
+                 window_title=None, show=True, close_all=False):
+    """Plot a boxplot (figure where we can easily see median, var and mean) of data."""
+    # Close and erase all old figures
+    if close_all:
+        plt.close("all")
+    # Draw boxplot
     fig = plt.figure(figure)
     if subfigure is None:
         subfigure = 111
@@ -169,7 +182,8 @@ def plot_boxplot(data, title=None, figure=0, subfigure=None, ylim=None, hide_axi
     if hide_axis_labels:
         ax.tick_params(labelleft='off')
     ax.tick_params(labelbottom='off')
-    plt.show()
+    if show:
+        plt.show()
 
 
 def trim_edges(array_sort, sort_method, x_set, y_set, patients, masks, trim_pos=(0.1, 0.9)):
@@ -233,7 +247,7 @@ def calculate_shared_axis(data1, data2, constant_factor=0.05):
 
 
 def analyze_data(volumes, labels, patients, masks, plot_data=True, initial_figure=0, suffix="",
-                 title_suffix=""):
+                 title_suffix="", dataset_name="organized"):
     """Print statistics of data and maybe plot them if plot_data is True."""
     num_labels = [0, 0]
     sizes_masks = [np.zeros(3), np.zeros(3)]
@@ -295,45 +309,47 @@ def analyze_data(volumes, labels, patients, masks, plot_data=True, initial_figur
     print("    Variance: {}".format(np.var(all_sizes[0])))
     print("    Min:      {}".format(np.min(all_sizes[0])))
     print("    Max:      {}".format(np.max(all_sizes[0])))
+    print(" ")
     if plot_data:
         plt.ion()
-        num_bins = 20
-        f = initial_figure
-        xlim = calculate_shared_axis(all_slices[0], all_slices[1])
-        plot_histogram(all_slices[0], "Slices 0", f, 311, num_bins, xlim)
-        plot_histogram(all_slices[1], "Slices 1", f, 312, num_bins, xlim)
-        plot_histogram(all_slices[0] + all_slices[1], "Slices Total", f, 313, num_bins, xlim,
-                       window_title="Slices " + title_suffix)
-        f += 1
-        xlim = calculate_shared_axis(all_sizes[0], all_sizes[1])
-        plot_histogram(all_sizes[0], "Sizes 0", f, 311, num_bins, xlim)
-        plot_histogram(all_sizes[1], "Sizes 1", f, 312, num_bins, xlim)
-        plot_histogram(all_sizes[0] + all_sizes[1], "Sizes Total", f, 313, num_bins, xlim,
-                       window_title="Sizes " + title_suffix)
-        f += 1
-        xlim = calculate_shared_axis(all_sizes_masks[0], all_sizes_masks[1])
-        plot_histogram(all_sizes_masks[0], "Sizes Box 0", f, 311, num_bins, xlim)
-        plot_histogram(all_sizes_masks[1], "Sizes Box 1", f, 312, num_bins, xlim)
-        plot_histogram(all_sizes_masks[0] + all_sizes_masks[1], "Sizes Box Total", f, 313,
-                       num_bins, xlim, window_title="Sizes Box " + title_suffix)
-        f += 1
-        ylim = calculate_shared_axis(all_slices[0], all_slices[1])
-        plot_boxplot(all_slices[0], "Slices 0", f, 121, ylim)
-        plot_boxplot(all_slices[1], "Slices 1", f, 122, ylim, True,
-                     window_title="Slices " + title_suffix)
-        f += 1
-        ylim = calculate_shared_axis(all_sizes[0], all_sizes[1])
-        plot_boxplot(all_sizes[0], "Sizes 0", f, 121, ylim)
-        plot_boxplot(all_sizes[1], "Sizes 1", f, 122, ylim, True,
-                     window_title="Sizes " + title_suffix)
-        f += 1
-        ylim = calculate_shared_axis(all_sizes_masks[0], all_sizes_masks[1])
-        plot_boxplot(all_sizes_masks[0], "Sizes box 0", f, 121, ylim)
-        plot_boxplot(all_sizes_masks[1], "Sizes box 1", f, 122, ylim, True,
-                     window_title="Sizes Box " + title_suffix)
-        # Save PDF results
-        save_plt_figures_to_pdf("data/organized/results{}.pdf".format(suffix))
-        print("PDF file saved in 'data/organized/results{}.pdf'".format(suffix))
+    num_bins = 20
+    f = initial_figure
+    xlim = calculate_shared_axis(all_slices[0], all_slices[1])
+    plot_histogram(all_slices[0], "Slices 0", f, 311, num_bins, xlim, show=plot_data,
+                   close_all=True)
+    plot_histogram(all_slices[1], "Slices 1", f, 312, num_bins, xlim, show=plot_data)
+    plot_histogram(all_slices[0] + all_slices[1], "Slices Total", f, 313, num_bins, xlim,
+                   window_title="Slices " + title_suffix, show=plot_data)
+    f += 1
+    xlim = calculate_shared_axis(all_sizes[0], all_sizes[1])
+    plot_histogram(all_sizes[0], "Sizes 0", f, 311, num_bins, xlim, show=plot_data)
+    plot_histogram(all_sizes[1], "Sizes 1", f, 312, num_bins, xlim, show=plot_data)
+    plot_histogram(all_sizes[0] + all_sizes[1], "Sizes Total", f, 313, num_bins, xlim,
+                   window_title="Sizes " + title_suffix, show=plot_data)
+    f += 1
+    xlim = calculate_shared_axis(all_sizes_masks[0], all_sizes_masks[1])
+    plot_histogram(all_sizes_masks[0], "Sizes Box 0", f, 311, num_bins, xlim, show=plot_data)
+    plot_histogram(all_sizes_masks[1], "Sizes Box 1", f, 312, num_bins, xlim, show=plot_data)
+    plot_histogram(all_sizes_masks[0] + all_sizes_masks[1], "Sizes Box Total", f, 313,
+                   num_bins, xlim, window_title="Sizes Box " + title_suffix, show=plot_data)
+    f += 1
+    ylim = calculate_shared_axis(all_slices[0], all_slices[1])
+    plot_boxplot(all_slices[0], "Slices 0", f, 121, ylim, show=plot_data)
+    plot_boxplot(all_slices[1], "Slices 1", f, 122, ylim, True, show=plot_data,
+                 window_title="Slices " + title_suffix)
+    f += 1
+    ylim = calculate_shared_axis(all_sizes[0], all_sizes[1])
+    plot_boxplot(all_sizes[0], "Sizes 0", f, 121, ylim, show=plot_data)
+    plot_boxplot(all_sizes[1], "Sizes 1", f, 122, ylim, True, show=plot_data,
+                 window_title="Sizes " + title_suffix)
+    f += 1
+    ylim = calculate_shared_axis(all_sizes_masks[0], all_sizes_masks[1])
+    plot_boxplot(all_sizes_masks[0], "Sizes box 0", f, 121, ylim, show=plot_data)
+    plot_boxplot(all_sizes_masks[1], "Sizes box 1", f, 122, ylim, True, show=plot_data,
+                 window_title="Sizes Box " + title_suffix)
+    # Save PDF results
+    save_plt_figures_to_pdf("data/{}/results{}.pdf".format(dataset_name, suffix))
+    if plot_data:
         input("Press ENTER to close all figures and continue.")
         plt.close("all")
         plt.ioff()
