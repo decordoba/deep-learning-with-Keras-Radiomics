@@ -181,6 +181,7 @@ def get_volumes(patient, pet_folder, struct_folders, number, volumes, plot_data=
     the contour label, a range (the 2 3D position of the opposite corners of the tumor box)
     and the folder where the contour was found.
     """
+    print("--------------------------------------------------------------------------------------")
     print("Patient {:02d}: {}".format(number, patient))
     # get all dicom image's paths
     dicom_images = [pet_folder+"/"+f for f in os.listdir(pet_folder) if f.lower().endswith(".dcm")]
@@ -190,7 +191,7 @@ def get_volumes(patient, pet_folder, struct_folders, number, volumes, plot_data=
     pixel_shape = (int(dicom_info.Rows), int(dicom_info.Columns), int(dicom_info.NumberOfSlices))
     pixel_spacing = (float(dicom_info.PixelSpacing[0]), float(dicom_info.PixelSpacing[1]),
                      float(dicom_info.SliceThickness))
-    print(pixel_spacing)
+    print("  Pixel spacing: {}".format(pixel_spacing))
     # create 3D array for pet image
     pet_image = np.zeros(pixel_shape, dtype=dicom_info.pixel_array.dtype)
     for i, dicom_img in enumerate(dicom_images):
@@ -211,10 +212,11 @@ def get_volumes(patient, pet_folder, struct_folders, number, volumes, plot_data=
                 mtv_variables.append((int(struct[0]), struct[-1], struct_folder))
     # return nothing if no mtv contours were found
     if len(mtv_variables) == 0:
-        return [], volumes
+        return [], volumes, []
     # add contours to original image and plot it
     prev_folder = None
     patient_volumes = [pet_image]
+    print("  Possible MTV contours:")
     for mtv_idx, mtv_label, mtv_folder in mtv_variables:
         # read and transform data from nii file
         if prev_folder != mtv_folder:
@@ -226,8 +228,9 @@ def get_volumes(patient, pet_folder, struct_folders, number, volumes, plot_data=
                 volume += nii_data[:, :, :, 0, i] << (8 * i)
             volume = np.swapaxes(volume, 0, 1)
             volume = np.flip(volume, 2)
-            print("Structures folder: {}".format(mtv_folder.split("/")[-1]))
-        print(mtv_idx, "--", mtv_label.split("/")[-1])
+            print("  * Structures folder: {}".format(mtv_folder.split("/")[-1]))
+        print("    MTV_index:", mtv_idx)
+        print("    MTV_label:", mtv_label.split("/")[-1])
         prev_folder = mtv_folder
         # create 3D matrix with 1s where ROI is and 0s everwhere else
         try:
