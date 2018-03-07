@@ -273,7 +273,7 @@ def get_volumes(patient, pet_folder, struct_folders, number, volumes, plot_data=
             plot_pet_volume(current_volume, pixel_shape, pixel_spacing, mask=current_mask,
                             patient=patient, mask_name=mtv_label.split("/")[-1])
     volumes[patient] = patient_volumes
-    return mtv_variables, volumes
+    return mtv_variables, volumes, pixel_spacing
 
 
 def parse_arguments(root_path):
@@ -367,14 +367,18 @@ if __name__ == "__main__":
     contour_names = set()
     i = 0
     volumes = {}
+    all_pixel_spacing = []
     for patient in patient_folders:
         if ignored_patients[patient]:  # skip ignored patients
             continue
         i += 1
         # This function does all the volumes extraction, and also plots the tumors
-        mtv_variables, volumes = get_volumes(patient, pet_folders[patient][0],
-                                             struct_folders[patient], i, volumes,
-                                             plot_data=args.plot)
+        mtv_variables, volumes, spacing = get_volumes(patient, pet_folders[patient][0],
+                                                      struct_folders[patient], i, volumes,
+                                                      plot_data=args.plot)
+        if len(spacing) == 3:
+            all_pixel_spacing.append(spacing)
+
         # Track all the names found
         for mtv_idx, mtv_label, mtv_folder in mtv_variables:
             contour_names.add(mtv_label)
@@ -386,6 +390,15 @@ if __name__ == "__main__":
             if patient in volumes:
                 volumes.pop(patient)
     plt.ioff()
+
+    if args.plot:
+        all_pixel_spacing = np.array(all_pixel_spacing)
+        plt.plot(all_pixel_spacing[:, 0], label="width (x)")
+        plt.plot(all_pixel_spacing[:, 1], label="lenght (y)")
+        plt.plot(all_pixel_spacing[:, 2], label="height (z)")
+        plt.legend()
+        plt.title("Dimensions 3D pixels PET images")
+        plt.show()
 
     # Print some statistics and data from the extraction
     print("UNIQUE LABELS:")
