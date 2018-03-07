@@ -421,8 +421,14 @@ def save_dataset_correctly(x, y, patients, masks, parent_folder="data", dataset_
     except OSError:
         pass
     file_path = "{}{}".format(folder_path, dataset_subname)
-    np.savez(file_path, x=x, y=y)
-    print("Dataset saved in: '{}.npz'".format(file_path))
+    try:
+        np.savez(file_path, x=x, y=y)
+        print("Dataset saved in: '{}.npz'".format(file_path))
+    except ValueError:
+        with open("{}.pkl".format(file_path), "wb") as f:
+            pickle.dump(x, f)
+            pickle.dump(y, f)
+        print("Error while saving set as '.npz'. Dataset saved in: '{}.pkl'".format(file_path))
     with open("{}_patients.pkl".format(file_path), "wb") as f:
         pickle.dump(patients, f)
     print("Patients saved in '{}_patients.pkl'.".format(file_path))
@@ -619,18 +625,28 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
     while len(answer) <= 0 or answer[0].strip().lower() != "y":
         print("Are you sure you want to save? This may overwrite some files.")
         answer = input("Type 'y' to save data or Ctrl-C to abort.\n>> ")
-    train_data = generate_2D_dataset(train_set_x, train_set_y, train_set_patients, train_set_masks)
-    x, y, patients_dataset, masks_dataset = train_data
     print(" ")
+    if convert_to_2d:
+        train_data = generate_2D_dataset(train_set_x, train_set_y, train_set_patients,
+                                         train_set_masks)
+        x, y, patients_dataset, masks_dataset = train_data
+        print(" ")
+    else:
+        x, y = train_set_x, train_set_y
+        patients_dataset, masks_dataset = train_set_patients, train_set_masks
     save_dataset_correctly(x, y, patients_dataset, masks_dataset,
-                           dataset_name="organized", dataset_subname="training_set")
+                           dataset_name=dataset_name, dataset_subname="training_set")
     print(" ")
 
-    test_data = generate_2D_dataset(test_set_x, test_set_y, test_set_patients, test_set_masks)
-    x, y, patients_dataset, masks_dataset = test_data
-    print(" ")
+    if convert_to_2d:
+        test_data = generate_2D_dataset(test_set_x, test_set_y, test_set_patients, test_set_masks)
+        x, y, patients_dataset, masks_dataset = test_data
+        print(" ")
+    else:
+        x, y = test_set_x, test_set_y
+        patients_dataset, masks_dataset = test_set_patients, test_set_masks
     save_dataset_correctly(x, y, patients_dataset, masks_dataset,
-                           dataset_name="organized", dataset_subname="test_set")
+                           dataset_name=dataset_name, dataset_subname="test_set")
 
 
 def parse_arguments(suffix=""):
