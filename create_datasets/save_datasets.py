@@ -6,6 +6,7 @@ import pickle
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import scipy.stats as stats
+from scipy.interpolate import RegularGridInterpolator
 from collections import Counter
 
 
@@ -430,39 +431,82 @@ def save_dataset_correctly(x, y, patients, masks, parent_folder="data", dataset_
     print("Masks saved in '{}_masks.pkl'.".format(file_path))
 
 
-def improved_save_data(x_set, y_set, patients, masks, suffix="", plot_data=False, trim_data=True):
+def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", suffix="",
+                       plot_data=False, trim_data=True, data_interpolation=None,
+                       convert_to_2d=True):
     """Save dataset so labels & slices medians are equally distributed in training and test set."""
+    # Add suffixes ta dataset name, so it is easy to know how every dataset was generated
+    if not convert_to_2d:
+        dataset_name += "_3d"
+    if trim_data:
+        dataset_name += "_trimmed(2)"
+    if data_interpolation is not None:
+        dataset_name += "_interpolated"
+
     # Analyze data and plot some statistics
     num_patients_by_label, medians_by_label, results = analyze_data(x_set, y_set, patients, masks,
-                                                                    plot_data=plot_data)
+                                                                    plot_data=plot_data,
+                                                                    dataset_name=dataset_name)
     if trim_data:
         slices, sizes, box_sizes = results
         slices = slices[0] + slices[1]
         sizes = sizes[0] + sizes[1]
         box_sizes = box_sizes[0] + box_sizes[1]
+        # Trim based on the number of slices
         x_set1, y_set1, patients1, masks1 = trim_edges(slices, "slices", x_set, y_set, patients,
                                                        masks, trim_pos=(0.1, 0.9))
         _, medians_by_label1, results1 = analyze_data(x_set1, y_set1, patients1, masks1,
                                                       plot_data=plot_data, initial_figure=6,
                                                       suffix="_trimmed_slices",
-                                                      title_suffix="(Trimmed Slices)")
-
+                                                      title_suffix="(Trimmed Slices)",
+                                                      dataset_name=dataset_name)
+        # Trim based on the tumor volumes (the number of cubic pixels in the mtv contour)
         x_set2, y_set2, patients2, masks2 = trim_edges(sizes, "sizes", x_set, y_set, patients,
                                                        masks, trim_pos=(0.11, 0.89))
         _, medians_by_label2, results2 = analyze_data(x_set2, y_set2, patients2, masks2,
                                                       plot_data=plot_data, initial_figure=12,
                                                       suffix="_trimmed_sizes",
-                                                      title_suffix="(Trimmed Sizes)")
-
+                                                      title_suffix="(Trimmed Sizes)",
+                                                      dataset_name=dataset_name)
+        # Trim based on the size of the boxs containing the contour
         x_set3, y_set3, patients3, masks3 = trim_edges(box_sizes, "sizes_masks", x_set, y_set,
                                                        patients, masks, trim_pos=(0.11, 0.89))
         _, medians_by_label3, results3 = analyze_data(x_set3, y_set3, patients3, masks3,
                                                       plot_data=plot_data, initial_figure=18,
                                                       suffix="_trimmed_box_sizes",
-                                                      title_suffix="(Trimmed Box Sizes)")
+                                                      title_suffix="(Trimmed Box Sizes)",
+                                                      dataset_name=dataset_name)
+        # Use trimed data based on tumor volume
+        x_set, y_set, patients, masks = x_set2, y_set2, patients2, masks2
+        medians_by_label = medians_by_label2
 
-        x_set, y_set, patients, masks = x_set1, y_set1, patients1, masks1
-        medians_by_label = medians_by_label1
+    if data_interpolation is not None:
+        # Adjust slices so that all pixels are the same with, length and height
+        pixel_side = min(data_interpolation)
+        print("Interpolating. This may take a few minutes...")
+        for i in range(len(x_set)):
+            print("{}/{}".format(i + 1, len(x_set)))
+            min_coord = np.array([0, 0, 0])
+            max_coord = np.multiply(np.array(x_set[i]).shape, data_interpolation)
+            x = np.arange(min_coord[0], max_coord[0], data_interpolation[0])
+            y = np.arange(min_coord[1], max_coord[1], data_interpolation[1])
+            z = np.arange(min_coord[2], max_coord[2], data_interpolation[2])
+            max_coord = [max(x) + 0.01, max(y) + 0.01, max(z) + 0.01]
+            interpolating_func = RegularGridInterpolator((x, y, z), np.array(x_set[i]))
+            rangex = np.arange(min_coord[0], max_coord[0], pixel_side)
+            rangey = np.arange(min_coord[1], max_coord[1], pixel_side)
+            rangez = np.arange(min_coord[2], max_coord[2], pixel_side)
+            xlist = np.zeros((len(rangex), len(rangey), len(rangez)))
+            for ii, xi in enumerate(rangex):
+                for jj, yi in enumerate(rangey):
+                    for kk, zi in enumerate(rangez):
+                        xlist[ii, jj, kk] = interpolating_func([xi, yi, zi])[0]
+            x_set[i] = xlist
+        _, medians_by_label4, results4 = analyze_data(x_set, y_set, patients, masks,
+                                                      plot_data=plot_data, initial_figure=24,
+                                                      suffix="_interpolated_slices",
+                                                      title_suffix="(Interpolated Slices)",
+                                                      dataset_name=dataset_name)
 
     # After analyze_data, we see that we have 77 patients
     # Label 1: NUMBER SAMPLES: 20
@@ -608,6 +652,13 @@ def parse_arguments(suffix=""):
                                      "channels 2D slices.".format(suffix))
     parser.add_argument('-p', '--plot', default=False, action="store_true",
                         help="show figures before saving them")
+    parser.add_argument('-t', '--trim', default=False, action="store_true",
+                        help="get rid of outliers: 10%% smaller and larger tumors")
+    parser.add_argument('-i', '--interpolate', default=False, action="store_true",
+                        help="interpolate volumes so pixels are cubes: the spacing between "
+                        "adjacent pixels is the same in all directions")
+    parser.add_argument('-3d', '--in_3d', default=False, action="store_true",
+                        help="save 3d data instead of slicing it in 3 channels 2d images")
     return parser.parse_args()
 
 
@@ -650,4 +701,10 @@ if __name__ == "__main__":
     if old_format:
         save_data(x, y, patients, number=1, suffix=name_suffix)
     else:
-        improved_save_data(x, y, patients, masks, suffix=name_suffix, plot_data=args.plot)
+        data_interpolation = None
+        if args.interpolate:
+            # This is the distance between pixels in the x, y and z direction in our dicom images
+            data_interpolation = (4.07283, 4.07283, 5.0)
+        improved_save_data(x, y, patients, masks, suffix=name_suffix, plot_data=args.plot,
+                           trim_data=args.trim, data_interpolation=data_interpolation,
+                           convert_to_2d=not args.in_3d)
