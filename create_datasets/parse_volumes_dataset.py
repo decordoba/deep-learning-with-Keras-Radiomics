@@ -106,7 +106,7 @@ def plot_pet_slice(pet_image, center=None, box=None, mask=None, mask_offset=None
     return big_mask
 
 
-def cut_image_given_corners(pet_image, box_center, box_size, corners):
+def cut_image_given_corners(pet_image, box_center, box_size, corners, offset_if_None=0):
     # cut pet_image acording to box, cented in box_center, with size box_size.
     # if any of the corners is outside the created box, increase size of box to meet those limits.
     if box_size[0] is not None:
@@ -115,24 +115,24 @@ def cut_image_given_corners(pet_image, box_center, box_size, corners):
         x0 = min(x0, corners[0][0])
         x1 = max(x1, corners[1][0])
     else:
-        x0 = corners[0][0]
-        x1 = corners[1][0]
+        x0 = corners[0][0] - offset_if_None
+        x1 = corners[1][0] + offset_if_None
     if box_size[1] is not None:
         y0 = box_center[1] - int(box_size[1] / 2)
         y1 = y0 + box_size[1]
         y0 = min(y0, corners[0][1])
         y1 = max(y1, corners[1][1])
     else:
-        y0 = corners[0][1]
-        y1 = corners[1][1]
+        y0 = corners[0][1] - offset_if_None
+        y1 = corners[1][1] + offset_if_None
     if box_size[2] is not None:
         z0 = box_center[2] - int(box_size[2] / 2)
         z1 = z0 + box_size[2]
         z0 = min(z0, corners[0][2])
         z1 = max(z1, corners[1][2])
     else:
-        z0 = corners[0][2]
-        z1 = corners[1][2]
+        z0 = corners[0][2] - offset_if_None
+        z1 = corners[1][2] + offset_if_None
     return pet_image[x0:x1 + 1, y0:y1 + 1, z0:z1 + 1], ((x0, y0, z0), (x1, y1, z1))
 
 
@@ -341,6 +341,9 @@ def parse_arguments():
                         " (just put into smaller box), 1=the volume is cut exactly by contour, "
                         "2=the volume is cut by contour but adding margin of 3 pixels "
                         "(default: 0)")
+    parser.add_argument('-m', '--margin', default=0, type=int,
+                        help="number of adjacent slices on top and bottom of volume that don't "
+                        "have any contour pixel (default: 0)")
     parser.add_argument('--patients', default=None, type=str,
                         help="enter the list of patients that you want to see and save, separated"
                         "with spaces, and surroud them with ' or \" (i.e. 11111874 or "
@@ -433,7 +436,8 @@ if __name__ == "__main__":
                 print("Centroid:      ", centroid)
                 print("Tumor box:     ", box)
                 print("Tumor box size:", list(np.array(box[1]) - np.array(box[0]) + 1))
-                box_image, new_box = cut_image_given_corners(pet_image, centroid, box_size, box)
+                box_image, new_box = cut_image_given_corners(pet_image, centroid, box_size, box,
+                                                             offset_if_None=args.margin)
                 print("New box:       ", new_box)
                 print("New box size:  ", box_image.shape)
             # Calculate max box size
