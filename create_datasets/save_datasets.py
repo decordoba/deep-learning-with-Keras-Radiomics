@@ -255,10 +255,14 @@ def analyze_data(volumes, labels, patients, masks, plot_data=True, initial_figur
     all_sizes_masks = [[], []]
     all_sizes = [[], []]
     all_slices = [[], []]
+    abs_num_slices = []
     for label, patient, volume, mask in zip(labels, patients, volumes, masks):
         if volume.shape[2] < 3:
             continue  # patient ignored, it is too small
         size_mask, granular_volume = get_size_mask(mask)
+        abs_num_slices.append(size_mask[2])
+        if abs_num_slices[-1] < 3:
+            continue  # patient ignored, it is too small (but we have added it to abs_num_slices)
         all_sizes[label].append(granular_volume)
         sizes_masks[label] += size_mask
         all_sizes_masks[label].append(np.prod(size_mask))
@@ -355,7 +359,7 @@ def analyze_data(volumes, labels, patients, masks, plot_data=True, initial_figur
         plt.close("all")
         plt.ioff()
     return ((num_labels[0], num_labels[1]), (np.median(all_slices[0]), np.median(all_slices[1])),
-            (all_slices, all_sizes, all_sizes_masks))
+            (all_slices, all_sizes, all_sizes_masks, abs_num_slices))
 
 
 def get_bucket(bucket0, bucket1, ratio=0.5):
@@ -454,7 +458,7 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
                                                                     plot_data=plot_data,
                                                                     dataset_name=dataset_name)
     if trim_data:
-        slices, sizes, box_sizes = results
+        slices, sizes, box_sizes, abs_num_slices = results
         slices = slices[0] + slices[1]
         sizes = sizes[0] + sizes[1]
         box_sizes = box_sizes[0] + box_sizes[1]
@@ -549,6 +553,9 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
         num_slices = volume.shape[2]
         if num_slices < 3:
             continue  # patient ignored, it is too small
+        abs_num_slices = results[3][i]  # Counts number slices that have at least 1 contour pixel
+        if abs_num_slices < 3:
+            continue  # patient ignored, it is too small
         if num_slices < medians_by_label[label]:
             if get_bucket(train_nums[0][label], test_nums[0][label], train_to_total_ratio) == 0:
                 train_nums[0][label] += 1
@@ -637,7 +644,6 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
     save_dataset_correctly(x, y, patients_dataset, masks_dataset,
                            dataset_name=dataset_name, dataset_subname="training_set")
     print(" ")
-
     if convert_to_2d:
         test_data = generate_2D_dataset(test_set_x, test_set_y, test_set_patients, test_set_masks)
         x, y, patients_dataset, masks_dataset = test_data
