@@ -441,6 +441,9 @@ def parse_arguments():
                         help="show figures before saving them")
     parser.add_argument('-e', '--epochs', default=50, type=int,
                         help="number of epochs when training (default: 50)")
+    parser.add_argument('-d', '--dataset', default="organized", type=str,
+                        help="location of the dataset inside the ./data folder "
+                        "(default: organized)")
     parser.add_argument('--filters', default=False, action="store_true", help="test different "
                         "number of filters for the convolutional layers")
     parser.add_argument('--units', default=False, action="store_true", help="test different "
@@ -462,7 +465,6 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
                         location="cross_validation_results", patient_level_cv=False,
                         num_epochs=50, suffix="", show_plots=False):
     """Do cross validation on dataset."""
-
     # Do 10-fold CV in whole set
     num_folds = 10
     if patient_level_cv:
@@ -782,7 +784,8 @@ def main():
     args = parse_arguments()
 
     # Load dataset
-    train_set, test_set, train_aux, test_aux = load_organized_dataset("data/organized")
+    dataset_location = "data/{}".format(args.dataset)
+    train_set, test_set, train_aux, test_aux = load_organized_dataset(dataset_location)
     (x_train, y_train), (x_test, y_test), = train_set, test_set
     (patients_train, mask_train), (patients_test, mask_test) = train_aux, test_aux
     x_whole = np.append(x_train, x_test, axis=0)
