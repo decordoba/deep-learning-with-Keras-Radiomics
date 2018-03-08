@@ -443,13 +443,15 @@ def save_dataset_correctly(x, y, patients, masks, parent_folder="data", dataset_
 
 def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", suffix="",
                        plot_data=False, trim_data=True, data_interpolation=None,
-                       convert_to_2d=True):
+                       convert_to_2d=True, resampling=None):
     """Save dataset so labels & slices medians are equally distributed in training and test set."""
     # Add suffixes ta dataset name, so it is easy to know how every dataset was generated
     if not convert_to_2d:
         dataset_name += "_3d"
     if trim_data:
-        dataset_name += "_trimmed(2)"
+        # 2 represents that we are using sizes (2) to trim, not slices (1), or box_sizes (3)
+        trim_option = 2
+        dataset_name += "_trimmed{}".format(trim_option)
     if data_interpolation is not None:
         dataset_name += "_interpolated"
 
@@ -486,9 +488,16 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
                                                       suffix="_trimmed_box_sizes",
                                                       title_suffix="(Trimmed Box Sizes)",
                                                       dataset_name=dataset_name)
-        # Use trimed data based on tumor volume
-        x_set, y_set, patients, masks = x_set2, y_set2, patients2, masks2
-        medians_by_label = medians_by_label2
+        # Use trimed data based on trim_option as dataset
+        if trim_option == 1:
+            x_set, y_set, patients, masks = x_set1, y_set1, patients1, masks1
+            medians_by_label, results = medians_by_label1, results1
+        elif trim_option == 2:
+            x_set, y_set, patients, masks = x_set2, y_set2, patients2, masks2
+            medians_by_label, results = medians_by_label2, results2
+        elif trim_option == 3:
+            x_set, y_set, patients, masks = x_set3, y_set3, patients3, masks3
+            medians_by_label, results = medians_by_label3, results3
 
     if data_interpolation is not None:
         # Adjust slices so that all pixels are the same with, length and height
@@ -517,8 +526,15 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
                                                       suffix="_interpolated_slices",
                                                       title_suffix="(Interpolated Slices)",
                                                       dataset_name=dataset_name)
+        medians_by_label, results = medians_by_label4, results4
 
-    # After analyze_data, we see that we have 77 patients
+    if resampling is not None:
+        size_box, num_samples = resampling
+        if type(size_box) == int:
+            size_box = (size_box, size_box, size_box)
+        input("results {} {}".format(len(results[1][0]), len(results[1][1])))
+
+    # After analyze_data, if we do not trim it, we see that we have 77 patients
     # Label 1: NUMBER SAMPLES: 20
     #          MEAN TUMOR BOX VOLUME: 3174
     #          MEAN NUMBER SLICES: 17
@@ -627,7 +643,7 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
     print("    Number of samples: {}".format(len(test_set_x)))
     print("    Label frequency: {}\n".format(dict(Counter(test_set_y))))
 
-    # Convert 3D dataset into 2D dataset and save data
+    # Possibly convert 3D dataset into 2D dataset and save data
     answer = ""
     while len(answer) <= 0 or answer[0].strip().lower() != "y":
         print("Are you sure you want to save? This may overwrite some files.")
@@ -679,6 +695,9 @@ def parse_arguments(suffix=""):
     parser.add_argument('-i', '--interpolate', default=False, action="store_true",
                         help="interpolate volumes so pixels are cubes: the spacing between "
                         "adjacent pixels is the same in all directions")
+    parser.add_argument('-r', '--resample', default=False, action="store_true",
+                        help="resample volumes to multiple cubes of size 5x5x5 pixels"
+                        "adjacent pixels is the same in all directions")
     parser.add_argument('-3d', '--in_3d', default=False, action="store_true",
                         help="save 3d data instead of slicing it in 3 channels 2d images")
     return parser.parse_args()
@@ -727,6 +746,15 @@ if __name__ == "__main__":
         if args.interpolate:
             # This is the distance between pixels in the x, y and z direction in our dicom images
             data_interpolation = (4.07283, 4.07283, 5.0)
+        resampling = None
+        if args.resample:
+            # Resample to cubes of 5x5x5 pixels. We can also resample to non-cubic figures, passing
+            # (7,4,3) instead of 5 to create a cube of 7x4x3
+            # If the second parameter is None, it will find the smallest volume, count how many
+            # cubes can be sampled from it, and generate that many samples for all patients. It
+            # will also automatically balance labels 0 and 1. Set None to a number to select the
+            # number of samples that will be created, sampling randomly.
+            resampling = (5, None)
         improved_save_data(x, y, patients, masks, suffix=name_suffix, plot_data=args.plot,
                            trim_data=args.trim, data_interpolation=data_interpolation,
-                           convert_to_2d=not args.in_3d)
+                           convert_to_2d=not args.in_3d, resampling=resampling)
