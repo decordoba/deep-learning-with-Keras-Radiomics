@@ -462,6 +462,59 @@ def get_sample_from_center_special(volume, center, sbpos, sbneg):
                   c0[2] + neg[2]:c1[2] + pos[2] + 1]
 
 
+def interpolate_data(x_set, masks, pixels_separation):
+    """Interpolate data to make pixels have same separation in all directions (x, y, z)."""
+    pixel_side = min(pixels_separation)
+    print("\nInterpolating. This may take a few minutes...")
+    for i in range(len(x_set)):
+        print("{}/{}".format(i + 1, len(x_set)))
+        min_coord = np.array([0, 0, 0])
+        max_coord = np.multiply(np.array(x_set[i]).shape, pixels_separation)
+        x = np.arange(min_coord[0], max_coord[0], pixels_separation[0])
+        y = np.arange(min_coord[1], max_coord[1], pixels_separation[1])
+        z = np.arange(min_coord[2], max_coord[2], pixels_separation[2])
+        max_coord = [max(x) + 0.01, max(y) + 0.01, max(z) + 0.01]
+        interpolating_func = RegularGridInterpolator((x, y, z), np.array(x_set[i]))
+        rangex = np.arange(min_coord[0], max_coord[0], pixel_side)
+        rangey = np.arange(min_coord[1], max_coord[1], pixel_side)
+        rangez = np.arange(min_coord[2], max_coord[2], pixel_side)
+        xlist = np.zeros((len(rangex), len(rangey), len(rangez)))
+        new_mask = np.zeros(xlist.shape)
+        mask = masks[i]
+        # Unfortunately, I am doing this manually, I could not figure out how to do it with numpy
+        for ii, xi in enumerate(rangex):
+            posx = xi / pixels_separation[0]
+            idx0x = int(posx)
+            idx1x = int(np.ceil(posx))
+            diff0x = 1 - posx + idx0x
+            diff1x = 1 - diff0x
+            for jj, yi in enumerate(rangey):
+                posy = yi / pixels_separation[1]
+                idx0y = int(posy)
+                idx1y = int(np.ceil(posy))
+                diff0y = 1 - posy + idx0y
+                diff1y = 1 - diff0y
+                for kk, zi in enumerate(rangez):
+                    xlist[ii, jj, kk] = interpolating_func([xi, yi, zi])[0]
+                    posz = zi / pixels_separation[2]
+                    idx0z = int(posz)
+                    idx1z = int(np.ceil(posz))
+                    diff0z = 1 - posz + idx0z
+                    diff1z = 1 - diff0z
+                    value = (mask[idx0x, idx0y, idx0z] * diff0x * diff0y * diff0z +
+                             mask[idx0x, idx0y, idx1z] * diff0x * diff0y * diff1z +
+                             mask[idx0x, idx1y, idx0z] * diff0x * diff1y * diff0z +
+                             mask[idx0x, idx1y, idx1z] * diff0x * diff1y * diff1z +
+                             mask[idx1x, idx0y, idx0z] * diff1x * diff0y * diff0z +
+                             mask[idx1x, idx0y, idx1z] * diff1x * diff0y * diff1z +
+                             mask[idx1x, idx1y, idx0z] * diff1x * diff1y * diff0z +
+                             mask[idx1x, idx1y, idx1z] * diff1x * diff1y * diff1z)
+                    new_mask[ii, jj, kk] = int(np.round(value))
+        x_set[i] = xlist
+        masks[i] = new_mask
+    return x_set, masks
+
+
 def get_bucket(bucket0, bucket1, ratio=0.5):
     """Get size of two buckets and tell what bucket to put next obj to get closer to buckets ratio.
 
@@ -603,26 +656,7 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
 
     if data_interpolation is not None:
         # Adjust slices so that all pixels are the same width, length and height
-        pixel_side = min(data_interpolation)
-        print("\nInterpolating. This may take a few minutes...")
-        for i in range(len(x_set)):
-            print("{}/{}".format(i + 1, len(x_set)))
-            min_coord = np.array([0, 0, 0])
-            max_coord = np.multiply(np.array(x_set[i]).shape, data_interpolation)
-            x = np.arange(min_coord[0], max_coord[0], data_interpolation[0])
-            y = np.arange(min_coord[1], max_coord[1], data_interpolation[1])
-            z = np.arange(min_coord[2], max_coord[2], data_interpolation[2])
-            max_coord = [max(x) + 0.01, max(y) + 0.01, max(z) + 0.01]
-            interpolating_func = RegularGridInterpolator((x, y, z), np.array(x_set[i]))
-            rangex = np.arange(min_coord[0], max_coord[0], pixel_side)
-            rangey = np.arange(min_coord[1], max_coord[1], pixel_side)
-            rangez = np.arange(min_coord[2], max_coord[2], pixel_side)
-            xlist = np.zeros((len(rangex), len(rangey), len(rangez)))
-            for ii, xi in enumerate(rangex):
-                for jj, yi in enumerate(rangey):
-                    for kk, zi in enumerate(rangez):
-                        xlist[ii, jj, kk] = interpolating_func([xi, yi, zi])[0]
-            x_set[i] = xlist
+        x_set, masks = interpolate_data(x_set, masks, data_interpolation)
         params = analyze_data(x_set, y_set, patients, masks, plot_data=plot_data,
                               initial_figure=24, suffix="_interpolated_slices",
                               title_suffix="(Interpolated Slices)", dataset_name=dataset_name)
