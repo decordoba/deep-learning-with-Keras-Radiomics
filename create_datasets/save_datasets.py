@@ -362,6 +362,106 @@ def analyze_data(volumes, labels, patients, masks, plot_data=True, initial_figur
             (all_slices, all_sizes, all_sizes_masks, abs_num_slices))
 
 
+def get_distances_from_box_size(size_box):
+    """Return the distance from center box to top-left and bottom-right corners."""
+    # If any number n in size_box is even, the size used will be n-1
+    sbpos = []
+    sbneg = []
+    sboffset = []
+    for i in range(len(size_box)):
+        if size_box[i] is None:
+            sbpos.append(None)
+            sbneg.append(None)
+            sboffset.append(0)
+        else:
+            sbpos.append(int((size_box[i] - 1) / 2))
+            sbneg.append(-sbpos[-1])
+            sboffset.append(sbpos[-1])
+    return sbpos, sbneg, sboffset
+
+
+def grouped(iterable, n):
+    """Group iterable in groups of n elements. i.e. ([1,2,3,4], 2) becomes [1,2],[3,4]."""
+    return zip(*[iter(iterable)]*n)
+
+
+def get_all_centers_of_samples(mask, sbpos, sbneg, sboffset, offset_if_None=0):
+    """Get position for all 1s in mask that can be the center of a box of size size_box.
+
+    size_bos = None means only the min and max position in that direction will be saved.
+    For example, in the following 2D mask:
+      [[0, 0, 1, 0, 0, 1],
+       [0, 1, 1, 0, 0, 0],
+       [0, 1**, 0, 0, 0, 1**],
+       [1**, 1, 0, 1*, 0, 0],
+       [1, 0, 1, 1, 0, 1],
+       [0, 0, 0, 1, 1, 1]]
+    with a size_box of (5, 5) we get only one center: [3, 3]*.
+    with a size_box of (5, None) we get only one center: ([2, 1], [2, 5]), ([3, 0], [3, 3])**.
+    Warning! Won't work well if there is more than one None.
+    """
+    if len(sbpos) >= 3:
+        r = np.transpose(np.nonzero(mask[sbpos[0]:sbneg[0], sbpos[1]:sbneg[1], sbpos[2]:sbneg[2]]))
+    else:
+        r = np.transpose(np.nonzero(mask[sbpos[0]:sbneg[0], sbpos[1]:sbneg[1]]))
+    r += sboffset
+    none_found = False
+    for i in range(len(sbpos)):
+        if sbpos[i] is not None:
+            continue
+        none_found = True
+        d1 = {}
+        d2 = {}
+        new_r = []
+        n = mask.shape[i] - offset_if_None
+        for coords in r:
+            if coords[i] < offset_if_None or coords[i] >= n:
+                continue
+            c = tuple(np.append(coords[:i], coords[i + 1:]))
+            if c not in d1:
+                d1[c] = len(new_r)
+                new_r.append(coords)
+            elif new_r[d1[c]][i] > coords[i]:
+                new_r[d1[c]] = coords
+            if c not in d2:
+                d2[c] = len(new_r)
+                new_r.append(coords)
+            elif new_r[d2[c]][i] < coords[i]:
+                new_r[d2[c]] = coords
+        r = np.array(new_r)
+    if none_found:
+        return np.array(list(grouped(r, 2)))
+    return r
+
+
+def get_sample_from_center(volume, center, sbpos, sbneg):
+    """Return box in volume at pos center with size size_box. No value in center can be None."""
+    return volume[center[0] + sbneg[0]:center[0] + sbpos[0] + 1,
+                  center[1] + sbneg[1]:center[1] + sbpos[1] + 1,
+                  center[2] + sbneg[2]:center[2] + sbpos[2] + 1]
+
+
+def get_sample_from_center_special(volume, center, sbpos, sbneg):
+    """Return box in volume at pos center with size size_box. One value in center must be None.
+
+    center here is a pair of values, and we return all slices from center[0] to center[1].
+    """
+    pos = []
+    neg = []
+    for i in range(len(sbpos)):
+        if sbpos[i] is None:
+            pos.append(0)
+            neg.append(0)
+        else:
+            pos.append(sbpos[i])
+            neg.append(sbneg[i])
+    c0 = center[0]
+    c1 = center[1]
+    return volume[c0[0] + neg[0]:c1[0] + pos[0] + 1,
+                  c0[1] + neg[1]:c1[1] + pos[1] + 1,
+                  c0[2] + neg[2]:c1[2] + pos[2] + 1]
+
+
 def get_bucket(bucket0, bucket1, ratio=0.5):
     """Get size of two buckets and tell what bucket to put next obj to get closer to buckets ratio.
 
@@ -454,6 +554,8 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
         dataset_name += "_trimmed{}".format(trim_option)
     if data_interpolation is not None:
         dataset_name += "_interpolated"
+    if resampling is not None:
+        dataset_name += "_resampled"
 
     # Analyze data and plot some statistics
     num_patients_by_label, medians_by_label, results = analyze_data(x_set, y_set, patients, masks,
@@ -467,42 +569,42 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
         # Trim based on the number of slices
         x_set1, y_set1, patients1, masks1 = trim_edges(slices, "slices", x_set, y_set, patients,
                                                        masks, trim_pos=(0.1, 0.9))
-        _, medians_by_label1, results1 = analyze_data(x_set1, y_set1, patients1, masks1,
-                                                      plot_data=plot_data, initial_figure=6,
-                                                      suffix="_trimmed_slices",
-                                                      title_suffix="(Trimmed Slices)",
-                                                      dataset_name=dataset_name)
+        params = analyze_data(x_set1, y_set1, patients1, masks1, plot_data=plot_data,
+                              initial_figure=6, suffix="_trimmed_slices",
+                              title_suffix="(Trimmed Slices)", dataset_name=dataset_name)
+        num_patients_by_label1, medians_by_label1, results1 = params
         # Trim based on the tumor volumes (the number of cubic pixels in the mtv contour)
         x_set2, y_set2, patients2, masks2 = trim_edges(sizes, "sizes", x_set, y_set, patients,
                                                        masks, trim_pos=(0.11, 0.89))
-        _, medians_by_label2, results2 = analyze_data(x_set2, y_set2, patients2, masks2,
-                                                      plot_data=plot_data, initial_figure=12,
-                                                      suffix="_trimmed_sizes",
-                                                      title_suffix="(Trimmed Sizes)",
-                                                      dataset_name=dataset_name)
+        params = analyze_data(x_set2, y_set2, patients2, masks2, plot_data=plot_data,
+                              initial_figure=12, suffix="_trimmed_sizes",
+                              title_suffix="(Trimmed Sizes)", dataset_name=dataset_name)
+        num_patients_by_label2, medians_by_label2, results2 = params
         # Trim based on the size of the boxs containing the contour
         x_set3, y_set3, patients3, masks3 = trim_edges(box_sizes, "sizes_masks", x_set, y_set,
                                                        patients, masks, trim_pos=(0.11, 0.89))
-        _, medians_by_label3, results3 = analyze_data(x_set3, y_set3, patients3, masks3,
-                                                      plot_data=plot_data, initial_figure=18,
-                                                      suffix="_trimmed_box_sizes",
-                                                      title_suffix="(Trimmed Box Sizes)",
-                                                      dataset_name=dataset_name)
+        params = analyze_data(x_set3, y_set3, patients3, masks3, plot_data=plot_data,
+                              initial_figure=18, suffix="_trimmed_box_sizes",
+                              title_suffix="(Trimmed Box Sizes)", dataset_name=dataset_name)
+        num_patients_by_label3, medians_by_label3, results3 = params
         # Use trimed data based on trim_option as dataset
         if trim_option == 1:
             x_set, y_set, patients, masks = x_set1, y_set1, patients1, masks1
             medians_by_label, results = medians_by_label1, results1
+            num_patients_by_label = num_patients_by_label1
         elif trim_option == 2:
             x_set, y_set, patients, masks = x_set2, y_set2, patients2, masks2
             medians_by_label, results = medians_by_label2, results2
+            num_patients_by_label = num_patients_by_label2
         elif trim_option == 3:
             x_set, y_set, patients, masks = x_set3, y_set3, patients3, masks3
             medians_by_label, results = medians_by_label3, results3
+            num_patients_by_label = num_patients_by_label3
 
     if data_interpolation is not None:
-        # Adjust slices so that all pixels are the same with, length and height
+        # Adjust slices so that all pixels are the same width, length and height
         pixel_side = min(data_interpolation)
-        print("Interpolating. This may take a few minutes...")
+        print("\nInterpolating. This may take a few minutes...")
         for i in range(len(x_set)):
             print("{}/{}".format(i + 1, len(x_set)))
             min_coord = np.array([0, 0, 0])
@@ -521,20 +623,80 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
                     for kk, zi in enumerate(rangez):
                         xlist[ii, jj, kk] = interpolating_func([xi, yi, zi])[0]
             x_set[i] = xlist
-        _, medians_by_label4, results4 = analyze_data(x_set, y_set, patients, masks,
-                                                      plot_data=plot_data, initial_figure=24,
-                                                      suffix="_interpolated_slices",
-                                                      title_suffix="(Interpolated Slices)",
-                                                      dataset_name=dataset_name)
-        medians_by_label, results = medians_by_label4, results4
+        params = analyze_data(x_set, y_set, patients, masks, plot_data=plot_data,
+                              initial_figure=24, suffix="_interpolated_slices",
+                              title_suffix="(Interpolated Slices)", dataset_name=dataset_name)
+        num_patients_by_label, medians_by_label, results = params
 
     if resampling is not None:
         size_box, num_samples = resampling
         if type(size_box) == int:
-            size_box = (size_box, size_box, size_box)
-        input("results {} {}".format(len(results[1][0]), len(results[1][1])))
+            offset_if_None = int((size_box - 1) / 2)
+            if convert_to_2d:
+                size_box = (size_box, size_box, None)
+            else:
+                size_box = (size_box, size_box, size_box)
+        else:
+            offset_if_None = size_box[0]
+        size_box_params = get_distances_from_box_size(size_box)
+        if num_samples is None:
+            center_samples = []  # Center of all boxes with size_box size in x_set[i]
+            min_num_samples = [None, None]
+            for i, (mask, lab) in enumerate(zip(masks, y_set)):
+                center_samples.append(get_all_centers_of_samples(mask, *size_box_params,
+                                                                 offset_if_None))
+                if x_set[i].shape[2] < 3 or results[3][i] < 3:
+                    continue  # patient ignored, it is too small
+                try:
+                    min_num_samples[lab] = min(len(center_samples[-1]), min_num_samples[lab])
+                except TypeError:
+                    min_num_samples[lab] = len(center_samples[-1])
+            print("Patients", num_patients_by_label)
+            print("Samples", min_num_samples)
+            factor = (num_patients_by_label[0] * min_num_samples[0] /
+                      num_patients_by_label[1] / min_num_samples[1])
+            if factor > 1:
+                min_num_samples[0] = int(np.ceil(min_num_samples[0] / factor))
+            else:
+                min_num_samples[1] = int(np.ceil(min_num_samples[1] * factor))
+            print("Samples", min_num_samples, factor)
+            new_x = []
+            new_y = []
+            new_patients = []
+            new_masks = []
+            for i, (volume, mask, label, patient, samples) in enumerate(zip(x_set, masks,
+                                                                            y_set, patients,
+                                                                            center_samples)):
+                if volume.shape[2] < 3 or results[3][i] < 3:
+                    continue  # patient ignored, it is too small
+                min_different_samples = min_num_samples[label]
+                k = 0
+                while min_different_samples > 0:
+                    pos = np.random.permutation(np.arange(len(samples)))[:min_different_samples]
+                    min_different_samples -= len(samples)
+                    for j, center in enumerate(samples[pos]):
+                        if None not in size_box:
+                            new_x.append(get_sample_from_center(volume, center,
+                                                                *size_box_params[:2]))
+                            new_masks.append(get_sample_from_center(mask, center,
+                                                                    *size_box_params[:2]))
+                        else:
+                            new_x.append(get_sample_from_center_special(volume, center,
+                                                                        *size_box_params[:2]))
+                            new_masks.append(get_sample_from_center_special(mask, center,
+                                                                            *size_box_params[:2]))
+                        new_y.append(label)
+                        new_patients.append(patient + "_{:06}".format(j + k * len(pos)))
+                    k += 1
+            x_set, y_set, patients, masks = new_x, new_y, new_patients, new_masks
+        else:
+            print("This resampling has not yet been implemented (and it probably never will).")
+        params = analyze_data(x_set, y_set, patients, masks, plot_data=plot_data,
+                              initial_figure=30, suffix="_resampled",
+                              title_suffix="(Resampled)", dataset_name=dataset_name)
+        num_patients_by_label, medians_by_label, results = params
 
-    # After analyze_data, if we do not trim it, we see that we have 77 patients
+    # After analyze_data, if we do not trim, interpolate, or resample it, we have 77 patients
     # Label 1: NUMBER SAMPLES: 20
     #          MEAN TUMOR BOX VOLUME: 3174
     #          MEAN NUMBER SLICES: 17
@@ -546,7 +708,6 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
     # Based on this data, we sample the dataset in the best possible way so all kinds of data is
     # represented in the train and test set. We split data in in 4 groups: label 0 / label 1, and
     # above / below median, and put an equal percentage of everything in train and test set
-
     if not trim_data:
         train_to_total_ratio = 63 / 77  # 77 patients, let's do training+validation = 63, test = 14
     else:
