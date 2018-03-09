@@ -139,6 +139,8 @@ def plot_histogram(data, title=None, figure=0, subfigure=None, bins=10, xlim=Non
     if percentages is not None:
         for i, p in enumerate(percentages):
             pos = int(np.round(len(sorted_data) * p))
+            if pos >= len(sorted_data):
+                pos = len(sorted_data) - 1
             if p == 0.1 or p == 0.9:
                 linestyle = "-."
                 linecolor = "#904040"
@@ -725,6 +727,8 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
                               title_suffix="(Interpolated Slices)", dataset_name=dataset_name)
         num_patients_by_label, medians_by_label, results = params
 
+    # Resampling used to be here, but then samples get mixed between training and test set
+    """
     if resampling is not None:
         size_box, num_samples = resampling
         if type(size_box) == int:
@@ -742,6 +746,7 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
                               initial_figure=30, suffix="_resampled", allow_less_3_slices=True,
                               title_suffix="(Resampled)", dataset_name=dataset_name)
         num_patients_by_label, medians_by_label, results = params
+    """
 
     # After analyze_data, if we do not trim, interpolate, or resample it, we have 77 patients
     # Label 1: NUMBER SAMPLES: 20
@@ -841,6 +846,45 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
         test_set_y.append(train_set_y.pop())
         test_set_patients.append(train_set_patients.pop())
         test_set_masks.append(train_set_masks.pop())
+
+    # Plot and save results
+    params1 = analyze_data(train_set_x, train_set_y, train_set_patients, train_set_masks,
+                           plot_data=plot_data, initial_figure=36, suffix="_train_set",
+                           title_suffix="(Train Set)", dataset_name=dataset_name)
+    params2 = analyze_data(test_set_x, test_set_y, test_set_patients, test_set_masks,
+                           plot_data=plot_data, initial_figure=42, suffix="_test_set",
+                           title_suffix="(Test Set)", dataset_name=dataset_name)
+
+    # Resample after splitting data in training and test set, to avoid putting samples in training
+    # set from test set and viceversa
+    if resampling is not None:
+        size_box, num_samples = resampling
+        if type(size_box) == int:
+            offset_if_None = int((size_box - 1) / 2)
+            if convert_to_2d:
+                size_box = (size_box, size_box, None)
+            else:
+                size_box = (size_box, size_box, size_box)
+        else:
+            offset_if_None = size_box[0]
+        # Training set
+        num_patients_by_label, medians_by_label, results = params1
+        params = resample_volumes(train_set_x, train_set_y, train_set_patients, train_set_masks,
+                                  num_samples, size_box, offset_if_None, num_patients_by_label,
+                                  results)
+        train_set_x, train_set_y, train_set_patients, train_set_masks = params
+        params3 = analyze_data(train_set_x, train_set_y, train_set_patients, train_set_masks,
+                               plot_data=plot_data, initial_figure=48, dataset_name=dataset_name,
+                               suffix="_train_set_resampled", title_suffix="(Train Set Resampled)")
+        # Test set
+        num_patients_by_label, medians_by_label, results = params2
+        params = resample_volumes(test_set_x, test_set_y, test_set_patients, test_set_masks,
+                                  num_samples, size_box, offset_if_None, num_patients_by_label,
+                                  results)
+        test_set_x, test_set_y, test_set_patients, test_set_masks = params
+        params4 = analyze_data(test_set_x, test_set_y, test_set_patients, test_set_masks,
+                               plot_data=plot_data, initial_figure=48, dataset_name=dataset_name,
+                               suffix="_test_set_resampled", title_suffix="(Test Set Resampled)")
 
     # Print results
     print("\nDATASET DIVIDED IN TRAINING AND TEST SET")
