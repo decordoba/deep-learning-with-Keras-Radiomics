@@ -248,7 +248,7 @@ def calculate_shared_axis(data1, data2, constant_factor=0.05):
 
 
 def analyze_data(volumes, labels, patients, masks, plot_data=True, initial_figure=0, suffix="",
-                 title_suffix="", dataset_name="organized"):
+                 title_suffix="", dataset_name="organized", allow_less_3_slices=False):
     """Print statistics of data and maybe plot them if plot_data is True."""
     num_labels = [0, 0]
     sizes_masks = [np.zeros(3), np.zeros(3)]
@@ -257,7 +257,7 @@ def analyze_data(volumes, labels, patients, masks, plot_data=True, initial_figur
     all_slices = [[], []]
     abs_num_slices = []
     for label, patient, volume, mask in zip(labels, patients, volumes, masks):
-        if volume.shape[2] < 3:
+        if volume.shape[2] < 3 and not allow_less_3_slices:
             continue  # patient ignored, it is too small
         size_mask, granular_volume = get_size_mask(mask)
         abs_num_slices.append(size_mask[2])
@@ -515,6 +515,69 @@ def interpolate_data(x_set, masks, pixels_separation):
     return x_set, masks
 
 
+def resample_volumes(x_set, y_set, patients, masks, num_samples, size_box, offset_if_None,
+                     num_patients_by_label, results):
+    """Resample volumes to make boxes of constant size size_box.
+
+    If a number in size_box is None, all the slices in that direction except the most exterior
+    offset_if_None layers will be used for one box.
+    """
+    # Convert size box (i.e. (5,5,None)) to (2,2,None), (-2,-2,None), (2,2,0)
+    size_box_params = get_distances_from_box_size(size_box)
+    # Get position all centers: positions in a patient that can be the center of a box
+    center_samples = []  # Center of all boxes with size_box size in x_set[i]
+    min_num_samples = [None, None]
+    for i, (mask, label) in enumerate(zip(masks, y_set)):
+        center_samples.append(get_all_centers_of_samples(mask, *size_box_params, offset_if_None))
+        if x_set[i].shape[2] < 3 or results[3][i] < 3:
+            continue  # patient ignored, it is too small
+        try:
+            min_num_samples[label] = min(len(center_samples[-1]), min_num_samples[label])
+        except TypeError:
+            min_num_samples[label] = len(center_samples[-1])
+    # Adapt the number of samples per patient for one of the labels so that the labels get balanced
+    if num_samples is not None:
+        min_num_samples[0] = num_samples
+        min_num_samples[1] = num_samples
+    factor = (num_patients_by_label[0] * min_num_samples[0] /
+              num_patients_by_label[1] / min_num_samples[1])
+    if factor > 1:
+        min_num_samples[0] = int(np.ceil(min_num_samples[0] / factor))
+    else:
+        min_num_samples[1] = int(np.ceil(min_num_samples[1] * factor))
+    # Cut volumes and resample
+    new_x = []
+    new_y = []
+    new_patients = []
+    new_masks = []
+    for i, (volume, mask, label, patient, samples) in enumerate(zip(x_set, masks,
+                                                                    y_set, patients,
+                                                                    center_samples)):
+        if volume.shape[2] < 3 or results[3][i] < 3:
+            continue  # patient ignored, it is too small
+        min_different_samples = min_num_samples[label]
+        k = 0
+        while min_different_samples > 0:
+            pos = np.random.permutation(np.arange(len(samples)))[:min_different_samples]
+            min_different_samples -= len(samples)
+            for j, center in enumerate(samples[pos]):
+                if None not in size_box:
+                    new_x.append(get_sample_from_center(volume, center,
+                                                        *size_box_params[:2]))
+                    new_masks.append(get_sample_from_center(mask, center,
+                                                            *size_box_params[:2]))
+                else:
+                    new_x.append(get_sample_from_center_special(volume, center,
+                                                                *size_box_params[:2]))
+                    new_masks.append(get_sample_from_center_special(mask, center,
+                                                                    *size_box_params[:2]))
+                new_y.append(label)
+                # new_patients.append(patient + "_{:06}".format(j + k * len(pos)))
+                new_patients.append(patient)  # patient names must be mantained!
+            k += 1
+    return new_x, new_y, new_patients, new_masks
+
+
 def get_bucket(bucket0, bucket1, ratio=0.5):
     """Get size of two buckets and tell what bucket to put next obj to get closer to buckets ratio.
 
@@ -672,61 +735,11 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
                 size_box = (size_box, size_box, size_box)
         else:
             offset_if_None = size_box[0]
-        size_box_params = get_distances_from_box_size(size_box)
-        if num_samples is None:
-            center_samples = []  # Center of all boxes with size_box size in x_set[i]
-            min_num_samples = [None, None]
-            for i, (mask, lab) in enumerate(zip(masks, y_set)):
-                center_samples.append(get_all_centers_of_samples(mask, *size_box_params,
-                                                                 offset_if_None))
-                if x_set[i].shape[2] < 3 or results[3][i] < 3:
-                    continue  # patient ignored, it is too small
-                try:
-                    min_num_samples[lab] = min(len(center_samples[-1]), min_num_samples[lab])
-                except TypeError:
-                    min_num_samples[lab] = len(center_samples[-1])
-            print("Patients", num_patients_by_label)
-            print("Samples", min_num_samples)
-            factor = (num_patients_by_label[0] * min_num_samples[0] /
-                      num_patients_by_label[1] / min_num_samples[1])
-            if factor > 1:
-                min_num_samples[0] = int(np.ceil(min_num_samples[0] / factor))
-            else:
-                min_num_samples[1] = int(np.ceil(min_num_samples[1] * factor))
-            print("Samples", min_num_samples, factor)
-            new_x = []
-            new_y = []
-            new_patients = []
-            new_masks = []
-            for i, (volume, mask, label, patient, samples) in enumerate(zip(x_set, masks,
-                                                                            y_set, patients,
-                                                                            center_samples)):
-                if volume.shape[2] < 3 or results[3][i] < 3:
-                    continue  # patient ignored, it is too small
-                min_different_samples = min_num_samples[label]
-                k = 0
-                while min_different_samples > 0:
-                    pos = np.random.permutation(np.arange(len(samples)))[:min_different_samples]
-                    min_different_samples -= len(samples)
-                    for j, center in enumerate(samples[pos]):
-                        if None not in size_box:
-                            new_x.append(get_sample_from_center(volume, center,
-                                                                *size_box_params[:2]))
-                            new_masks.append(get_sample_from_center(mask, center,
-                                                                    *size_box_params[:2]))
-                        else:
-                            new_x.append(get_sample_from_center_special(volume, center,
-                                                                        *size_box_params[:2]))
-                            new_masks.append(get_sample_from_center_special(mask, center,
-                                                                            *size_box_params[:2]))
-                        new_y.append(label)
-                        new_patients.append(patient + "_{:06}".format(j + k * len(pos)))
-                    k += 1
-            x_set, y_set, patients, masks = new_x, new_y, new_patients, new_masks
-        else:
-            print("This resampling has not yet been implemented (and it probably never will).")
+        params = resample_volumes(x_set, y_set, patients, masks, num_samples, size_box,
+                                  offset_if_None, num_patients_by_label, results)
+        x_set, y_set, patients, masks = params
         params = analyze_data(x_set, y_set, patients, masks, plot_data=plot_data,
-                              initial_figure=30, suffix="_resampled",
+                              initial_figure=30, suffix="_resampled", allow_less_3_slices=True,
                               title_suffix="(Resampled)", dataset_name=dataset_name)
         num_patients_by_label, medians_by_label, results = params
 
