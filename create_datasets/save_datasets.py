@@ -595,6 +595,14 @@ def get_bucket(bucket0, bucket1, ratio=0.5):
     return 0 if current_ratio < ratio else 1
 
 
+def normalize_3D_volumes(volumes):
+    for i, volume in enumerate(volumes):
+        maxv = np.max(volume)
+        minv = np.min(volume)
+        volumes[i] = (volume - minv) / (maxv - minv)
+    return volumes
+
+
 def generate_2D_dataset(samples, labels, patients, masks, slices_per_sample=3, rotate_data=False,
                         normalize=True):
     """From 3D volumes generates a 2D dataset."""
@@ -603,9 +611,7 @@ def generate_2D_dataset(samples, labels, patients, masks, slices_per_sample=3, r
     for volume, label, patient, mask in zip(samples, labels, patients, masks):
         # Normalize values from 0 to 1
         if normalize:
-            maxv = np.max(volume)
-            minv = np.min(volume)
-            volume = (volume - minv) / (maxv - minv)
+            volume = normalize_3D_volumes([volume])[0]
         for r in range(rotations):
             # If rotations=4, rotate image 4 times (0, 90, 180 and 270 deg) to increase sample size
             vol = np.rot90(volume, k=r)
@@ -660,12 +666,14 @@ def save_dataset_correctly(x, y, patients, masks, parent_folder="data", dataset_
 
 
 def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", suffix="",
-                       plot_data=False, trim_data=True, data_interpolation=None,
+                       plot_data=False, trim_data=True, data_interpolation=None, normalize=True,
                        convert_to_2d=True, resampling=None, skip_dialog=False):
     """Save dataset so labels & slices medians are equally distributed in training and test set."""
     # Add suffixes ta dataset name, so it is easy to know how every dataset was generated
     if not convert_to_2d:
         dataset_name += "_3d"
+    if not normalize:
+        dataset_name += "_unnormalized"
     if trim_data:
         # 2 represents that we are using sizes (2) to trim, not slices (1), or box_sizes (3)
         trim_option = 2
@@ -726,6 +734,10 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
                               initial_figure=24, suffix="_interpolated_slices",
                               title_suffix="(Interpolated Slices)", dataset_name=dataset_name)
         num_patients_by_label, medians_by_label, results = params
+
+    if normalize:
+        # Normalize every volume of every patient so the max pixel is 1 and the min pixel is 0
+        x_set = normalize_3D_volumes(x_set)
 
     # Resampling used to be here, but then samples get mixed between training and test set
     """
@@ -903,7 +915,7 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
     print(" ")
     if convert_to_2d:
         train_data = generate_2D_dataset(train_set_x, train_set_y, train_set_patients,
-                                         train_set_masks)
+                                         train_set_masks, normalize=False)
         x, y, patients_dataset, masks_dataset = train_data
         print(" ")
     else:
@@ -913,7 +925,8 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
                            dataset_name=dataset_name, dataset_subname="training_set")
     print(" ")
     if convert_to_2d:
-        test_data = generate_2D_dataset(test_set_x, test_set_y, test_set_patients, test_set_masks)
+        test_data = generate_2D_dataset(test_set_x, test_set_y, test_set_patients, test_set_masks,
+                                        normalize=False)  # Volumes already normalized
         x, y, patients_dataset, masks_dataset = test_data
         print(" ")
     else:
@@ -952,6 +965,8 @@ def parse_arguments(suffix=""):
                         "adjacent pixels is the same in all directions")
     parser.add_argument('-3d', '--in_3d', default=False, action="store_true",
                         help="save 3d data instead of slicing it in 3 channels 2d images")
+    parser.add_argument('-u', '--unnormalized', default=False, action="store_true",
+                        help="do not normalize volumes")
     parser.add_argument('-y', '--yes', default=False, action="store_true",
                         help="skip confirmation dialogs, this will overwrite data without asking")
     return parser.parse_args()
@@ -1012,4 +1027,4 @@ if __name__ == "__main__":
         improved_save_data(x, y, patients, masks, suffix=name_suffix, plot_data=args.plot,
                            trim_data=args.trim, data_interpolation=data_interpolation,
                            convert_to_2d=not args.in_3d, resampling=resampling,
-                           skip_dialog=args.yes)
+                           normalize=not args.unnormalized, skip_dialog=args.yes)
