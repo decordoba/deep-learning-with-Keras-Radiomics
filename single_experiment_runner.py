@@ -502,7 +502,7 @@ def parse_arguments():
 
 def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whole, num_patients,
                         location="cross_validation_results", patient_level_cv=False,
-                        num_epochs=50, suffix="", show_plots=False):
+                        num_epochs=50, suffix="", show_plots=False, shuffle=False):
     """Do cross validation on dataset."""
     # Do 10-fold CV in whole set
     num_folds = 10
@@ -562,6 +562,14 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
         x_test_cv = x_whole[idx0:idx1]
         y_test_cv = y_whole[idx0:idx1]
         patients_test_cv = patients_whole[idx0:idx1]
+
+        if shuffle:
+            shuffle_train = np.random.permutation(len(x_train_cv))
+            x_train_cv, y_train_cv = x_train_cv[shuffle_train], y_train_cv[shuffle_train]
+            patients_train_cv = patients_train_cv[shuffle_train]
+            shuffle_test = np.random.permutation(len(x_test_cv))
+            x_test_cv, y_test_cv = x_test_cv[shuffle_test], y_test_cv[shuffle_test]
+            patients_test_cv = patients_test_cv[shuffle_test]
 
         # Train model
         # callbacks = [cbPlotEpoch, cbROC(training_data=(x_train_cv, y_train_cv),
@@ -905,7 +913,7 @@ def main():
                                      num_patients, location=location + "/" + subfolder,
                                      patient_level_cv=not args.slice_level_cross_validation,
                                      num_epochs=args.epochs, suffix="-{}".format(comb),
-                                     show_plots=args.plot)
+                                     show_plots=args.plot, shuffle=True)
         all_data.append((comb, *params))
 
     # Plot summary of results
