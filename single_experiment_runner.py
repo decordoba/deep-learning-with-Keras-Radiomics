@@ -886,13 +886,21 @@ def main():
     y_test = np_utils.to_categorical(y_test, len(labels))
 
     if args.plot_slices:
-        for i in range(len(x_whole)):
-            s = "Sample: {} - Patient: {} - Label: {}".format(i, patients_whole[i], y_whole[i])
+        i = 0
+        while i < len(x_whole):
+            s = "{}/{} - Patient: {} - Label: {}".format(i, len(x_whole), patients_whole[i],
+                                                         y_whole[i][1])
             plot_slices(x_whole[i], title=s, fig_num=0)
             print(s)
-            r = input("ENTER: next slice, q: quit plot.\n>> ")
+            r = input("ENTER: next slice, q: quit plot, n: next patient.\n>> ")
             if len(r) > 0 and r[0].lower() == "q":
                 break
+            elif len(r) > 0 and r[0].lower() == "n":
+                p = patients_whole[i]
+                while i < len(patients_whole) and patients_whole[i] == p:
+                    i += 1
+            else:
+                i += 1
         plt.close("all")
 
     # Print some information of data
