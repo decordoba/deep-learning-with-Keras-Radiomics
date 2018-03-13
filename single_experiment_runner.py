@@ -508,18 +508,23 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
     num_folds = 10
     if patient_level_cv:
         # Get splits indices to separate dataset in patients
-        num_folds = 11  # 11 because 77 % 11 = 0
-        num_patients_per_fold = int(np.ceil(num_patients / num_folds))
+        if num_patients % 11 == 0:
+            num_folds = 11  # 11 because 77 % 11 = 0
+        num_patients_per_fold = num_patients / num_folds
         patient_num = 0
+        total_patient_num = -1
         prev_patient = ""
-        folds_indices = [0]
+        folds_indices = []
+        prev_factor = -1
         for i, patient in enumerate(patients_whole):
             if patient != prev_patient:
                 prev_patient = patient
                 patient_num += 1
-                if patient_num > num_patients_per_fold:
+                total_patient_num += 1
+                factor = int(total_patient_num / num_patients_per_fold)
+                if factor != prev_factor:
                     folds_indices.append(i)
-                    patient_num = 1
+                prev_factor = factor
         folds_indices.append(len(patients_whole))
     else:
         size_fold = x_whole.shape[0] / num_folds
