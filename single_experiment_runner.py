@@ -785,8 +785,39 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
     return all_data_log, tr_all_data_log, pat_all_data_log, (historic_acc, historic_val_acc), rocs
 
 
+def create_simplified_layers(input_shape, labels, units=16, num_fully_connected=1, dropout1=0,
+                             dropout2=0):
+    """Create list of layers based on some parameters."""
+    # Define model
+    units = units  # [8, 16, 32, 64]
+    activation = "relu"  # ["relu", "tanh"]
+    num_fully_connected_layers = num_fully_connected  # [1, 2, 3]
+    loss = losses.categorical_crossentropy
+    optimizer = optimizers.Adam()
+    d1 = dropout1  # [0, 0.25, 0.5]
+    d2 = dropout2  # [0, 0.25, 0.5]
+    dropout1 = [] if d1 <= 0 else [Dropout(d1)]
+    dropout2 = [] if d2 <= 0 else [Dropout(d2)]
+    fully_connected_layers = []
+    for n in range(num_fully_connected_layers):
+        fully_connected_layers.append(Dense(units, activation=activation))
+    layers = [Flatten(input_shape=input_shape),
+              *fully_connected_layers,
+              *dropout1,
+              Dense(units, activation=activation),
+              *dropout2,
+              Dense(len(labels), activation='softmax')]
+    # Save model image
+    # model = Sequential()
+    # for layer in layers:
+    #     model.add(layer)
+    # plot_model(model, show_shapes=True, show_layer_names=False, show_params=True,
+    #            to_file="model.png")
+    return layers, optimizer, loss
+
+
 def create_layers(input_shape, labels, filters=16, units=16, num_convolutions=1, dropout1=0,
-                  dropout2=0):
+                  dropout2=0, maxpool=True, padding="valid"):
     """Create list of layers based on some parameters."""
     # Define model
     filters = filters  # [8, 16, 32, 64]
@@ -803,10 +834,12 @@ def create_layers(input_shape, labels, filters=16, units=16, num_convolutions=1,
     for n in range(num_conv):
         if n == 0:
             convolutional_layers.append(Conv2D(filters, kernel_size=(3, 3), activation=activation,
-                                               input_shape=input_shape))
+                                               input_shape=input_shape, padding=padding))
         else:
-            convolutional_layers.append(Conv2D(filters, kernel_size=(3, 3), activation=activation))
-        convolutional_layers.append(MaxPooling2D(pool_size=(2, 2)))
+            convolutional_layers.append(Conv2D(filters, kernel_size=(3, 3), activation=activation,
+                                               padding=padding))
+        if maxpool:
+            convolutional_layers.append(MaxPooling2D(pool_size=(2, 2)))
     layers = [*convolutional_layers,
               *dropout1,
               Flatten(),
@@ -882,6 +915,8 @@ def main():
     s = ""
     filters = [16]
     units = [16]
+    if args.simplified_model:
+        units = [32]
     num_convolutions = [1]
     dropout1 = [0]
     dropout2 = [0]
@@ -902,18 +937,29 @@ def main():
         s += "-dropout2"
 
     # Try all combinations of the parameters
+    maxpool = True
+    padding = "valid"
+    if min(input_shape[:2]) < 10:
+        maxpool = False
+        padding = "same"
     all_data = []
     for comb in itertools.product(filters, units, num_convolutions, dropout1, dropout2):
         # Create layers list that will define model
         f, u, c, d1, d2 = comb
-        layers, optimizer, loss = create_layers(input_shape, labels, filters=f, units=u,
-                                                num_convolutions=c, dropout1=d1, dropout2=d2)
+        if args.simplified_model:
+            layers, optimizer, loss = create_simplified_layers(input_shape, labels,
+                                                               units=u, num_fully_connected=c,
+                                                               dropout1=d1, dropout2=d2)
+        else:
+            layers, optimizer, loss = create_layers(input_shape, labels, filters=f, units=u,
+                                                    num_convolutions=c, dropout1=d1, dropout2=d2,
+                                                    maxpool=maxpool, padding=padding)
         subfolder = "-".join([str(x) for x in comb])
         params = do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whole,
                                      num_patients, location=location + "/" + subfolder,
                                      patient_level_cv=not args.slice_level_cross_validation,
                                      num_epochs=args.epochs, suffix="-{}".format(comb),
-                                     show_plots=args.plot, shuffle=True)
+                                     show_plots=args.plot, shuffle=False)
         all_data.append((comb, *params))
 
     # Plot summary of results
