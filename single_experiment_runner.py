@@ -19,6 +19,41 @@ from sklearn.metrics import classification_report, confusion_matrix, roc_curve, 
 from keras_utils import flexible_neural_net
 
 
+def plot_slices(volume, title=None, fig_num=0, filename=None, show=True):
+    """Plot all slices of volume in one figure."""
+    # Plot epoch history for accuracy and loss
+    if filename is None and show:
+        plt.ion()
+    num_curves = volume.shape[2]
+    if num_curves % 5 == 0:
+        h = int(num_curves / 5)
+        w = 5
+    else:
+        h = int(np.floor(np.sqrt(num_curves)))
+        w = int(np.ceil(np.sqrt(num_curves)))
+        while w * h < num_curves:
+            w += 1
+    fig = plt.figure(fig_num, figsize=(1.5 * w, 1.2 * h))
+    vmin = np.min(volume)
+    vmax = np.max(volume)
+    cmap = plt.cm.gray
+    plt.clf()
+    for i in range(num_curves):
+        subfig = fig.add_subplot(h, w, i + 1)
+        subfig.pcolormesh(volume[:, :, i], vmin=vmin, vmax=vmax, cmap=cmap)
+        subfig.axis('off')
+    if title is not None:
+        # fig.suptitle(title)
+        fig.canvas.set_window_title("Figure {} - {}".format(fig_num, title))
+    if filename is None:
+        if show:
+            plt.show()
+            plt.ioff()
+    else:
+        fig.savefig(filename, bbox_inches="tight")
+        fig.clear()
+
+
 def plot_accuracy_curve(acc, val_acc=None, title=None, fig_num=0, filename=None, show=True):
     """Plot train and validation history.
 
@@ -439,11 +474,15 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Run single experiment on organized dataset.")
     parser.add_argument('-p', '--plot', default=False, action="store_true",
                         help="show figures before saving them")
+    parser.add_argument('-ps', '--plot_slices', default=False, action="store_true",
+                        help="show slices of volume in dataset")
     parser.add_argument('-e', '--epochs', default=50, type=int,
                         help="number of epochs when training (default: 50)")
     parser.add_argument('-d', '--dataset', default="organized", type=str,
                         help="location of the dataset inside the ./data folder "
                         "(default: organized)")
+    parser.add_argument('--simplified_model', '-sm', default=False, action="store_true",
+                        help="use fully connected layers instead of convolutional layers")
     parser.add_argument('--filters', default=False, action="store_true", help="test different "
                         "number of filters for the convolutional layers")
     parser.add_argument('--units', default=False, action="store_true", help="test different "
@@ -514,7 +553,7 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
             data_splits.append(idx0)
         x_train_cv = np.append(x_whole[:idx0], x_whole[idx1:], axis=0)
         y_train_cv = np.append(y_whole[:idx0], y_whole[idx1:], axis=0)
-        patients_whole_cv = np.append(patients_whole[:idx0], patients_whole[idx1:], axis=0)
+        patients_train_cv = np.append(patients_whole[:idx0], patients_whole[idx1:], axis=0)
         x_test_cv = x_whole[idx0:idx1]
         y_test_cv = y_whole[idx0:idx1]
         patients_test_cv = patients_whole[idx0:idx1]
@@ -799,6 +838,16 @@ def main():
     y_whole = np_utils.to_categorical(y_whole, len(labels))
     y_train = np_utils.to_categorical(y_train, len(labels))
     y_test = np_utils.to_categorical(y_test, len(labels))
+
+    if args.plot_slices:
+        for i in range(len(x_whole)):
+            s = "Sample: {} - Patient: {} - Label: {}".format(i, patients_whole[i], y_whole[i])
+            plot_slices(x_whole[i], title=s, fig_num=0)
+            print(s)
+            r = input("ENTER: next slice, q: quit plot.\n>> ")
+            if len(r) > 0 and r[0].lower() == "q":
+                break
+        plt.close("all")
 
     # Print some information of data
     print("Training set shape:  {}".format(x_train.shape))
