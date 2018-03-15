@@ -596,6 +596,7 @@ def get_bucket(bucket0, bucket1, ratio=0.5):
 
 
 def normalize_3D_volumes(volumes):
+    """Normalize volume, so minimum value in it is 0 and maximum value is 1."""
     for i, volume in enumerate(volumes):
         maxv = np.max(volume)
         minv = np.min(volume)
@@ -738,6 +739,10 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
     if normalize:
         # Normalize every volume of every patient so the max pixel is 1 and the min pixel is 0
         x_set = normalize_3D_volumes(x_set)
+        params = analyze_data(x_set, y_set, patients, masks, plot_data=plot_data,
+                              initial_figure=30, suffix="_normalized",
+                              title_suffix="(Normalized)", dataset_name=dataset_name)
+        num_patients_by_label, medians_by_label, results = params
 
     # Resampling used to be here, but then samples get mixed between training and test set
     """
@@ -879,6 +884,8 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
                 size_box = (size_box, size_box, size_box)
         else:
             offset_if_None = size_box[0]
+        # TODO: balancing is done separately in training and test set, which results in a different
+        #       number of samples per tumor & label for train and test set. Fix that!
         # Training set
         num_patients_by_label, medians_by_label, results = params1
         params = resample_volumes(train_set_x, train_set_y, train_set_patients, train_set_masks,
@@ -895,8 +902,14 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
                                   results)
         test_set_x, test_set_y, test_set_patients, test_set_masks = params
         params4 = analyze_data(test_set_x, test_set_y, test_set_patients, test_set_masks,
-                               plot_data=plot_data, initial_figure=48, dataset_name=dataset_name,
+                               plot_data=plot_data, initial_figure=54, dataset_name=dataset_name,
                                suffix="_test_set_resampled", title_suffix="(Test Set Resampled)")
+        # Train set and test set together
+        params5 = analyze_data(train_set_x + test_set_x, train_set_y + test_set_y,
+                               train_set_patients + test_set_patients,
+                               train_set_masks + test_set_masks,
+                               plot_data=plot_data, initial_figure=60, dataset_name=dataset_name,
+                               suffix="_whole_set_resampled", title_suffix="(Whole Set Resampled)")
 
     # Print results
     print("\nDATASET DIVIDED IN TRAINING AND TEST SET")
