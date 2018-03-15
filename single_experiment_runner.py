@@ -877,6 +877,7 @@ def main():
     y_whole = np.append(y_train, y_test, axis=0)
     mask_whole = np.append(mask_train, mask_test, axis=0)
     patients_whole = np.append(patients_train, patients_test, axis=0)
+
     patients = np.unique(patients_whole)
     input_shape = x_whole.shape[1:]
     num_patients = len(patients)
@@ -920,7 +921,7 @@ def main():
         n += 1
 
     # Define parameters we want to try in our experiments
-    s = ""
+    s = "_{}".format(args.dataset)
     filters = [16]
     units = [16]
     if args.simplified_model:
@@ -934,6 +935,8 @@ def main():
     if args.units:
         units = [8, 16, 32]
         s += "-units"
+        if args.simplified_model:
+            units = [16, 32, 64]
     if args.num_conv:
         num_convolutions = [1, 2, 3]
         s += "-num_conv"
