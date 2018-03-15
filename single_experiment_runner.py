@@ -481,6 +481,9 @@ def parse_arguments():
     parser.add_argument('-d', '--dataset', default="organized", type=str,
                         help="location of the dataset inside the ./data folder "
                         "(default: organized)")
+    parser.add_argument('-l', '--location', default=None, type=str,
+                        help="name of folder where data is saved, if a folder that was used before"
+                        " is selected, the training previously done will not be done again")
     parser.add_argument('--simplified_model', '-sm', default=False, action="store_true",
                         help="use fully connected layers instead of convolutional layers")
     parser.add_argument('--filters', default=False, action="store_true", help="test different "
@@ -502,7 +505,7 @@ def parse_arguments():
 
 def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whole, num_patients,
                         location="cross_validation_results", patient_level_cv=False,
-                        num_epochs=50, suffix="", show_plots=False, shuffle=False):
+                        num_epochs=50, pdf_name="figures.pdf", show_plots=False, shuffle=False):
     """Do cross validation on dataset."""
     # Do 10-fold CV in whole set
     num_folds = 10
@@ -778,7 +781,7 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
                              show=show_plots)
 
     # Save all figures to a PDF called figures.pdf
-    save_plt_figures_to_pdf(location + "/figures{}.pdf".format(suffix))
+    save_plt_figures_to_pdf(location + "/" + pdf_name)
     if show_plots:
         input("Press ENTER to close figures")
         plt.close("all")
@@ -913,12 +916,14 @@ def main():
     print("Number of slices:    {}".format(x_whole.shape[0]))
 
     # Create folder where we will save data
-    n = 0
-    while True:
-        location = "nn{:04d}".format(n)
-        if not os.path.exists(location):
-            break
-        n += 1
+    location = args.location  # Use already existing folder, will not do work already done again
+    if location is None:
+        n = 0
+        while True:
+            location = "nn{:04d}".format(n)
+            if not os.path.exists(location):
+                break
+            n += 1
 
     # Define parameters we want to try in our experiments
     s = "_{}".format(args.dataset)
@@ -965,13 +970,35 @@ def main():
             layers, optimizer, loss = create_layers(input_shape, labels, filters=f, units=u,
                                                     num_convolutions=c, dropout1=d1, dropout2=d2,
                                                     maxpool=maxpool, padding=padding)
-        subfolder = "-".join([str(x) for x in comb])
-        params = do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whole,
-                                     num_patients, location=location + "/" + subfolder,
-                                     patient_level_cv=not args.slice_level_cross_validation,
-                                     num_epochs=args.epochs, suffix="-{}".format(comb),
-                                     show_plots=args.plot, shuffle=False)
-        all_data.append((comb, *params))
+        # Do cross validation and save results
+        sublocation = location + "/" + "-".join([str(x) for x in comb])
+        suffix = "-{}".format(comb)
+        pdf_name = "figures{}.pdf".format(suffix)
+        results_name = "results{}.pkl".format(suffix)
+        if not os.path.isfile(sublocation + "/" + pdf_name):
+            params = do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whole,
+                                         num_patients, location=sublocation,
+                                         patient_level_cv=not args.slice_level_cross_validation,
+                                         num_epochs=args.epochs, pdf_name=pdf_name,
+                                         show_plots=args.plot, shuffle=False)
+            all_data_comb = (comb, *params)
+            with open(sublocation + "/" + results_name, 'wb') as f:
+                pickle.dump(all_data_comb, f)
+        else:
+            # Instead of doing cross validation again, if the data already exists, load data saved
+            print("\nFile '{}' already exists, skipping cross validation of combination {}."
+                  "".format(sublocation + "/" + pdf_name, comb))
+            if os.path.isfile(sublocation + "/" + results_name):
+                with open(sublocation + "/" + results_name, 'rb') as f:
+                    all_data_comb = pickle.load(f)
+                print("Loaded old cross validation results from '{}'."
+                      "".format(sublocation + "/" + results_name))
+            else:
+                all_data_comb = None
+                print("File '{}' not found, global results will not include combination {}."
+                      "".format(sublocation + "/" + results_name, comb))
+        if all_data_comb is not None:
+            all_data.append(all_data_comb)
 
     # Plot summary of results
     show_plots = args.plot
