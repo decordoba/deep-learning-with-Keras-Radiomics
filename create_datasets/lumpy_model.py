@@ -2,10 +2,11 @@
 import argparse
 import numpy as np
 from matplotlib import pyplot as plt
+from scipy.ndimage import gaussian_filter
 
 
 def lumpy_backround(dim=(64, 64), nbar=200, dc=10, lump_function="GaussLmp", pars=(1, 10),
-                    discretize_lumps_positions=False, rng=None):
+                    discretize_lumps_positions=False, rng=None, exact=False, rnd_type=1):
     """Generate 2D or 3D (or 1D) matrix with lumpy model.
 
     : param dim: Output image dimensions. Can be a 3D tuple, 2D tuple, 1D tuple or an int
@@ -21,33 +22,44 @@ def lumpy_backround(dim=(64, 64), nbar=200, dc=10, lump_function="GaussLmp", par
                N: Number of lumps
                lumps_pos: Position of every lump in image
     """
-    # Assume square image if dim is an integer
+    # Assume cubic image if dim is an integer
     if isinstance(dim, int):
         dim = (dim, dim, dim)
+    dim = np.array(dim)
 
     # Initialize values that will be returned
     image = dc * np.ones(dim)
-    n = np.random.poisson(nbar)
-    lumps_pos = []
+    n = np.random.poisson(nbar) if not exact else nbar
 
+    # Create some useful variables
+    n_dim = len(dim)
+    scales = [np.arange(dim[j]) for j in range(n_dim)]
+
+    # Random position of lump, uniform throughout image
+    if rnd_type == 0:
+        lumps_pos = np.random.rand(n, n_dim) * dim
+    elif rnd_type == 1:
+        lumps_pos = np.zeros((n, 0))
+        for i, d in enumerate(dim):
+            std_dev = d * (0.1 + 0.1 * np.random.rand())
+            coords = np.random.normal(loc=int(d / 2), scale=std_dev, size=n)
+            lumps_pos = np.column_stack([lumps_pos, coords])
+    if discretize_lumps_positions:
+        lumps_pos = lumps_pos.astype(int)
     for i in range(n):
-        # Random position of lump, uniform throughout image
-        if discretize_lumps_positions:
-            pos = [int(np.random.rand() * d) for d in dim]
-        else:
-            pos = [np.random.rand() * d for d in dim]
-        pos = tuple(pos)
-        lumps_pos.append(pos)
-
         # Set up a grid of points
-        coords = np.meshgrid(*[np.array(range(dim[i])) - pos[i] for i in range(len(dim))])
+        coords = np.meshgrid(*[scales[j] - lumps_pos[i, j] for j in range(n_dim)])
 
-        # Generate a lump centered at pos
+        # Generate a lump centered at pos = lumps_pos[i, :]
         squares_sum = np.sum(c ** 2 for c in coords)
+        pars0 = np.random.poisson(pars[0]) if not exact else pars[0]
+        pars1 = np.random.poisson(pars[1]) if not exact else pars[1]
+        pars0 = pars[0] if pars0 == 0 else pars0
+        pars1 = pars[1] if pars1 == 0 else pars1
         if lump_function == "GaussLmp":
-            lump = pars[0] * np.exp(-0.5 * squares_sum / (pars[1] ** 2))
+            lump = pars0 * np.exp(-0.5 * squares_sum / (pars1 ** 2))
         elif lump_function == "CircLmp":
-            lump = pars[0] * (squares_sum <= (pars[1] ** 2))
+            lump = pars0 * (squares_sum <= (pars1 ** 2))
         else:
             raise Exception("Unknown lump function '{}'".format(lump_function))
 
@@ -69,6 +81,51 @@ def lumpy_backround(dim=(64, 64), nbar=200, dc=10, lump_function="GaussLmp", par
     return image, n, lumps_pos
 
 
+def add_background(image, sigma=5, attenuation=1):
+    """Add gaussian background to image."""
+    background = gaussian_filter(np.random.normal(size=image.shape), sigma=sigma)
+    rng = [image.min(), image.max()]
+    background = background * (rng[1] - rng[0]) * attenuation
+    return background + image, background
+
+
+def generate_mask(image, threshold=0.5):
+    """Return mask of 0s and 1s: 0s when pixel value <= threshold, 1s when pixel > threshold."""
+    min_val = image.min()
+    max_val = image.max()
+    return (((image - min_val) / (max_val - min_val)) > threshold).astype(int)
+
+
+def rescale_image(image, rng, convert_to_int=False):
+    """Rescale image to go from rng[0] to rng[1]."""
+    if isinstance(rng, int):
+        rng = (0, rng)
+    rng = np.array(rng)
+    min_v = image.min()
+    max_v = image.max()
+    if min_v == max_v:  # Avoid dividing by zero
+        image = rng[0] * np.ones(image.shape)
+    else:
+        if convert_to_int:
+            rng[1] += 0.999
+        image = (image - min_v) / (max_v - min_v) * (rng[1] - rng[0]) + rng[0]
+    if convert_to_int:
+        image = image.astype(int)
+    return image
+
+
+def get_lumpy_image(DIM, NBAR, DC, LUMP_FUNCTION, PARS, DISCRETE_LUMPS, RANGE_VALUES, SIGMA,
+                    MASK_THRESHOLD):
+    """Create lumpy image and add a noisy background to it."""
+    image, n, lumps_pos = lumpy_backround(dim=DIM, nbar=NBAR, dc=DC, lump_function=LUMP_FUNCTION,
+                                          pars=PARS, discretize_lumps_positions=DISCRETE_LUMPS,
+                                          exact=True)
+
+    noisy_image, background = add_background(image, sigma=SIGMA, attenuation=1)
+    final_image = rescale_image(noisy_image, rng=RANGE_VALUES, convert_to_int=True)
+    return final_image, image, background, lumps_pos
+
+
 def create_lumps_pos_matrix(lumps_pos, dim=(64, 64), discrete_lumps_positions=False):
     """Create matrix with 1s in all lumps_pos and 0s elsewhere.
 
@@ -79,9 +136,12 @@ def create_lumps_pos_matrix(lumps_pos, dim=(64, 64), discrete_lumps_positions=Fa
                                      they can be floats
     :return: matrix with lumps positions
     """
-    # Assume square image if dim is an integer
+    # Assume cubic image if dim is an integer
     if isinstance(dim, int):
         dim = (dim, dim, dim)
+
+    # Create some useful variables
+    n_dim = len(dim)
 
     # Put a 1 in the matrix in all the lump positions.
     # If the position is not discrete, split this 1 among the discrete positions in image
@@ -95,23 +155,23 @@ def create_lumps_pos_matrix(lumps_pos, dim=(64, 64), discrete_lumps_positions=Fa
             xh_pos = int(x) + 1
             xl = x - xl_pos
             xh = xh_pos - x
-            if len(dim) > 1:
+            if n_dim > 1:
                 y = pos[1]
                 yl_pos = int(y)
                 yh_pos = int(y) + 1
                 yl = y - yl_pos
                 yh = yh_pos - y
                 z = pos[2]
-            if len(dim) > 2:
+            if n_dim > 2:
                 zl_pos = int(z)
                 zh_pos = int(z) + 1
                 zl = z - zl_pos
                 zh = zh_pos - z
-            if len(dim) == 1:
+            if n_dim == 1:
                 image[xl_pos] += xh
                 if xh_pos < dim[0]:
                     image[xh_pos] += xl
-            elif len(dim) == 2:
+            elif n_dim == 2:
                 image[xl_pos, yl_pos] += xh * yh
                 if xh_pos < dim[0]:
                     image[xh_pos, yl_pos] += xl * yh
@@ -119,7 +179,11 @@ def create_lumps_pos_matrix(lumps_pos, dim=(64, 64), discrete_lumps_positions=Fa
                     image[xl_pos, yh_pos] += xh * yl
                 if xh_pos < dim[0] and yh_pos < dim[1]:
                     image[xh_pos, yh_pos] += xl * yl
-            elif len(dim) == 3:
+            elif n_dim == 3:
+                if xl_pos >= dim[0] or yl_pos >= dim[1] or zl_pos >= dim[2]:
+                    continue
+                if xl_pos < 0 or yl_pos < 0 or zl_pos < 0:
+                    continue
                 image[xl_pos, yl_pos, zl_pos] += xh * yh * zh
                 if xh_pos < dim[0]:
                     image[xh_pos, yl_pos, zl_pos] += xl * yh * zh
@@ -139,25 +203,27 @@ def create_lumps_pos_matrix(lumps_pos, dim=(64, 64), discrete_lumps_positions=Fa
     return image
 
 
-def plot_slices(volume, title=None, fig_num=0, filename=None, show=True):
+def plot_slices(volume, title=None, fig_num=0, filename=None, show=True, max_slices=None):
     """Plot all slices of volume in one figure."""
     # Plot epoch history for accuracy and loss
     if filename is None and show:
         plt.ion()
     try:
-        num_curves = volume.shape[2]
+        num_slices = volume.shape[2]
     except IndexError:
-        num_curves = 1
-    h = int(np.floor(np.sqrt(num_curves)))
-    w = int(np.ceil(np.sqrt(num_curves)))
-    if w * h < num_curves:
+        num_slices = 1
+    if max_slices is not None and num_slices > max_slices:
+        num_slices = max_slices
+    h = int(np.floor(np.sqrt(num_slices)))
+    w = int(np.ceil(np.sqrt(num_slices)))
+    if w * h < num_slices:
         h += 1
     fig = plt.figure(fig_num, figsize=(1.5 * w, 1.2 * h))
     vmin = np.min(volume)
     vmax = np.max(volume)
     cmap = plt.cm.gray
     plt.clf()
-    for i in range(num_curves):
+    for i in range(num_slices):
         subfig = fig.add_subplot(h, w, i + 1)
         try:
             subfig.pcolormesh(volume[:, :, i], vmin=vmin, vmax=vmax, cmap=cmap)
@@ -181,47 +247,119 @@ def parse_arguments(d, n, dc, p1, p2, r):
     """Parse arguments in code."""
     parser = argparse.ArgumentParser(description="Create lumpy image based on lumpy model")
     parser.add_argument('-d', '--dim', default=d, type=int, help="default: {}".format(d))
+    parser.add_argument('-dx', '--dim_x', default=None, type=int, help="default: {}".format("dim"))
+    parser.add_argument('-dy', '--dim_y', default=None, type=int, help="default: {}".format("dim"))
+    parser.add_argument('-dz', '--dim_z', default=None, type=int, help="default: {}".format("dim"))
     parser.add_argument('-n', '--nbar', default=n, type=int, help="default: {}".format(n))
-    parser.add_argument('-dc', '--dc', default=dc, type=int, help="default: {}".format(dc))
+    parser.add_argument('-dc', '--dc_offset', default=dc, type=int, help="default: {}".format(dc))
     parser.add_argument('-p1', '--pars1', default=p1, type=int, help="default: {}".format(p1))
     parser.add_argument('-p2', '--pars2', default=p2, type=int, help="default: {}".format(p2))
     parser.add_argument('-r', '--range', default=r, type=int, help="default: {}".format(r))
     parser.add_argument('--discrete', default=False, action="store_true")
+    parser.add_argument('--circle_lumps', default=False, action="store_true")
+    parser.add_argument('--random', default=False, action="store_true",
+                        help="don't use seed for random numbers generator")
+    parser.add_argument('--label0', default=False, action="store_true")
+    parser.add_argument('--label1', default=False, action="store_true")
     return parser.parse_args()
 
 
-if __name__ == "__main__":
-    # Default arguments
-    DIM = 40  # 5
-    NBAR = 100  # 2
+def get_params_label_0(discrete_positions=False):
+    """Return parameters for label 0."""
+    DIM = 40
+    NBAR = 150
     DC = 0
     LUMP_FUNCTION = "GaussLmp"
-    PARS = (1, 4)
+    PARS = (1, 2.5)
+    DISCRETE_LUMPS = discrete_positions
+    RANGE_VALUES = (0, 255)
+    SIGMA = 4  # Should be the same for label 0 and label 1
+    MASK_THRESHOLD = 0.3
+    return DIM, NBAR, DC, LUMP_FUNCTION, PARS, DISCRETE_LUMPS, RANGE_VALUES, SIGMA, MASK_THRESHOLD
+
+
+def get_params_label_1(discrete_positions=False):
+    """Return parameters for label 1."""
+    DIM = 40
+    NBAR = 500
+    DC = 0
+    LUMP_FUNCTION = "GaussLmp"
+    PARS = (1, 1.5)
+    DISCRETE_LUMPS = discrete_positions
+    RANGE_VALUES = (0, 255)
+    SIGMA = 4  # Should be the same for label 0 and label 1
+    MASK_THRESHOLD = 0.3
+    return DIM, NBAR, DC, LUMP_FUNCTION, PARS, DISCRETE_LUMPS, RANGE_VALUES, SIGMA, MASK_THRESHOLD
+
+
+def main():
+    """Run whole code."""
+    # Default arguments
+    DIM = 100  # 40  # 5
+    NBAR = 200  # 100  # 2
+    DC = 0
+    LUMP_FUNCTION = "GaussLmp"
+    PARS = (1, 5)  # (1, 4)
     DISCRETE_LUMPS = False
     RANGE_VALUES = (0, 255)
+    SIGMA = 5
+    title = "Lumpy image"  # Title for plot
 
     # Get arguments reveived from command line
     args = parse_arguments(DIM, NBAR, DC, PARS[0], PARS[1], RANGE_VALUES[1])
-    DIM = args.dim
-    NBAR = args.nbar
-    DC = args.dc
-    PARS = (args.pars1, args.pars2)
-    DISCRETE_LUMPS = args.discrete
-    RANGE_VALUES = (0, args.range)
+    if not args.random:
+        np.random.seed(123)  # for reproducibility
 
-    np.random.seed(123)  # for reproducibility
+    # Consider other arguments or not depending on value of args.label0 and args.label1
+    if not args.label0 and not args.label1:
+        # Read arguments passed by user
+        DIM = (args.dim if args.dim_x is None else args.dim_x,
+               args.dim if args.dim_y is None else args.dim_y,
+               args.dim if args.dim_z is None else args.dim_z)
+        NBAR = args.nbar
+        DC = args.dc_offset
+        LUMP_FUNCTION = "CircLmp" if args.circle_lumps else LUMP_FUNCTION
+        PARS = (args.pars1, args.pars2)
+        DISCRETE_LUMPS = args.discrete
+        RANGE_VALUES = (0, args.range)
+    elif args.label0 and args.label1:
+        # Show one example of label 0 and one example of label 1
+        if not args.random:
+            np.random.seed(123)  # for reproducibility
+        # Create lumpy image for label 1 and plot it
+        params = get_params_label_1()
+        image, lumps, background, lumps_pos = get_lumpy_image(*params)
+        plot_slices(image, fig_num=1, title="Lumpy image (label 1)", max_slices=100)
+        # Set params for label 0
+        params = get_params_label_0()
+        DIM, NBAR, DC, LUMP_FUNCTION, PARS, DISCRETE_LUMPS, RANGE_VALUES, SIGMA, _ = params
+        # Change title of next plot
+        title = "Lumpy image (label 0)"
+    elif args.label0:
+        # Set params for label 0
+        params = get_params_label_0()
+        DIM, NBAR, DC, LUMP_FUNCTION, PARS, DISCRETE_LUMPS, RANGE_VALUES, SIGMA, _ = params
+    else:
+        # Set params for label 1
+        params = get_params_label_1()
+        DIM, NBAR, DC, LUMP_FUNCTION, PARS, DISCRETE_LUMPS, RANGE_VALUES, SIGMA, _ = params
 
-    image, n, lumps_pos = lumpy_backround(dim=DIM, nbar=NBAR, dc=DC, lump_function=LUMP_FUNCTION,
-                                          pars=PARS, discretize_lumps_positions=DISCRETE_LUMPS,
-                                          rng=RANGE_VALUES)
+    # Create lumpy image
+    image, lumps, background, lumps_pos = get_lumpy_image(DIM, NBAR, DC, LUMP_FUNCTION, PARS,
+                                                          DISCRETE_LUMPS, RANGE_VALUES, SIGMA)
 
-    image_pos = create_lumps_pos_matrix(dim=DIM, lumps_pos=lumps_pos)
-
-    print("Image:\n{}".format(image))
-    print("Position matrix:\n{}".format(image_pos))
-    print("Number of lumps:", n)
-    print("Lumps position:\n{}".format(np.array(lumps_pos)))
-
-    plot_slices(image, title="Lumpy image")
-    plot_slices(image_pos, fig_num=1, title="Lumpy centers")
+    plot_slices(image, fig_num=0, title=title, max_slices=100)
     input("Press ENTER to close all figures and exit.")
+
+    # Profiling (trying to understand what is slower in my function)!
+    # from pycallgraph import PyCallGraph
+    # from pycallgraph.output import GraphvizOutput
+    # with PyCallGraph(output=GraphvizOutput()):
+    #     image, n, lumps_pos = lumpy_backround(dim=DIM, nbar=NBAR, dc=DC,
+    #                                           lump_function=LUMP_FUNCTION, pars=PARS,
+    #                                           discretize_lumps_positions=DISCRETE_LUMPS,
+    #                                           rng=RANGE_VALUES)
+
+
+if __name__ == "__main__":
+    main()
