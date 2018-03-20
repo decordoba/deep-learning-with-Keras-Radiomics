@@ -517,9 +517,11 @@ def interpolate_data(x_set, masks, pixels_separation):
     return x_set, masks
 
 
-def resample_volumes(x_set, y_set, patients, masks, num_samples, size_box, offset_if_None,
-                     num_patients_by_label, results):
-    """Resample volumes to make boxes of constant size size_box.
+def calculate_samples_per_label(x_set_train, y_set_train, masks_train, patients_by_label_train,
+                                results_train, x_set_test, y_set_test, masks_test,
+                                patients_by_label_test, results_test, num_samples, size_box,
+                                offset_if_None):
+    """Get number of samples that must be extracted from every patient so labels are balanced.
 
     If a number in size_box is None, all the slices in that direction except the most exterior
     offset_if_None layers will be used for one box.
@@ -527,31 +529,60 @@ def resample_volumes(x_set, y_set, patients, masks, num_samples, size_box, offse
     # Convert size box (i.e. (5,5,None)) to (2,2,None), (-2,-2,None), (2,2,0)
     size_box_params = get_distances_from_box_size(size_box)
     # Get position all centers: positions in a patient that can be the center of a box
-    center_samples = []  # Center of all boxes with size_box size in x_set[i]
-    min_num_samples = [None, None]
-    for i, (mask, label) in enumerate(zip(masks, y_set)):
-        center_samples.append(get_all_centers_of_samples(mask, *size_box_params, offset_if_None))
-        if x_set[i].shape[2] < 3 or results[3][i] < 3:
+    center_samples_train = []  # Center of all boxes with size_box size in x_set[i]
+    min_num_samples_train = [None, None]
+    for i, (mask, label, volume) in enumerate(zip(masks_train, y_set_train, x_set_train)):
+        center_samples_train.append(get_all_centers_of_samples(mask, *size_box_params,
+                                                               offset_if_None))
+        if volume.shape[2] < 3 or results_train[3][i] < 3:
             continue  # patient ignored, it is too small
         try:
-            min_num_samples[label] = min(len(center_samples[-1]), min_num_samples[label])
+            min_num_samples_train[label] = min(len(center_samples_train[-1]),
+                                               min_num_samples_train[label])
         except TypeError:
-            min_num_samples[label] = len(center_samples[-1])
+            min_num_samples_train[label] = len(center_samples_train[-1])
+    center_samples_test = []  # Center of all boxes with size_box size in x_set[i]
+    min_num_samples_test = [None, None]
+    for i, (mask, label, volume) in enumerate(zip(masks_test, y_set_test, x_set_test)):
+        center_samples_test.append(get_all_centers_of_samples(mask, *size_box_params,
+                                                              offset_if_None))
+        if volume.shape[2] < 3 or results_test[3][i] < 3:
+            continue  # patient ignored, it is too small
+        try:
+            min_num_samples_test[label] = min(len(center_samples_test[-1]),
+                                              min_num_samples_test[label])
+        except TypeError:
+            min_num_samples_test[label] = len(center_samples_test[-1])
     # Adapt the number of samples per patient for one of the labels so that the labels get balanced
     if num_samples is not None:
-        min_num_samples[0] = num_samples
-        min_num_samples[1] = num_samples
+        min_num_samples_train[0] = num_samples
+        min_num_samples_train[1] = num_samples
+        min_num_samples_test[0] = num_samples
+        min_num_samples_test[1] = num_samples
+    num_patients_by_label = [patients_by_label_train[0] + patients_by_label_test[0],
+                             patients_by_label_train[1] + patients_by_label_test[1]]
+    min_num_samples = [min(min_num_samples_train[0], min_num_samples_test[0]),
+                       min(min_num_samples_train[1], min_num_samples_test[1])]
     factor = (num_patients_by_label[0] * min_num_samples[0] /
               num_patients_by_label[1] / min_num_samples[1])
     if factor > 1:
         min_num_samples[0] = int(np.ceil(min_num_samples[0] / factor))
     else:
         min_num_samples[1] = int(np.ceil(min_num_samples[1] * factor))
+    return min_num_samples, center_samples_train, center_samples_test
+
+
+def resample_volumes(x_set, y_set, patients, masks, num_samples, size_box, center_samples,
+                     min_num_samples, results):
+    """Resample volumes to make boxes of constant size size_box."""
+    # Convert size box (i.e. (5,5,None)) to (2,2,None), (-2,-2,None), (2,2,0)
+    size_box_params = get_distances_from_box_size(size_box)
     # Cut volumes and resample
     new_x = []
     new_y = []
     new_patients = []
     new_masks = []
+    special = None in size_box
     for i, (volume, mask, label, patient, samples) in enumerate(zip(x_set, masks,
                                                                     y_set, patients,
                                                                     center_samples)):
@@ -563,7 +594,7 @@ def resample_volumes(x_set, y_set, patients, masks, num_samples, size_box, offse
             pos = np.random.permutation(np.arange(len(samples)))[:min_different_samples]
             min_different_samples -= len(samples)
             for j, center in enumerate(samples[pos]):
-                if None not in size_box:
+                if not special:
                     new_x.append(get_sample_from_center(volume, center,
                                                         *size_box_params[:2]))
                     new_masks.append(get_sample_from_center(mask, center,
@@ -884,22 +915,27 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
                 size_box = (size_box, size_box, size_box)
         else:
             offset_if_None = size_box[0]
-        # TODO: balancing is done separately in training and test set, which results in a different
-        #       number of samples per tumor & label for train and test set. Fix that!
+        # Get number of samples per patient (depending on label) and centers of all samples
+        num_patients_by_label_train, medians_by_label_train, results_train = params1
+        num_patients_by_label_test, medians_by_label_test, results_test = params2
+        params = calculate_samples_per_label(train_set_x, train_set_y, train_set_masks,
+                                             num_patients_by_label_train, results_train,
+                                             test_set_x, test_set_y, test_set_masks,
+                                             num_patients_by_label_test, results_test,
+                                             num_samples, size_box, offset_if_None)
+        samples_per_label, centers_train, centers_test = params
         # Training set
-        num_patients_by_label, medians_by_label, results = params1
         params = resample_volumes(train_set_x, train_set_y, train_set_patients, train_set_masks,
-                                  num_samples, size_box, offset_if_None, num_patients_by_label,
-                                  results)
+                                  num_samples, size_box, centers_train, samples_per_label,
+                                  results_train)
         train_set_x, train_set_y, train_set_patients, train_set_masks = params
         params3 = analyze_data(train_set_x, train_set_y, train_set_patients, train_set_masks,
                                plot_data=plot_data, initial_figure=48, dataset_name=dataset_name,
                                suffix="_train_set_resampled", title_suffix="(Train Set Resampled)")
         # Test set
-        num_patients_by_label, medians_by_label, results = params2
         params = resample_volumes(test_set_x, test_set_y, test_set_patients, test_set_masks,
-                                  num_samples, size_box, offset_if_None, num_patients_by_label,
-                                  results)
+                                  num_samples, size_box, centers_test, samples_per_label,
+                                  results_test)
         test_set_x, test_set_y, test_set_patients, test_set_masks = params
         params4 = analyze_data(test_set_x, test_set_y, test_set_patients, test_set_masks,
                                plot_data=plot_data, initial_figure=54, dataset_name=dataset_name,
