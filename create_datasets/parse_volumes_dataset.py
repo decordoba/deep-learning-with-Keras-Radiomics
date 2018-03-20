@@ -38,8 +38,11 @@ def get_big_mask(pet_image, mask=None, mask_offset=None):
 def plot_pet_slice(pet_image, center=None, box=None, mask=None, mask_offset=None, label=None,
                    figure=0):
     """
-    mask and pent image should be same size,
+    mask and pet_image should be same size
     box is 2 coordinates, we will cut mask and pet_image there
+    if center is None, all slices in the image are shown, else only the center'th slice is shown
+    mask_offset is used if the mask and the pet_image are not aligned
+    label is window title (I regret this name choice)
     """
     big_mask = None
     if mask is not None:
