@@ -131,7 +131,9 @@ def generate_data(save_lumps_pos=False, show_images=False, pause_images=False,
                     pause_images = False
 
         if (i + 1) % split_distance == 0:
-            print("{}. {}% loaded".format(get_current_time(), (i + 1) * 100 // num_samples))
+            print("{}. {}% loaded ({}/{} samples)".format(get_current_time(),
+                                                          (i + 1) * 100 // num_samples,
+                                                          i + 1, num_samples))
 
     if show_images:
         plt.ioff()
