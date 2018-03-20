@@ -21,7 +21,7 @@ def get_current_time(time=True, date=False):
 
 def generate_data(save_lumps_pos=False, show_images=False, pause_images=False,
                   discrete_centers=False, dataset_name="lumpy_dataset",
-                  num_samples=100):
+                  num_samples=100, number_first_patient=0):
     """Generate num_samples lumpy images for label 0 and 1, save them, and possibly plot them."""
     print("Samples generated for each label: " + str(num_samples))
 
@@ -40,7 +40,8 @@ def generate_data(save_lumps_pos=False, show_images=False, pause_images=False,
     labels = []
     patients = []
     masks = []
-    patient_counter = 0
+    patient_counter = number_first_patient
+    print("{}. 0% loaded (0/{} samples)".format(get_current_time(), num_samples))
     for i in range(num_samples):
         # Save lumpy images for label 0 and 1
         image0, lumps, background, pos_lumps0 = get_lumpy_image(*params0)
@@ -139,24 +140,9 @@ def generate_data(save_lumps_pos=False, show_images=False, pause_images=False,
         plt.ioff()
 
     print(" ")
-    print("Dataset shape:    {}".format(np.array(volumes).shape))
-    print("Dataset range:    {} - {}".format(np.array(volumes).min(), np.array(volumes).max()))
-    print("Dataset median:   {}".format(np.median(volumes)))
-    print("Dataset mean:     {}".format(np.mean(volumes)))
-    print("Dataset std dev:  {}".format(np.std(volumes)))
-    print("Labels shape:     {}".format(np.array(labels).shape))
-    print("Labels available: {}".format(np.array(labels).shape))
-    print("Patients range:   {} - {}".format(patients[0], patients[-1]))
-    print("Masks shape:      {}".format(np.array(masks).shape))
-    print("Masks range:      {} - {}".format(np.array(masks).min(), np.array(masks).max()))
-    print("Masks median:     {}".format(np.median(masks)))
-    print("Masks mean:       {}".format(np.mean(masks)))
-    print("Masks std dev:    {}".format(np.std(masks)))
-    print(" ")
-
     print("Saving data, this may take a few minutes")
     # Save the volumes
-    file_suffix = ""
+    file_suffix = "_{}-{}".format(number_first_patient, number_first_patient + num_samples)
     with open('{}{}_images.pkl'.format(dataset_name, file_suffix), 'wb') as f:
         pickle.dump(volumes, f)
     print("Data saved in '{}{}_images.pkl'.".format(dataset_name, file_suffix))
@@ -177,6 +163,21 @@ def generate_data(save_lumps_pos=False, show_images=False, pause_images=False,
         np.save(dataset_name + "_centers", centers)
         print("Lumps centers saved in '{}.npy'.".format(dataset_name + "_centers"))
 
+    print(" ")
+    print("Dataset shape:    {}".format(np.array(volumes).shape))
+    print("Dataset range:    {} - {}".format(np.array(volumes).min(), np.array(volumes).max()))
+    print("Dataset median:   {}".format(np.median(volumes)))
+    print("Dataset mean:     {}".format(np.mean(volumes)))
+    print("Dataset std dev:  {}".format(np.std(volumes)))
+    print("Labels shape:     {}".format(np.array(labels).shape))
+    print("Labels available: {}".format(np.array(labels).shape))
+    print("Patients range:   {} - {}".format(patients[0], patients[-1]))
+    print("Masks shape:      {}".format(np.array(masks).shape))
+    print("Masks range:      {} - {}".format(np.array(masks).min(), np.array(masks).max()))
+    print("Masks median:     {}".format(np.median(masks)))
+    print("Masks mean:       {}".format(np.mean(masks)))
+    print("Masks std dev:    {}".format(np.std(masks)))
+
 
 def parse_arguments():
     """Parse arguments in code."""
@@ -191,6 +192,8 @@ def parse_arguments():
     parser.add_argument('-n', '--name', default="lumpy_dataset", type=str, help="dataset name")
     parser.add_argument('-s', '--size', default=100, type=int,
                         help="number of samples generated per label (default: 100)")
+    parser.add_argument('-f', '--first', default=0, type=int,
+                        help="number of first patient (default: 0)")
     return parser.parse_args()
 
 
@@ -201,7 +204,8 @@ if __name__ == "__main__":
                   pause_images=args.wait,
                   discrete_centers=args.discrete,
                   dataset_name=args.name,
-                  num_samples=args.size)
+                  num_samples=args.size,
+                  number_first_patient=args.first)
 
     """
     HOW TO USE:
@@ -215,4 +219,6 @@ if __name__ == "__main__":
         dataset_name: string with name of dataset
         num_samples: number of samples saved for every label (if num_samples is 100, 100 samples
                      will be saved with label 0 and 100 will be saved with label 1: 200 in total)
+        number_first_patient: the number of the first patient, i.e. 1234 will become '00001234' for
+                              the first patient, '00001235' for the second, etc.
     """
