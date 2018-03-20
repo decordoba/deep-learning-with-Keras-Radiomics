@@ -8,6 +8,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 import scipy.stats as stats
 from scipy.interpolate import RegularGridInterpolator
 from collections import Counter
+from parse_volumes_dataset import plot_pet_slice
 
 
 """
@@ -699,7 +700,7 @@ def save_dataset_correctly(x, y, patients, masks, parent_folder="data", dataset_
 
 def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", suffix="",
                        plot_data=False, trim_data=True, data_interpolation=None, normalize=True,
-                       convert_to_2d=True, resampling=None, skip_dialog=False):
+                       convert_to_2d=True, resampling=None, skip_dialog=False, plot_slices=False):
     """Save dataset so labels & slices medians are equally distributed in training and test set."""
     # Add suffixes ta dataset name, so it is easy to know how every dataset was generated
     if not convert_to_2d:
@@ -714,6 +715,14 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", 
         dataset_name += "_interpolated"
     if resampling is not None:
         dataset_name += "_resampled"
+
+    if plot_slices:
+        plt.ion()
+        for i, (x, y, p, m) in enumerate(zip(x_set, y_set, patients, masks)):
+            plot_pet_slice(x, center=int(x.shape[2] / 2), mask=m, figure=99,
+                           label="patient {} - label {}".format(p, y))
+        plt.ioff()
+        plt.close("all")
 
     # Analyze data and plot some statistics
     num_patients_by_label, medians_by_label, results = analyze_data(x_set, y_set, patients, masks,
@@ -1004,6 +1013,9 @@ def parse_arguments(suffix=""):
                                      "channels 2D slices.".format(suffix))
     parser.add_argument('-p', '--plot', default=False, action="store_true",
                         help="show figures before saving them")
+    parser.add_argument('-ps', '--plot_slices', default=False, action="store_true",
+                        help="before any transformation or analysis, plot volumes and masks "
+                        "for every slice")
     parser.add_argument('-t', '--trim', default=False, action="store_true",
                         help="get rid of outliers: 10%% smaller and larger tumors")
     parser.add_argument('-i', '--interpolate', default=False, action="store_true",
@@ -1076,4 +1088,5 @@ if __name__ == "__main__":
         improved_save_data(x, y, patients, masks, suffix=name_suffix, plot_data=args.plot,
                            trim_data=args.trim, data_interpolation=data_interpolation,
                            convert_to_2d=not args.in_3d, resampling=resampling,
-                           normalize=not args.unnormalized, skip_dialog=args.yes)
+                           normalize=not args.unnormalized, skip_dialog=args.yes,
+                           plot_slices=args.plot_slices)
