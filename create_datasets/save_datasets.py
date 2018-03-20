@@ -698,7 +698,7 @@ def save_dataset_correctly(x, y, patients, masks, parent_folder="data", dataset_
     print("Masks saved in '{}_masks.pkl'.".format(file_path))
 
 
-def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized", suffix="",
+def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
                        plot_data=False, trim_data=True, data_interpolation=None, normalize=True,
                        convert_to_2d=True, resampling=None, skip_dialog=False, plot_slices=False):
     """Save dataset so labels & slices medians are equally distributed in training and test set."""
@@ -1058,6 +1058,7 @@ if __name__ == "__main__":
 
     args = parse_arguments(suffix=file_suffix)
     file_prefix = "lumpy_" if args.lumpy else ""
+    dataset_name = file_prefix + "organized" + name_suffix
 
     # Load data
     print("Reading '{}dataset{}_images.pkl'".format(file_prefix, file_suffix))
@@ -1092,7 +1093,7 @@ if __name__ == "__main__":
             # will also automatically balance labels 0 and 1. Set None to a number to select the
             # number of samples that will be created, sampling randomly.
             resampling = (5, None)
-        improved_save_data(x, y, patients, masks, suffix=name_suffix, plot_data=args.plot,
+        improved_save_data(x, y, patients, masks, dataset_name=dataset_name, plot_data=args.plot,
                            trim_data=args.trim, data_interpolation=data_interpolation,
                            convert_to_2d=not args.in_3d, resampling=resampling,
                            normalize=not args.unnormalized, skip_dialog=args.yes,
