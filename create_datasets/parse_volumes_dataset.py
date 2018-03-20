@@ -74,6 +74,7 @@ def plot_pet_slice(pet_image, center=None, box=None, mask=None, mask_offset=None
     cmap = plt.cm.gray
     cmap.set_bad('r', 1)
     i = 0
+    center = (0, 0, center) if isinstance(center, int) else center
     while i < boxed_pet_image.shape[2]:
         if center is not None and i != center[2]:
             i += 1
