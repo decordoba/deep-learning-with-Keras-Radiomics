@@ -158,7 +158,9 @@ def generate_data(save_lumps_pos=False, show_images=False, pause_images=False,
     print(" ")
     print("Saving data, this may take a few minutes")
     # Save the volumes
-    file_suffix = "_{}-{}".format(number_first_patient, number_first_patient + num_samples)
+    margin_suffix = "" if cut_edges_margin is None else "_m{}".format(cut_edges_margin)
+    file_suffix = "{}_{}-{}".format(margin_suffix, number_first_patient,
+                                    number_first_patient + num_samples)
     with open('{}{}_images.pkl'.format(dataset_name, file_suffix), 'wb') as f:
         pickle.dump(volumes, f)
     print("Data saved in '{}{}_images.pkl'.".format(dataset_name, file_suffix))
