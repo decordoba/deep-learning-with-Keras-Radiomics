@@ -723,6 +723,7 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
         dataset_name += "_interpolated"
     if resampling is not None:
         dataset_name += "_resampled"
+    print("\nOutput location: 'data/{}/'".format(dataset_name))
 
     if plot_slices:
         plt.ion()
@@ -733,6 +734,7 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
         plt.close("all")
 
     # Analyze data and plot some statistics
+    print("\nAnalyzing data...")
     num_patients_by_label, medians_by_label, results = analyze_data(x_set, y_set, patients, masks,
                                                                     plot_data=plot_data,
                                                                     dataset_name=dataset_name)
@@ -741,27 +743,36 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
         slices = slices[0] + slices[1]
         sizes = sizes[0] + sizes[1]
         box_sizes = box_sizes[0] + box_sizes[1]
-        # Trim based on the number of slices
-        x_set1, y_set1, patients1, masks1 = trim_edges(slices, "slices", x_set, y_set, patients,
-                                                       masks, trim_pos=(0.1, 0.9))
-        params = analyze_data(x_set1, y_set1, patients1, masks1, plot_data=plot_data,
-                              initial_figure=6, suffix="_trimmed_slices",
-                              title_suffix="(Trimmed Slices)", dataset_name=dataset_name)
-        num_patients_by_label1, medians_by_label1, results1 = params
-        # Trim based on the tumor volumes (the number of cubic pixels in the mtv contour)
-        x_set2, y_set2, patients2, masks2 = trim_edges(sizes, "sizes", x_set, y_set, patients,
-                                                       masks, trim_pos=(0.11, 0.89))
-        params = analyze_data(x_set2, y_set2, patients2, masks2, plot_data=plot_data,
-                              initial_figure=12, suffix="_trimmed_sizes",
-                              title_suffix="(Trimmed Sizes)", dataset_name=dataset_name)
-        num_patients_by_label2, medians_by_label2, results2 = params
-        # Trim based on the size of the boxs containing the contour
-        x_set3, y_set3, patients3, masks3 = trim_edges(box_sizes, "sizes_masks", x_set, y_set,
-                                                       patients, masks, trim_pos=(0.11, 0.89))
-        params = analyze_data(x_set3, y_set3, patients3, masks3, plot_data=plot_data,
-                              initial_figure=18, suffix="_trimmed_box_sizes",
-                              title_suffix="(Trimmed Box Sizes)", dataset_name=dataset_name)
-        num_patients_by_label3, medians_by_label3, results3 = params
+        if trim_option == 1:
+            # Trim based on the number of slices
+            print("Trimming based on slices...")
+            x_set1, y_set1, patients1, masks1 = trim_edges(slices, "slices", x_set, y_set, patients,
+                                                            masks, trim_pos=(0.1, 0.9))
+            print("Analyzing data...")
+            params = analyze_data(x_set1, y_set1, patients1, masks1, plot_data=plot_data,
+                                    initial_figure=6, suffix="_trimmed_slices",
+                                    title_suffix="(Trimmed Slices)", dataset_name=dataset_name)
+            num_patients_by_label1, medians_by_label1, results1 = params
+        elif trim_option == 2:
+            # Trim based on the tumor volumes (the number of cubic pixels in the mtv contour)
+            print("Trimming based on sizes...")
+            x_set2, y_set2, patients2, masks2 = trim_edges(sizes, "sizes", x_set, y_set, patients,
+                                                        masks, trim_pos=(0.11, 0.89))
+            print("Analyzing data...")
+            params = analyze_data(x_set2, y_set2, patients2, masks2, plot_data=plot_data,
+                                initial_figure=12, suffix="_trimmed_sizes",
+                                title_suffix="(Trimmed Sizes)", dataset_name=dataset_name)
+            num_patients_by_label2, medians_by_label2, results2 = params
+        elif trim_option == 3:
+            # Trim based on the size of the boxs containing the contour
+            print("Trimming based on box sizes...")
+            x_set3, y_set3, patients3, masks3 = trim_edges(box_sizes, "sizes_masks", x_set, y_set,
+                                                        patients, masks, trim_pos=(0.11, 0.89))
+            print("Analyzing data...")
+            params = analyze_data(x_set3, y_set3, patients3, masks3, plot_data=plot_data,
+                                initial_figure=18, suffix="_trimmed_box_sizes",
+                                title_suffix="(Trimmed Box Sizes)", dataset_name=dataset_name)
+            num_patients_by_label3, medians_by_label3, results3 = params
         # Use trimed data based on trim_option as dataset
         if trim_option == 1:
             x_set, y_set, patients, masks = x_set1, y_set1, patients1, masks1
