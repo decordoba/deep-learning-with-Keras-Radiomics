@@ -28,7 +28,7 @@ def save_plt_figures_to_pdf(filename, figs=None, dpi=200):
     """Save all matplotlib figures in a single PDF file."""
     dirname = os.path.dirname(filename)
     try:
-        os.mkdir(dirname)
+        os.makedirs(dirname)
     except OSError:
         pass
     pp = PdfPages(filename)
