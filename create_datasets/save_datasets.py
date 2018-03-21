@@ -113,6 +113,14 @@ def get_size_mask(mask):
     return box_size, volume
 
 
+def get_size_mask_efficiently(mask):
+    """Get size box and volume of mask where we can fit all 1s in contour."""
+    ones_pos = np.nonzero(mask)
+    box_size = np.max(ones_pos, axis=1) - np.min(ones_pos, axis=1) + 1
+    volume = len(ones_pos[0])
+    return box_size, volume
+
+
 def plot_histogram(data, title=None, figure=0, subfigure=None, bins=10, xlim=None, show=True,
                    percentages=(0.1, 0.25, 0.75, 0.9), figsize=(8 * 2, 6 * 2), window_title=None,
                    close_all=False):
@@ -209,7 +217,7 @@ def trim_edges(array_sort, sort_method, x_set, y_set, patients, masks, trim_pos=
     print("\nDISCARDED DATA POINTS BASED ON '{}':".format(sort_method))
     for i, (x, y, p, m) in enumerate(zip(x_set, y_set, patients, masks)):
         slices = len(x[0][0])
-        dimensions_mask, size = get_size_mask(m)
+        dimensions_mask, size = get_size_mask_efficiently(m)
         size_box = np.prod(dimensions_mask)
         trim_it = True
         if sort_method == "slices":
@@ -262,7 +270,7 @@ def analyze_data(volumes, labels, patients, masks, plot_data=True, initial_figur
     for label, patient, volume, mask in zip(labels, patients, volumes, masks):
         if volume.shape[2] < 3 and not allow_less_3_slices:
             continue  # patient ignored, it is too small
-        size_mask, granular_volume = get_size_mask(mask)
+        size_mask, granular_volume = get_size_mask_efficiently(mask)
         abs_num_slices.append(size_mask[2])
         if abs_num_slices[-1] < 3:
             continue  # patient ignored, it is too small (but we have added it to abs_num_slices)
