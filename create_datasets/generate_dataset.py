@@ -19,9 +19,17 @@ def get_current_time(time=True, date=False):
     return s.strip()
 
 
+def remove_healthy_top_and_bottom_slices(image, mask, margin):
+    """Remove top and bottom slices that have all 0s masks, minus margin slices."""
+    ones_pos = np.nonzero(mask)
+    min_z = max(0, np.min(ones_pos[2]) - margin)
+    max_z = min(image.shape[2], np.max(ones_pos[2]) + margin + 1)
+    return image[:, :, min_z:max_z], mask[:, :, min_z:max_z]
+
+
 def generate_data(save_lumps_pos=False, show_images=False, pause_images=False,
                   discrete_centers=False, dataset_name="lumpy_dataset",
-                  num_samples=100, number_first_patient=0):
+                  num_samples=100, number_first_patient=0, cut_edges_margin=None):
     """Generate num_samples lumpy images for label 0 and 1, save them, and possibly plot them."""
     print("Samples generated for each label: " + str(num_samples))
 
@@ -33,9 +41,7 @@ def generate_data(save_lumps_pos=False, show_images=False, pause_images=False,
     split_distance = num_samples * percent // 100
     split_distance = 1 if split_distance < 1 else split_distance
     params0 = get_params_label_0(discrete_centers)
-    middle0 = int(params0[0] / 2) if isinstance(params0[0], int) else int(params0[0][2] / 2)
     params1 = get_params_label_1(discrete_centers)
-    middle1 = int(params1[0] / 2) if isinstance(params1[0], int) else int(params1[0][2] / 2)
     volumes = []
     labels = []
     patients = []
@@ -45,17 +51,23 @@ def generate_data(save_lumps_pos=False, show_images=False, pause_images=False,
     for i in range(num_samples):
         # Save lumpy images for label 0 and 1
         image0, lumps, background, pos_lumps0 = get_lumpy_image(*params0)
+        mask0 = generate_mask(image0, params0[-1])
+        if cut_edges_margin is not None:
+            image0, mask0 = remove_healthy_top_and_bottom_slices(image0, mask0, cut_edges_margin)
         volumes.append(image0)
+        masks.append(mask0)
         labels.append(0)
         patients.append("{:08d}".format(patient_counter))
         patient_counter += 1
-        masks.append(generate_mask(image0, params0[-1]))
         image1, lumps, background, pos_lumps1 = get_lumpy_image(*params1)
+        mask1 = generate_mask(image1, params0[-1])
+        if cut_edges_margin is not None:
+            image1, mask1 = remove_healthy_top_and_bottom_slices(image1, mask1, cut_edges_margin)
         volumes.append(image1)
+        masks.append(mask1)
         labels.append(1)
         patients.append("{:08d}".format(patient_counter))
         patient_counter += 1
-        masks.append(generate_mask(image1, params1[-1]))
 
         # Only create matrix with lumps centers if we are going to save it
         if save_lumps_pos:
@@ -70,60 +82,64 @@ def generate_data(save_lumps_pos=False, show_images=False, pause_images=False,
 
         # Create and show plots
         if show_images:
+            num0 = image0.shape[2]
+            num1 = image1.shape[2]
+            middle0 = int(num0 / 2)
+            middle1 = int(num1 / 2)
             if save_lumps_pos:
                 fig = plt.figure(0)
                 ax = fig.add_subplot(2, 3, 1)
                 ax.imshow(pos_matrix0[:, :, middle0].T)
                 ax.set_yticks([])
                 ax.set_xticks([])
-                ax.set_title("Label 0 - Centers Middle Slice")
+                ax.set_title("Label 0 - Centers Slice {}/{}".format(middle0, num0))
                 ax = fig.add_subplot(2, 3, 2)
                 ax.imshow(image0[:, :, middle0])
                 ax.set_yticks([])
                 ax.set_xticks([])
-                ax.set_title("Label 0 - Middle Slice")
+                ax.set_title("Label 0 - Slice {}/{}".format(middle0, num0))
                 ax = fig.add_subplot(2, 3, 3)
                 ax.imshow(masks[-2][:, :, middle0])
                 ax.set_yticks([])
                 ax.set_xticks([])
-                ax.set_title("Label 0 - Mask Middle Slice")
+                ax.set_title("Label 0 - Mask Slice {}/{}".format(middle0, num0))
                 ax = fig.add_subplot(2, 3, 4)
                 ax.imshow(pos_matrix1[:, :, middle1].T)
                 ax.set_yticks([])
                 ax.set_xticks([])
-                ax.set_title("Label 1 - Centers Middle Slice")
+                ax.set_title("Label 1 - Centers Slice {}/{}".format(middle1, num1))
                 ax = fig.add_subplot(2, 3, 5)
                 ax.imshow(image1[:, :, middle1])
                 ax.set_yticks([])
                 ax.set_xticks([])
-                ax.set_title("Label 1 - Middle Slice")
+                ax.set_title("Label 1 - Slice {}/{}".format(middle1, num1))
                 ax = fig.add_subplot(2, 3, 6)
-                ax.imshow(masks[-1][:, :, middle0])
+                ax.imshow(masks[-1][:, :, middle1])
                 ax.set_yticks([])
                 ax.set_xticks([])
-                ax.set_title("Label 1 - Mask Middle Slice")
+                ax.set_title("Label 1 - Mask Slice {}/{}".format(middle1, num1))
             else:
                 fig = plt.figure(0)
                 ax = fig.add_subplot(2, 2, 1)
                 ax.imshow(image0[:, :, middle0])
                 ax.set_yticks([])
                 ax.set_xticks([])
-                ax.set_title("Label 0 - Middle Slice")
+                ax.set_title("Label 0 - Slice {}/{}".format(middle0, num0))
                 ax = fig.add_subplot(2, 2, 2)
                 ax.imshow(masks[-2][:, :, middle0])
                 ax.set_yticks([])
                 ax.set_xticks([])
-                ax.set_title("Label 0 - Mask Middle Slice")
+                ax.set_title("Label 0 - Mask Slice {}/{}".format(middle0, num0))
                 ax = fig.add_subplot(2, 2, 3)
                 ax.imshow(image1[:, :, middle1])
                 ax.set_yticks([])
                 ax.set_xticks([])
-                ax.set_title("Label 1 - Middle Slice")
+                ax.set_title("Label 1 - Slice {}/{}".format(middle1, num1))
                 ax = fig.add_subplot(2, 2, 4)
-                ax.imshow(masks[-1][:, :, middle0])
+                ax.imshow(masks[-1][:, :, middle1])
                 ax.set_yticks([])
                 ax.set_xticks([])
-                ax.set_title("Label 1 - Mask Middle Slice")
+                ax.set_title("Label 1 - Mask Slice {}/{}".format(middle1, num1))
             plt.pause(0.00001)
             # If pause images is not set, we will see the images briefly one after another
             if pause_images:
@@ -189,23 +205,30 @@ def parse_arguments():
                         help="pause when plotting")
     parser.add_argument('-d', '--discrete', default=False, action="store_true",
                         help="use only integer positions")
-    parser.add_argument('-n', '--name', default="lumpy_dataset", type=str, help="dataset name")
+    parser.add_argument('-e', '--edges', default=False, action="store_true",
+                        help="remove top and bottom slices with mask of 0s")
+    parser.add_argument('-n', '--name', default="lumpy_dataset", type=str,
+                        help="dataset name (default: 'lumpy_dataset')")
     parser.add_argument('-s', '--size', default=100, type=int,
                         help="number of samples generated per label (default: 100)")
-    parser.add_argument('-f', '--first', default=0, type=int,
+    parser.add_argument('-f', '--first', default=0, type=int, metavar='NUM',
                         help="number of first patient (default: 0)")
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_arguments()
+    cut_edges_margin = None
+    if args.edges:
+        cut_edges_margin = 2  # leave 2 slices with 0s mask on top and bottom
     generate_data(save_lumps_pos=args.centers,
                   show_images=args.plot,
                   pause_images=args.wait,
                   discrete_centers=args.discrete,
                   dataset_name=args.name,
                   num_samples=args.size,
-                  number_first_patient=args.first)
+                  number_first_patient=args.first,
+                  cut_edges_margin=cut_edges_margin)
 
     """
     HOW TO USE:
@@ -221,4 +244,7 @@ if __name__ == "__main__":
                      will be saved with label 0 and 100 will be saved with label 1: 200 in total)
         number_first_patient: the number of the first patient, i.e. 1234 will become '00001234' for
                               the first patient, '00001235' for the second, etc.
+        cut_edges_margin: if None, all slices are preserved, else all top and bottom slices
+                          except the cut_edges_margin closer to the volume are removed. The slices
+                          removed will have all zeros in their mask.
     """
