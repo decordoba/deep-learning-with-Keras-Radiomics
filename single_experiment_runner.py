@@ -888,7 +888,9 @@ def main():
     args = parse_arguments()
 
     # Load dataset
-    dataset_location = "data/{}".format(args.dataset)
+    dataset_location = args.dataset
+    if not dataset_location.startswith("data/"):
+        dataset_location = "data/{}".format(dataset_location)
     train_set, test_set, train_aux, test_aux = load_organized_dataset(dataset_location)
     (x_train, y_train), (x_test, y_test), = train_set, test_set
     (patients_train, mask_train), (patients_test, mask_test) = train_aux, test_aux
