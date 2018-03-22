@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.5
-
+import matplotlib_handle_display  # Must be imported before anything matplotlib related
 import argparse
 import itertools
 import os
@@ -516,11 +516,13 @@ def parse_arguments():
                         action="store_true", help="split dataset cross validation at the slice "
                         "level (every split may not have the same number of patients, and some "
                         "patients may be split in two splits)")
+    parser.add_argument('-v', '--verbose', default=False, action="store_true", help="enable "
+                        "verbose mode when training")
     return parser.parse_args()
 
 
 def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whole, num_patients,
-                        location="cross_validation_results", patient_level_cv=False,
+                        location="cross_validation_results", patient_level_cv=False, verbose=False,
                         num_epochs=50, pdf_name="figures.pdf", show_plots=False, shuffle=False):
     """Do cross validation on dataset."""
     # Do 10-fold CV in whole set
@@ -596,7 +598,7 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
         parameters = flexible_neural_net((x_train_cv, y_train_cv), (x_test_cv, y_test_cv),
                                          optimizer, loss, *layers,
                                          batch_size=32, epochs=num_epochs, initial_weights=weights,
-                                         early_stopping=None, verbose=False,
+                                         early_stopping=None, verbose=verbose,
                                          files_suffix=i, location=location, return_more=True)
         [lTr, aTr], [lTe, aTe], time, location, n_epochs, weights, model, history = parameters
 
@@ -998,7 +1000,7 @@ def main():
                                          num_patients, location=sublocation,
                                          patient_level_cv=not args.slice_level_cross_validation,
                                          num_epochs=args.epochs, pdf_name=pdf_name,
-                                         show_plots=args.plot, shuffle=False)
+                                         show_plots=args.plot, shuffle=False, verbose=args.verbose)
             all_data_comb = (comb, *params)
             with open(sublocation + "/" + results_name, 'wb') as f:
                 pickle.dump(all_data_comb, f)
