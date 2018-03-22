@@ -8,7 +8,7 @@ from lumpy_model import get_lumpy_image, create_lumps_pos_matrix
 from matplotlib import pyplot as plt
 
 
-def get_current_time(time=True, date=False):
+def get_current_time(time=True, date=False, microseconds=False):
     """Return string with current time and date well formatted."""
     now = datetime.now()
     s = ""
@@ -16,6 +16,10 @@ def get_current_time(time=True, date=False):
         s += "{} ".format(now.date())
     if time:
         s += "{:02d}:{:02d}:{:02d}".format(now.hour, now.minute, now.second)
+    if microseconds:
+        if time:
+            s += "."
+        s += "{:06d}".format(now.microsecond)
     return s.strip()
 
 
