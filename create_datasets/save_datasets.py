@@ -58,6 +58,9 @@ def save_data(x_set, y_set, patients, number, suffix=""):
         rotations = 4
         normalize = True
         slices_per_sample = 3
+        x_dataset = []
+        y_dataset = []
+        patients_dataset = []
         for volume, label, patient in zip(x_set, y_set, patients):
             # Normalize values from 0 to 1
             maxv = np.max(volume)
@@ -69,21 +72,16 @@ def save_data(x_set, y_set, patients, number, suffix=""):
                 vol = np.rot90(volume, k=r)
                 for idx in range(vol.shape[2] - slices_per_sample + 1):
                     image = vol[:, :, idx:idx + slices_per_sample]
-                    try:
-                        x_dataset = np.concatenate((x_dataset, [image]))
-                        y_dataset = np.concatenate((y_dataset, [label]))
-                        patients_dataset.append(patient)
-                    except NameError:
-                        x_dataset = np.array([image])
-                        y_dataset = np.array([label])
-                        patients_dataset = [patient]
+                    x_dataset.append(image)
+                    y_dataset.append(label)
+                    patients_dataset.append(patient)
             counter += 1
             print("{}  {} / {} patients processed".format(get_current_time(microseconds=True),
                                                           counter, len(patients)))
         print("Processing finished! Saving data...")
         # Save data
-        x = x_dataset
-        y = y_dataset
+        x = np.array(x_dataset)
+        y = np.array(y_dataset)
         try:
             os.mkdir("data")
         except OSError:

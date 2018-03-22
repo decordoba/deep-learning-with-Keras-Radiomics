@@ -50,6 +50,7 @@ def generate_data(save_lumps_pos=False, show_images=False, pause_images=False,
     labels = []
     patients = []
     masks = []
+    centers = []
     patient_counter = number_first_patient
     print("{}. 0% loaded (0/{} samples)".format(get_current_time(), num_samples))
     for i in range(num_samples):
@@ -78,11 +79,8 @@ def generate_data(save_lumps_pos=False, show_images=False, pause_images=False,
             # Save all matrices with lumps centers for label 0 and 1
             pos_matrix0 = create_lumps_pos_matrix(lumps_pos=pos_lumps0, dim=params0[0])
             pos_matrix1 = create_lumps_pos_matrix(lumps_pos=pos_lumps1, dim=params1[0])
-            try:
-                centers = np.concatenate((centers, [pos_matrix0]))
-            except NameError:
-                centers = np.array([pos_matrix0])
-            centers = np.concatenate((centers, [pos_matrix1]))
+            centers.append(pos_matrix0)
+            centers.append(pos_matrix1)
 
         # Create and show plots
         if show_images:
@@ -182,6 +180,7 @@ def generate_data(save_lumps_pos=False, show_images=False, pause_images=False,
     print("Data saved in '{}{}_masks.pkl'.".format(dataset_name, file_suffix))
 
     if save_lumps_pos:
+        centers = np.array(centers)
         np.save(dataset_name + "_centers", centers)
         print("Lumps centers saved in '{}.npy'.".format(dataset_name + "_centers"))
 
