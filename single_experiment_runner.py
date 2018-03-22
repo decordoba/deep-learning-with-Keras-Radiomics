@@ -373,10 +373,26 @@ def load_organized_dataset(path):
         patients_train = pickle.load(f)
     with open(path + "/test_set_patients.pkl", 'rb') as f:
         patients_test = pickle.load(f)
-    with open(path + "/training_set_masks.pkl", 'rb') as f:
-        mask_train = pickle.load(f)
-    with open(path + "/test_set_masks.pkl", 'rb') as f:
-        mask_test = pickle.load(f)
+    try:
+        f = np.load(path + "/training_set_masks.npz")
+        try:
+            mask_train = f["x"]
+        except KeyError:
+            mask_train = f["arr_0"]
+        f.close()
+    except FileNotFoundError:
+        with open(path + "/training_set_masks.pkl", 'rb') as f:
+            mask_train = pickle.load(f)
+    try:
+        f = np.load(path + "/test_set_masks.npz")
+        try:
+            mask_test = f["x"]
+        except KeyError:
+            mask_test = f["arr_0"]
+        f.close()
+    except FileNotFoundError:
+        with open(path + "/test_set_masks.pkl", 'rb') as f:
+            mask_test = pickle.load(f)
     return (x_train, y_train), (x_test, y_test), (patients_train, mask_train), (patients_test,
                                                                                 mask_test)
 
