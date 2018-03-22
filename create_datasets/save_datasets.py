@@ -1100,7 +1100,8 @@ if __name__ == "__main__":
     args = parse_arguments(suffix=file_suffix)
     file_prefix = "lumpy_" if args.lumpy else ""
     file_suffix = "_m2" + file_suffix if args.margin else file_suffix
-    dataset_name = file_prefix + "organized" + name_suffix
+    m2 = "m2_" if args.margin else ""
+    dataset_name = file_prefix + m2 + "organized" + name_suffix
 
     # Load data
     print("Reading '{}dataset{}_images.pkl'".format(file_prefix, file_suffix))
