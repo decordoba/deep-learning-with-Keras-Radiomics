@@ -203,7 +203,8 @@ def create_lumps_pos_matrix(lumps_pos, dim=(64, 64), discrete_lumps_positions=Fa
     return image
 
 
-def plot_slices(volume, title=None, fig_num=0, filename=None, show=True, max_slices=None):
+def plot_slices(volume, title=None, fig_num=0, filename=None, show=True, max_slices=None,
+                mask=None):
     """Plot all slices of volume in one figure."""
     # Plot epoch history for accuracy and loss
     if filename is None and show:
@@ -222,13 +223,24 @@ def plot_slices(volume, title=None, fig_num=0, filename=None, show=True, max_sli
     vmin = np.min(volume)
     vmax = np.max(volume)
     cmap = plt.cm.gray
+    if mask is not None and mask.shape == volume.shape:
+        masked_volume = np.ma.masked_array(volume, mask)
+        cmap.set_bad('r', 1)
     plt.clf()
     for i in range(num_slices):
         subfig = fig.add_subplot(h, w, i + 1)
-        try:
-            subfig.pcolormesh(volume[:, :, i], vmin=vmin, vmax=vmax, cmap=cmap)
-        except IndexError:
-            subfig.pcolormesh(volume[:, :], vmin=vmin, vmax=vmax, cmap=cmap)
+        if mask is None:
+            try:
+                subfig.pcolormesh(volume[:, :, i], vmin=vmin, vmax=vmax, cmap=cmap)
+            except IndexError:
+                subfig.pcolormesh(volume[:, :], vmin=vmin, vmax=vmax, cmap=cmap)
+        else:
+            try:
+                subfig.pcolormesh(masked_volume[:, :, i], vmin=vmin, vmax=vmax, cmap=cmap,
+                                  rasterized=True, linewidth=0)
+            except IndexError:
+                subfig.pcolormesh(masked_volume[:, :], vmin=vmin, vmax=vmax, cmap=cmap,
+                                  rasterized=True, linewidth=0)
         subfig.axis('equal')
         subfig.axis('off')
     if title is not None:
@@ -305,9 +317,10 @@ def main():
     SIGMA = 5
     MASK_THRESHOLD = 0.3
     title = "Lumpy image"  # Title for plot
+    title2 = "Lumpy image with mask"
 
     # Get arguments reveived from command line
-    args = parse_arguments(DIM, NBAR, DC, PARS[0], PARS[1], RANGE_VALUES[1])
+    args = parse_arguments(DIM, NBAR, DC, PARS[0], PARS[1], RANGE_VALUES[1], MASK_THRESHOLD)
     if not args.random:
         np.random.seed(123)  # for reproducibility
 
@@ -330,11 +343,15 @@ def main():
         # Create lumpy image for label 1 and plot it
         params = get_params_label_1()
         image, lumps, background, lumps_pos = get_lumpy_image(*params)
-        plot_slices(image, fig_num=1, title="Lumpy image (label 1)", max_slices=100)
+        mask = generate_mask(image, params[-1])
+        plot_slices(image, fig_num=2, title="Lumpy image (label 1)", max_slices=100)
+        plot_slices(image, fig_num=3, title="Lumpy image with mask (label 1)", max_slices=100,
+                    mask=mask)
         # Set params for label 0
         params = get_params_label_0()
         # Change title of next plot
         title = "Lumpy image (label 0)"
+        title2 = "Lumpy image with mask (label 0)"
     elif args.label0:
         # Set params for label 0
         params = get_params_label_0()
@@ -348,6 +365,7 @@ def main():
 
     # Plot results
     plot_slices(image, fig_num=0, title=title, max_slices=100)
+    plot_slices(image, fig_num=1, title=title2, max_slices=100, mask=mask)
     input("Press ENTER to close all figures and exit.")
 
     # Profiling (trying to understand what is slower in my function)!
