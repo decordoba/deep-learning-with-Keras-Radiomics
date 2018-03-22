@@ -78,7 +78,8 @@ def save_data(x_set, y_set, patients, number, suffix=""):
                         y_dataset = np.array([label])
                         patients_dataset = [patient]
             counter += 1
-            print("{} / {} patients processed".format(counter, len(patients)))
+            print("{}  {} / {} patients processed".format(get_current_time(microseconds=True),
+                                                          counter, len(patients)))
         print("Processing finished! Saving data...")
         # Save data
         x = x_dataset
@@ -659,6 +660,10 @@ def generate_2D_dataset(samples, labels, patients, masks, slices_per_sample=3, r
     """From 3D volumes generates a 2D dataset."""
     counter = 0
     rotations = 4 if rotate_data else 1
+    x_dataset = []
+    y_dataset = []
+    masks_dataset = []
+    patients_dataset = []
     for volume, label, patient, mask in zip(samples, labels, patients, masks):
         # Normalize values from 0 to 1
         if normalize:
@@ -670,19 +675,16 @@ def generate_2D_dataset(samples, labels, patients, masks, slices_per_sample=3, r
             for idx in range(vol.shape[2] - slices_per_sample + 1):
                 image = vol[:, :, idx:idx + slices_per_sample]
                 mask_image = msk[:, :, idx:idx + slices_per_sample]
-                try:
-                    x_dataset = np.concatenate((x_dataset, [image]))
-                    y_dataset = np.concatenate((y_dataset, [label]))
-                    masks_dataset = np.concatenate((masks_dataset, [mask_image]))
-                    patients_dataset.append(patient + (str(r * 90) if r != 0 else ""))
-                except NameError:
-                    x_dataset = np.array([image])
-                    y_dataset = np.array([label])
-                    masks_dataset = np.array([mask_image])
-                    patients_dataset = [patient + (str(r * 90) if r != 0 else "")]
+                x_dataset.append(image)
+                y_dataset.append(label)
+                masks_dataset.append(mask_image)
+                patients_dataset.append(patient + (str(r * 90) if r != 0 else ""))
         counter += 1
         print("{}  {} / {} patients processed".format(get_current_time(microseconds=True),
                                                       counter, len(patients)))
+    x_dataset = np.array(x_dataset)
+    y_dataset = np.array(y_dataset)
+    masks_dataset = np.array(masks_dataset)
     return x_dataset, y_dataset, patients_dataset, masks_dataset
 
 
