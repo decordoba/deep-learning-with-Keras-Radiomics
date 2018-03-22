@@ -376,7 +376,7 @@ def load_organized_dataset(path):
     try:
         f = np.load(path + "/training_set_masks.npz")
         try:
-            mask_train = f["x"]
+            mask_train = f["masks"]
         except KeyError:
             mask_train = f["arr_0"]
         f.close()
@@ -386,7 +386,7 @@ def load_organized_dataset(path):
     try:
         f = np.load(path + "/test_set_masks.npz")
         try:
-            mask_test = f["x"]
+            mask_test = f["masks"]
         except KeyError:
             mask_test = f["arr_0"]
         f.close()
