@@ -9,6 +9,7 @@ import scipy.stats as stats
 from scipy.interpolate import RegularGridInterpolator
 from collections import Counter
 from parse_volumes_dataset import plot_pet_slice
+from generate_dataset import get_current_time
 
 
 """
@@ -671,7 +672,8 @@ def generate_2D_dataset(samples, labels, patients, masks, slices_per_sample=3, r
                     masks_dataset = np.array([mask_image])
                     patients_dataset = [patient + (str(r * 90) if r != 0 else "")]
         counter += 1
-        print("{} / {} patients processed".format(counter, len(patients)))
+        print("{}  {} / {} patients processed".format(get_current_time(microseconds=True),
+                                                      counter, len(patients)))
     return x_dataset, y_dataset, patients_dataset, masks_dataset
 
 
