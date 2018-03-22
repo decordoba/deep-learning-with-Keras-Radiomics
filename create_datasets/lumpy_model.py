@@ -255,18 +255,29 @@ def plot_slices(volume, title=None, fig_num=0, filename=None, show=True, max_sli
         fig.clear()
 
 
-def parse_arguments(d, n, dc, p1, p2, r):
+def parse_arguments(d, n, dc, p1, p2, r, t):
     """Parse arguments in code."""
     parser = argparse.ArgumentParser(description="Create lumpy image based on lumpy model")
-    parser.add_argument('-d', '--dim', default=d, type=int, help="default: {}".format(d))
-    parser.add_argument('-dx', '--dim_x', default=None, type=int, help="default: {}".format("dim"))
-    parser.add_argument('-dy', '--dim_y', default=None, type=int, help="default: {}".format("dim"))
-    parser.add_argument('-dz', '--dim_z', default=None, type=int, help="default: {}".format("dim"))
-    parser.add_argument('-n', '--nbar', default=n, type=int, help="default: {}".format(n))
-    parser.add_argument('-dc', '--dc_offset', default=dc, type=int, help="default: {}".format(dc))
-    parser.add_argument('-p1', '--pars1', default=p1, type=int, help="default: {}".format(p1))
-    parser.add_argument('-p2', '--pars2', default=p2, type=int, help="default: {}".format(p2))
-    parser.add_argument('-r', '--range', default=r, type=int, help="default: {}".format(r))
+    parser.add_argument('-d', '--dim', default=d, type=int, help="default: {}".format(d),
+                        metavar='N')
+    parser.add_argument('-dx', '--dim_x', default=None, type=int, help="default: {}".format("dim"),
+                        metavar='N')
+    parser.add_argument('-dy', '--dim_y', default=None, type=int, help="default: {}".format("dim"),
+                        metavar='N')
+    parser.add_argument('-dz', '--dim_z', default=None, type=int, help="default: {}".format("dim"),
+                        metavar='N')
+    parser.add_argument('-n', '--nbar', default=n, type=int, help="default: {}".format(n),
+                        metavar='N')
+    parser.add_argument('-dc', '--dc_offset', default=dc, type=int, help="default: {}".format(dc),
+                        metavar='N')
+    parser.add_argument('-p1', '--pars1', default=p1, type=int, help="default: {}".format(p1),
+                        metavar='N')
+    parser.add_argument('-p2', '--pars2', default=p2, type=int, help="default: {}".format(p2),
+                        metavar='N')
+    parser.add_argument('-r', '--range', default=r, type=int, help="default: {}".format(r),
+                        metavar='N')
+    parser.add_argument('-t', '--threshold', default=t, type=float, help="default: {}".format(t),
+                        metavar='N')
     parser.add_argument('--discrete', default=False, action="store_true")
     parser.add_argument('--circle_lumps', default=False, action="store_true")
     parser.add_argument('--random', default=False, action="store_true",
@@ -336,6 +347,9 @@ def main():
         PARS = (args.pars1, args.pars2)
         DISCRETE_LUMPS = args.discrete
         RANGE_VALUES = (0, args.range)
+        MASK_THRESHOLD = args.threshold
+        params = (DIM, NBAR, DC, LUMP_FUNCTION, PARS, DISCRETE_LUMPS, RANGE_VALUES, SIGMA,
+                  MASK_THRESHOLD)
     elif args.label0 and args.label1:
         # Show one example of label 0 and one example of label 1
         if not args.random:
