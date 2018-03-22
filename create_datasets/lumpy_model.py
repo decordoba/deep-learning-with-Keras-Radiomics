@@ -303,6 +303,7 @@ def main():
     DISCRETE_LUMPS = False
     RANGE_VALUES = (0, 255)
     SIGMA = 5
+    MASK_THRESHOLD = 0.3
     title = "Lumpy image"  # Title for plot
 
     # Get arguments reveived from command line
@@ -332,22 +333,20 @@ def main():
         plot_slices(image, fig_num=1, title="Lumpy image (label 1)", max_slices=100)
         # Set params for label 0
         params = get_params_label_0()
-        DIM, NBAR, DC, LUMP_FUNCTION, PARS, DISCRETE_LUMPS, RANGE_VALUES, SIGMA, _ = params
         # Change title of next plot
         title = "Lumpy image (label 0)"
     elif args.label0:
         # Set params for label 0
         params = get_params_label_0()
-        DIM, NBAR, DC, LUMP_FUNCTION, PARS, DISCRETE_LUMPS, RANGE_VALUES, SIGMA, _ = params
     else:
         # Set params for label 1
         params = get_params_label_1()
-        DIM, NBAR, DC, LUMP_FUNCTION, PARS, DISCRETE_LUMPS, RANGE_VALUES, SIGMA, _ = params
 
     # Create lumpy image
-    image, lumps, background, lumps_pos = get_lumpy_image(DIM, NBAR, DC, LUMP_FUNCTION, PARS,
-                                                          DISCRETE_LUMPS, RANGE_VALUES, SIGMA)
+    image, lumps, background, lumps_pos = get_lumpy_image(*params)
+    mask = generate_mask(image, params[-1])
 
+    # Plot results
     plot_slices(image, fig_num=0, title=title, max_slices=100)
     input("Press ENTER to close all figures and exit.")
 
