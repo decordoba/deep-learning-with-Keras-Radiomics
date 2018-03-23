@@ -1,16 +1,8 @@
 #!/usr/bin/env python3.5
-import os
-import matplotlib as mpl
-if os.name == 'nt':  # 'nt' refers to Windows
-    display_ok = os.system('py -c "import matplotlib.pyplot as plt;plt.figure()"')  # Windows
-else:
-    display_ok = os.system('python3 -c "import matplotlib.pyplot as plt;plt.figure()"')  # Linux
-# This allows mpl to run with no DISPLAY defined
-if display_ok != 0:
-    print("$DISPLAY not detected, matplotlib set to use 'Agg' backend")
-    mpl.use('Agg')
+import matplotlib_handle_display  # Must be imported before anything matplotlib related
 import argparse
 import numpy as np
+import os
 import pickle
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
