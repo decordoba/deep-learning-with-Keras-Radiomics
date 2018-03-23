@@ -1,5 +1,7 @@
 #!/usr/bin/env python3.5
 import argparse
+import os
+import PIL
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.ndimage import gaussian_filter
@@ -284,6 +286,7 @@ def parse_arguments(d, n, dc, p1, p2, r, t):
                         help="don't use seed for random numbers generator")
     parser.add_argument('--label0', default=False, action="store_true")
     parser.add_argument('--label1', default=False, action="store_true")
+    parser.add_argument('--save_image', default=False, action="store_true")
     return parser.parse_args()
 
 
@@ -332,6 +335,11 @@ def main():
 
     # Get arguments reveived from command line
     args = parse_arguments(DIM, NBAR, DC, PARS[0], PARS[1], RANGE_VALUES[1], MASK_THRESHOLD)
+    if args.save_image:
+        try:
+            os.mkdir("images")
+        except FileExistsError:
+            pass  # File exists
     if not args.random:
         np.random.seed(123)  # for reproducibility
 
@@ -357,6 +365,10 @@ def main():
         # Create lumpy image for label 1 and plot it
         params = get_params_label_1()
         image, lumps, background, lumps_pos = get_lumpy_image(*params)
+        if args.save_image:
+            for i in range(image.shape[2]):
+                img = PIL.Image.fromarray(image[:, :, i].astype(np.uint8))
+                img.save("images/label{}_img{:02d}.png".format(1, i))
         mask = generate_mask(image, params[-1])
         plot_slices(image, fig_num=2, title="Lumpy image (label 1)", max_slices=100)
         plot_slices(image, fig_num=3, title="Lumpy image with mask (label 1)", max_slices=100,
@@ -375,6 +387,13 @@ def main():
 
     # Create lumpy image
     image, lumps, background, lumps_pos = get_lumpy_image(*params)
+    if args.save_image:
+        label = "?"
+        label = "1" if args.label1 else label
+        label = "0" if args.label0 else label
+        for i in range(image.shape[2]):
+            img = PIL.Image.fromarray(image[:, :, i].astype(np.uint8))
+            img.save("images/label{}_img{:02d}.png".format(label, i))
     mask = generate_mask(image, params[-1])
 
     # Plot results
