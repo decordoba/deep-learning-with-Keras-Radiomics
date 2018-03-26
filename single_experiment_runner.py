@@ -571,7 +571,7 @@ def parse_arguments():
                         "patients may be split in two splits)")
     parser.add_argument('-v', '--verbose', default=False, action="store_true", help="enable "
                         "verbose mode when training")
-    parser.add_argument('--clean_cross_val', default=False, action="store_true",
+    parser.add_argument('--do_cross_val', default=False, action="store_true",
                         help="dirty stuff")
     return parser.parse_args()
 
