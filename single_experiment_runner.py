@@ -397,6 +397,48 @@ def load_organized_dataset(path):
                                                                                 mask_test)
 
 
+def limit_number_patients_per_label(x_whole, y_whole, mask_whole, patients_whole,
+                                    num_patients_per_label=None, adjacent=True):
+    """Return only first num_patients_by_label patients, and forget all the others."""
+    if num_patients_per_label is None:
+        return x_whole, y_whole, mask_whole, patients_whole
+    n0, n1, i0, i1 = 0, 0, None, None
+    new_x, new_y, new_mask, new_patients = [], [], [], []
+    ht = set()
+    ht2 = set()
+    for i, (x, y, m, p) in enumerate(zip(x_whole, y_whole, mask_whole, patients_whole)):
+        if (y == 0 and i0 is None) or (y == 1 and i1 is None) or p in ht2:
+            new_x.append(x)
+            new_y.append(y)
+            new_mask.append(m)
+            new_patients.append(p)
+            ht2.add(p)
+        if p in ht:
+            continue
+        ht.add(p)
+        if y == 0:
+            n0 += 1
+            if n0 == num_patients_per_label + 1:
+                i0 = i
+                new_x.pop()
+                new_y.pop()
+                new_mask.pop()
+                new_patients.pop()
+                ht2.remove(p)
+        else:
+            n1 += 1
+            if n1 == num_patients_per_label + 1:
+                i1 = i
+                new_x.pop()
+                new_y.pop()
+                new_mask.pop()
+                new_patients.pop()
+                ht2.remove(p)
+        if i0 is not None and i1 is not None and adjacent:
+            break  # Assumes same patient slices are adjacent
+    return np.array(new_x), np.array(new_y), np.array(new_mask), new_patients
+
+
 def get_confusion_matrix(model, x_set, y_set):
     """Docstring for get_confusion_matrix."""
     pred_percents = model.predict(x_set)
@@ -494,6 +536,8 @@ def parse_arguments():
                         help="show slices of volume in dataset")
     parser.add_argument('-e', '--epochs', default=50, type=int,
                         help="number of epochs when training (default: 50)")
+    parser.add_argument('-s', '--size', default=None, type=int,
+                        help="max number of patients per label (default: all)")
     parser.add_argument('-d', '--dataset', default="organized", type=str,
                         help="location of the dataset inside the ./data folder "
                         "(default: organized)")
@@ -900,6 +944,11 @@ def main():
     y_whole = np.append(y_train, y_test, axis=0)
     mask_whole = np.append(mask_train, mask_test, axis=0)
     patients_whole = np.append(patients_train, patients_test, axis=0)
+
+    # Remove elements of the dataset if necessary
+    params = limit_number_patients_per_label(x_whole, y_whole, mask_whole, patients_whole,
+                                             num_patients_per_label=args.size)
+    x_whole, y_whole, mask_whole, patients_whole = params
 
     patients = np.unique(patients_whole)
     input_shape = x_whole.shape[1:]
