@@ -545,6 +545,8 @@ def parse_arguments():
                         help="number of epochs when training (default: 50)")
     parser.add_argument('-s', '--size', default=None, type=int,
                         help="max number of patients per label (default: all)")
+    parser.add_argument('-f', '--folds', default=10, type=int,
+                        help="number of cross validation folds (default: 10)")
     parser.add_argument('-d', '--dataset', default="organized", type=str,
                         help="location of the dataset inside the ./data folder "
                         "(default: organized)")
@@ -574,13 +576,13 @@ def parse_arguments():
 
 def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whole, num_patients,
                         location="cross_validation_results", patient_level_cv=False, verbose=False,
-                        num_epochs=50, pdf_name="figures.pdf", show_plots=False, shuffle=False):
+                        num_epochs=50, pdf_name="figures.pdf", show_plots=False, shuffle=False,
+                        num_folds=10):
     """Do cross validation on dataset."""
     # Do 10-fold CV in whole set
-    num_folds = 10
     if patient_level_cv:
         # Get splits indices to separate dataset in patients
-        if num_patients % 11 == 0:
+        if num_patients % 11 == 0:  # Warning! This may overwrite the num_folds argument
             num_folds = 11  # 11 because 77 % 11 = 0
         num_patients_per_fold = num_patients / num_folds
         patient_num = 0
@@ -738,6 +740,11 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
                                   title="Model Fold Accuracy History", fig_num=f, show=show_plots)
     # Fig 3
     f = 3
+    print(1, None in all_data_log["accuracy"])
+    print(2, None in all_data_log["recall0"])
+    print(3, None in all_data_log["recall1"])
+    print(4, None in all_data_log["precision0"])
+    print(5, None in all_data_log["precision1"])
     plot_line(all_data_log["accuracy"], range(1, num_folds + 1), label="Accuracy", fig_num=f,
               show=show_plots, style=".-")
     plot_line(all_data_log["recall0"], range(1, num_folds + 1), label="Recall 0", fig_num=f,
@@ -951,13 +958,15 @@ def main():
     y_whole = np.append(y_train, y_test, axis=0)
     mask_whole = np.append(mask_train, mask_test, axis=0)
     patients_whole = np.append(patients_train, patients_test, axis=0)
+    analyze_data(x_whole, y_whole, patients_whole, mask_whole, plot_data=False, dataset_name=None)
 
     # Remove elements of the dataset if necessary
-    analyze_data(x_whole, y_whole, patients_whole, mask_whole, plot_data=False, dataset_name=None)
-    params = limit_number_patients_per_label(x_whole, y_whole, mask_whole, patients_whole,
-                                             num_patients_per_label=args.size)
-    x_whole, y_whole, mask_whole, patients_whole = params
-    analyze_data(x_whole, y_whole, patients_whole, mask_whole, plot_data=False, dataset_name=None)
+    if args.size is not None:
+        params = limit_number_patients_per_label(x_whole, y_whole, mask_whole, patients_whole,
+                                                 num_patients_per_label=args.size)
+        x_whole, y_whole, mask_whole, patients_whole = params
+        analyze_data(x_whole, y_whole, patients_whole, mask_whole, plot_data=False,
+                     dataset_name=None)
 
     patients = np.unique(patients_whole)
     input_shape = x_whole.shape[1:]
@@ -1061,7 +1070,7 @@ def main():
         results_name = "results{}.pkl".format(suffix)
         if not os.path.isfile(sublocation + "/" + pdf_name):
             params = do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whole,
-                                         num_patients, location=sublocation,
+                                         num_patients, location=sublocation, num_folds=args.folds,
                                          patient_level_cv=not args.slice_level_cross_validation,
                                          num_epochs=args.epochs, pdf_name=pdf_name,
                                          show_plots=args.plot, shuffle=False, verbose=args.verbose)
