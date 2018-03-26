@@ -977,6 +977,7 @@ def main():
     y_test = np_utils.to_categorical(y_test, len(labels))
 
     if args.plot_slices:
+        plt.close("all")
         i = 0
         while i < len(x_whole):
             s = "{}/{} - Patient: {} - Label: {}".format(i, len(x_whole), patients_whole[i],
