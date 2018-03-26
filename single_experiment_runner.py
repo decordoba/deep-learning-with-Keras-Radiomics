@@ -1334,7 +1334,7 @@ def main():
         file.write(" ".join(sys.argv))
 
     # Define parameters we want to try in our experiments
-    s = "_{}".format(args.dataset)
+    s = "_{}".format(args.dataset.replace("/", "."))
     filters = [16]
     units = [16]
     if args.simplified_model:
