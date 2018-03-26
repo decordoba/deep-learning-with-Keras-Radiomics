@@ -571,6 +571,8 @@ def parse_arguments():
                         "patients may be split in two splits)")
     parser.add_argument('-v', '--verbose', default=False, action="store_true", help="enable "
                         "verbose mode when training")
+    parser.add_argument('--clean_cross_val', default=False, action="store_true",
+                        help="dirty stuff")
     return parser.parse_args()
 
 
@@ -750,26 +752,323 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
         plot_line(all_data_log["recall0"], range(1, num_folds + 1), label="Recall 0", fig_num=f,
                   show=show_plots, style=".-")
     except Exception as e:
-        print("Error while plotting accuracy")
+        print("Error while plotting recall0")
         print(e)
     try:
         plot_line(all_data_log["recall1"], range(1, num_folds + 1), label="Recall 1", fig_num=f,
                   show=show_plots, style=".-")
     except Exception as e:
-        print("Error while plotting accuracy")
+        print("Error while plotting recall1")
         print(e)
     try:
-        plot_line(all_data_log["precision0"], range(1, num_folds + 1), label="Precision 0", fig_num=f,
+        plot_line(all_data_log["precision0"], range(1, num_folds + 1), label="Precision 0",
+                  fig_num=f, show=show_plots, style=".-")
+    except Exception as e:
+        print("Error while plotting precision0")
+        print(e)
+    try:
+        plot_line(all_data_log["precision1"], range(1, num_folds + 1), label="Precision 1",
+                  fig_num=f, title="Cross Validation Accuracy, Recall and Precision",
+                  show=show_plots, style=".-", x_label="Cross Validation Fold Number",
+                  n_ticks=[10, None])
+    except Exception as e:
+        print("Error while plotting precision1")
+        print(e)
+    # Fig 4
+    f = 4
+    plot_line(all_data_log["num_label1"], range(1, num_folds + 1), label="Number 1s", fig_num=f,
+              show=show_plots, style=".-")
+    plot_line(all_data_log["num_labels"], range(1, num_folds + 1), label="Number 0s and 1s",
+              fig_num=f, title="Cross Validation Set Size", axis=[None, None, 0, None], style=".-",
+              x_label="Cross Validation Fold Number", n_ticks=[10, None], show=show_plots)
+    # Fig 5
+    f = 5
+    plot_line(tr_all_data_log["accuracy"], range(1, num_folds + 1), label="Accuracy", fig_num=f,
+              show=show_plots, style=".-")
+    plot_line(tr_all_data_log["recall0"], range(1, num_folds + 1), label="Recall 0", fig_num=f,
+              show=show_plots, style=".-")
+    plot_line(tr_all_data_log["recall1"], range(1, num_folds + 1), label="Recall 1", fig_num=f,
+              show=show_plots, style=".-")
+    plot_line(tr_all_data_log["precision0"], range(1, num_folds + 1), label="Precision 0",
+              fig_num=f, show=show_plots, style=".-")
+    plot_line(tr_all_data_log["precision1"], range(1, num_folds + 1), label="Precision 1",
+              fig_num=f, title="Training Accuracy, Recall and Precision", show=show_plots,
+              x_label="Cross Validation Fold Number", n_ticks=[10, None], style=".-")
+    # Fig 6
+    f = 6
+    plot_line(tr_all_data_log["num_label1"], range(1, num_folds + 1), label="Number 1s", fig_num=f,
+              show=show_plots, style=".-")
+    plot_line(tr_all_data_log["num_labels"], range(1, num_folds + 1), label="Number 0s and 1s",
+              fig_num=f, title="Training Set Size", axis=[None, None, 0, None], show=show_plots,
+              x_label="Cross Validation Fold Number", n_ticks=[10, None], style=".-")
+    # Fig 7
+    f = 7
+    plot_line(pat_all_data_log["accuracy"], range(1, num_folds + 1), label="Accuracy", fig_num=f,
+              show=show_plots, style=".-")
+    plot_line(pat_all_data_log["recall0"], range(1, num_folds + 1), label="Recall 0", fig_num=f,
+              show=show_plots, style=".-")
+    plot_line(pat_all_data_log["recall1"], range(1, num_folds + 1), label="Recall 1", fig_num=f,
+              show=show_plots, style=".-")
+    plot_line(pat_all_data_log["precision0"], range(1, num_folds + 1), label="Precision 0",
+              fig_num=f, show=show_plots, style=".-")
+    plot_line(pat_all_data_log["precision1"], range(1, num_folds + 1), label="Precision 1",
+              fig_num=f, title="Cross Validation Patient Accuracy, Recall and Precision",
+              show=show_plots, x_label="Cross Validation Fold Number", n_ticks=[10, None],
+              style=".-")
+    # Fig 8
+    f = 8
+    plot_line(pat_all_data_log["num_label1"], range(1, num_folds + 1), label="Number 1s",
+              fig_num=f, show=show_plots, style=".-")
+    plot_line(pat_all_data_log["num_labels"], range(1, num_folds + 1), label="Number 0s and 1s",
+              fig_num=f, title="Cross Validation Patient Set Size", axis=[None, None, 0, None],
+              show=show_plots, x_label="Cross Validation Fold Number", n_ticks=[10, None],
+              style=".-")
+    # Fig 9
+    f = 9
+    plot_binary_background(pat_all_data_log["true_percentages"], fig_num=f, show=show_plots,
+                           x_label="Patient Number", title="Label Conviction per Patient")
+    split = 0
+    for i in range(1, len(pat_all_data_log["true_percentages"])):
+        if i not in patient_splits[:-1]:
+            plot_line([0, 1], [i, i], fig_num=f, color=(0.5, 0.5, 0.5, 0.5),  # color="#555555",
+                      style=":", show=show_plots)
+    plot_line([0.5, 0.5], [0, num_patients], fig_num=f, show=show_plots, color="black")
+    for i, n_patients in enumerate(patient_splits[:-1]):
+        split += n_patients
+        split_label = None
+        if i == 0:
+            split_label = "Cross validation split"
+        plot_line([0, 1], [split, split], fig_num=f, label=split_label, color="#ffff00",
+                  style="--", show=show_plots)
+    plot_line(pat_all_data_log["pred_percentages"],
+              np.array(range(len(pat_all_data_log["pred_percentages"]))) + 0.5,
+              label="Label conviction", color="#00ff00", fig_num=f, show=show_plots,
+              axis=(None, None, -0.005, 1.005), style=".-")
+    # Fig 0
+    f = 0
+    plot_image(location + "/model0.png", fig_num=f, title="Model used", show=show_plots)
+    # Fig 10
+    f = 10
+    patient_changes = []
+    prev_label = 1
+    prev_patient = ""
+    for patient in patients_whole:
+        if patient != prev_patient:
+            prev_patient = patient
+            prev_label = abs(prev_label - 1)  # Alternates 0 and 1
+        patient_changes.append(prev_label)
+    plot_binary_background(patient_changes, fig_num=f, show=show_plots, min_max_values=(0.2, 1),
+                           labels=("Odd index patients", "Even index patients"))
+    plot_binary_background(np.argmax(y_whole, axis=1), fig_num=f, show=show_plots,
+                           title="Dataset patient distribution vs. cross validation dataset split",
+                           x_label="Slice number", labels=("Label 0", "Label 1"),
+                           min_max_values=(0, 0.2), color0="cyan", color1="magenta")
+    for i, split in enumerate(data_splits):
+        split_label = None
+        if i == 0:
+            split_label = "Cross validation split"
+        plot_line([0, 1], [split, split], fig_num=f, label=split_label, color="#ffff00",
+                  style="--", show=show_plots)
+    # Fig 11
+    f = 11
+    plot_multiple_roc_curves(rocs, title="ROC Curve for Cross Validation", fig_num=f,
+                             show=show_plots)
+
+    # Save all figures to a PDF called figures.pdf
+    save_plt_figures_to_pdf(location + "/" + pdf_name)
+    if show_plots:
+        input("Press ENTER to close figures")
+        plt.close("all")
+    return all_data_log, tr_all_data_log, pat_all_data_log, (historic_acc, historic_val_acc), rocs
+
+
+def train_and_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, num_patients,
+                   location="training_results", verbose=False, num_epochs=50,
+                   pdf_name="figures.pdf", show_plots=False, num_patients_te=64,
+                   num_patients_tr=(4, 8, 16, 32, 64, 128, 256, 512, 1024)):
+    """Do training on dataset, this is bad code!"""
+    # Get splits indices to separate dataset in patients
+    total_patient_num = -1
+    prev_patient = ""
+    for i, patient in enumerate(patients_whole):
+        if patient != prev_patient:
+            prev_patient = patient
+            total_patient_num += 1
+            if total_patient_num == num_patients_te:
+                break
+    te_idx = i
+    total_patient_num = -1
+    prev_patient = ""
+    tmp_tr = num_patients_tr[0]
+    tr_idx = []
+    iii = 1
+    for i, patient in enumerate(patients_whole):
+        if i < te_idx:
+            continue
+        if patient != prev_patient:
+            prev_patient = patient
+            total_patient_num += 1
+            if total_patient_num == tmp_tr:
+                tr_idx.append(i)
+                if iii < len(num_patients_tr):
+                    tmp_tr = num_patients_tr[iii]
+                    iii += 1
+                else:
+                    break
+    print("Tr", num_patients_tr)
+    print(tr_idx)
+    print("Te", num_patients_te)
+    print(te_idx)
+
+    historic_acc = None
+    historic_val_acc = None
+    rocs = []
+    tr_all_data_log = {"history_acc": [], "history_val_acc": [], "accuracy": [], "recall0": [],
+                       "recall1": [], "precision0": [], "precision1": [], "num_label0": [],
+                       "num_label1": [], "num_labels": []}
+    all_data_log = {"history_acc": [], "history_val_acc": [], "accuracy": [], "recall0": [],
+                    "recall1": [], "precision0": [], "precision1": [], "num_label0": [],
+                    "num_label1": [], "num_labels": []}
+    pat_all_data_log = {"history_acc": [], "history_val_acc": [], "accuracy": [], "recall0": [],
+                        "recall1": [], "precision0": [], "precision1": [], "num_label0": [],
+                        "num_label1": [], "num_labels": [], "pred_percentages": [],
+                        "true_percentages": []}
+    data_splits = []
+    patient_splits = []
+    weights = None  # This makes sure that the weight for every layer are reset every fold
+    num_folds = len(tr_idx)
+    for i, idx in enumerate(tr_idx):
+        print("\n--------------------------------------------------------------------------------")
+        print("\nFold {}/{} in Cross Validation Analysis".format(i + 1, num_folds))
+        # Split dataset in training and cross-validation sets
+        x_train_cv = x_whole[te_idx:idx]
+        y_train_cv = y_whole[te_idx:idx]
+        patients_train_cv = patients_whole[te_idx:idx]
+        x_test_cv = x_whole[te_idx:]
+        y_test_cv = y_whole[te_idx:]
+        patients_test_cv = patients_whole[te_idx:]
+
+        # Train model
+        parameters = flexible_neural_net((x_train_cv, y_train_cv), (x_test_cv, y_test_cv),
+                                         optimizer, loss, *layers,
+                                         batch_size=32, epochs=num_epochs, initial_weights=weights,
+                                         early_stopping=None, verbose=verbose,
+                                         files_suffix=i, location=location, return_more=True)
+        [lTr, aTr], [lTe, aTe], time, location, n_epochs, weights, model, history = parameters
+
+        # Save learning curve
+        if historic_acc is None:
+            historic_acc = np.array(history.history['acc'])
+            historic_val_acc = np.array(history.history['val_acc'])
+        else:
+            historic_acc += history.history['acc']
+            historic_val_acc += history.history['val_acc']
+
+        # Save statistical data for cross val set
+        print("Cross Validation Statistics:")
+        params = get_confusion_matrix(model, x_test_cv, y_test_cv)
+        accuracy, precision, recall, num_labels, true_cv, pred_cv = params
+        all_data_log["history_acc"].append(history.history['acc'])
+        all_data_log["history_val_acc"].append(history.history['val_acc'])
+        all_data_log["accuracy"].append(accuracy)
+        all_data_log["recall0"].append(recall[0])
+        all_data_log["precision0"].append(precision[0])
+        all_data_log["recall1"].append(recall[1])
+        all_data_log["precision1"].append(precision[1])
+        all_data_log["num_label0"].append(num_labels[0])
+        all_data_log["num_label1"].append(num_labels[1])
+        all_data_log["num_labels"].append(num_labels[1] + num_labels[0])
+
+        # Save statistical data for training set
+        print("Training Statistics:")
+        params = get_confusion_matrix(model, x_train_cv, y_train_cv)
+        accuracy, precision, recall, num_labels, true_tr, pred_tr = params
+        tr_all_data_log["accuracy"].append(accuracy)
+        tr_all_data_log["recall0"].append(recall[0])
+        tr_all_data_log["precision0"].append(precision[0])
+        tr_all_data_log["recall1"].append(recall[1])
+        tr_all_data_log["precision1"].append(precision[1])
+        tr_all_data_log["num_label0"].append(num_labels[0])
+        tr_all_data_log["num_label1"].append(num_labels[1])
+        tr_all_data_log["num_labels"].append(num_labels[1] + num_labels[0])
+
+        # Save patient level data from cross valiation set
+        print("Patient Level Statistics")
+        params = get_confusion_matrix_for_patient(model, x_test_cv, y_test_cv, patients_test_cv)
+        accuracy, precision, recall, num_labels, pred_percentages, true_percentages = params
+        pat_all_data_log["accuracy"].append(accuracy)
+        pat_all_data_log["recall0"].append(recall[0])
+        pat_all_data_log["precision0"].append(precision[0])
+        pat_all_data_log["recall1"].append(recall[1])
+        pat_all_data_log["precision1"].append(precision[1])
+        pat_all_data_log["num_label0"].append(num_labels[0])
+        pat_all_data_log["num_label1"].append(num_labels[1])
+        pat_all_data_log["num_labels"].append(num_labels[1] + num_labels[0])
+        pat_all_data_log["pred_percentages"].extend(pred_percentages)
+        pat_all_data_log["true_percentages"].extend(true_percentages)
+        patient_splits.append(len(pred_percentages))
+
+        # Print feedback
+        print("\nAccuracy Training: {}".format(aTr))
+        print("Accuracy Test:     {}".format(aTe))
+        print("Time taken:        {0:.3f} seconds".format(time))
+        print("Location:          {}".format(location))
+
+        # Compute ROC curve and ROC area for each class
+        fpr = dict()
+        tpr = dict()
+        roc_auc = dict()
+        for i in range(2):  # Only 2 classes
+            fpr[i], tpr[i], _ = roc_curve(true_cv[:, i], pred_cv[:, i])
+            roc_auc[i] = auc(fpr[i], tpr[i])
+        # Compute micro-average ROC curve and ROC area
+        fpr["micro"], tpr["micro"], _ = roc_curve(true_cv.ravel(), pred_cv.ravel())
+        roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
+        rocs.append((fpr, tpr, roc_auc))
+
+    # Plot stuff
+    plt.close("all")
+    # Fig 2
+    f = 2
+    plot_accuracy_curve(historic_acc, historic_val_acc, title="Model Mean Accuracy", fig_num=f,
+                        show=show_plots)
+    # Fig 1
+    f = 1
+    plot_multiple_accuracy_curves(all_data_log["history_acc"], all_data_log["history_val_acc"],
+                                  title="Model Fold Accuracy History", fig_num=f, show=show_plots)
+    # Fig 3
+    f = 3
+    try:
+        plot_line(all_data_log["accuracy"], range(1, num_folds + 1), label="Accuracy", fig_num=f,
                   show=show_plots, style=".-")
     except Exception as e:
         print("Error while plotting accuracy")
         print(e)
     try:
-        plot_line(all_data_log["precision1"], range(1, num_folds + 1), label="Precision 1", fig_num=f,
-                  title="Cross Validation Accuracy, Recall and Precision", show=show_plots, style=".-",
-                  x_label="Cross Validation Fold Number", n_ticks=[10, None])
+        plot_line(all_data_log["recall0"], range(1, num_folds + 1), label="Recall 0", fig_num=f,
+                  show=show_plots, style=".-")
     except Exception as e:
-        print("Error while plotting accuracy")
+        print("Error while plotting recall0")
+        print(e)
+    try:
+        plot_line(all_data_log["recall1"], range(1, num_folds + 1), label="Recall 1", fig_num=f,
+                  show=show_plots, style=".-")
+    except Exception as e:
+        print("Error while plotting recall1")
+        print(e)
+    try:
+        plot_line(all_data_log["precision0"], range(1, num_folds + 1), label="Precision 0",
+                  fig_num=f, show=show_plots, style=".-")
+    except Exception as e:
+        print("Error while plotting precision0")
+        print(e)
+    try:
+        plot_line(all_data_log["precision1"], range(1, num_folds + 1), label="Precision 1",
+                  fig_num=f, title="Cross Validation Accuracy, Recall and Precision",
+                  show=show_plots, style=".-", x_label="Cross Validation Fold Number",
+                  n_ticks=[10, None])
+    except Exception as e:
+        print("Error while plotting precision1")
         print(e)
     # Fig 4
     f = 4
@@ -1085,11 +1384,17 @@ def main():
         pdf_name = "figures{}.pdf".format(suffix)
         results_name = "results{}.pkl".format(suffix)
         if not os.path.isfile(sublocation + "/" + pdf_name):
-            params = do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whole,
-                                         num_patients, location=sublocation, num_folds=args.folds,
-                                         patient_level_cv=not args.slice_level_cross_validation,
-                                         num_epochs=args.epochs, pdf_name=pdf_name,
-                                         show_plots=args.plot, shuffle=False, verbose=args.verbose)
+            if args.do_cross_val:  # Dirty!
+                params = do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whole,
+                                             num_patients, location=sublocation, num_folds=args.folds,
+                                             patient_level_cv=not args.slice_level_cross_validation,
+                                             num_epochs=args.epochs, pdf_name=pdf_name,
+                                             show_plots=args.plot, shuffle=False, verbose=args.verbose)
+            else:
+                train_and_test(layers, optimizer, loss, x_whole, y_whole, patients_whole,
+                               num_patients, location=sublocation, verbose=args.verbose,
+                               num_epochs=args.epochs, pdf_name=pdf_name, show_plots=args.plot,
+                               num_patients_te=64, num_patients_tr=(4, 8, 16, 32, 64, 128, 256))
             all_data_comb = (comb, *params)
             with open(sublocation + "/" + results_name, 'wb') as f:
                 pickle.dump(all_data_comb, f)
