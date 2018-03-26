@@ -17,6 +17,8 @@ from keras.utils import np_utils
 from sklearn.metrics import classification_report, confusion_matrix, roc_curve, auc
 
 from keras_utils import flexible_neural_net
+sys.path.insert(0, 'create_datasets')
+from save_datasets import analyze_data
 
 
 def plot_slices(volume, title=None, fig_num=0, filename=None, show=True):
@@ -946,9 +948,11 @@ def main():
     patients_whole = np.append(patients_train, patients_test, axis=0)
 
     # Remove elements of the dataset if necessary
+    analyze_data(x_whole, y_whole, patients_whole, mask_whole, plot_data=False, dataset_name=None)
     params = limit_number_patients_per_label(x_whole, y_whole, mask_whole, patients_whole,
                                              num_patients_per_label=args.size)
     x_whole, y_whole, mask_whole, patients_whole = params
+    analyze_data(x_whole, y_whole, patients_whole, mask_whole, plot_data=False, dataset_name=None)
 
     patients = np.unique(patients_whole)
     input_shape = x_whole.shape[1:]
