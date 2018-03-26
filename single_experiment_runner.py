@@ -161,6 +161,11 @@ def plot_multiple_roc_curves(rocs, title=None, fig_num=0, filename=None, show=Tr
 
 def save_plt_figures_to_pdf(filename, figs=None, dpi=200):
     """Save all matplotlib figures in a single PDF file."""
+    dirname = os.path.dirname(filename)
+    try:
+        os.makedirs(dirname)
+    except OSError:
+        pass
     pp = PdfPages(filename)
     if figs is None:
         figs = [plt.figure(n) for n in plt.get_fignums()]
@@ -997,6 +1002,12 @@ def main():
             if not os.path.exists(location):
                 break
             n += 1
+    try:
+        os.makedirs(location)
+    except OSError:
+        pass
+    with open(location + "/args_{}".format("_".join(sys.argv[1:]).replace("/", ".")), 'w') as file:
+        file.write(" ".join(sys.argv))
 
     # Define parameters we want to try in our experiments
     s = "_{}".format(args.dataset)
