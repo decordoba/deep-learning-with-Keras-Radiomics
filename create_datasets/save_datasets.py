@@ -117,7 +117,10 @@ def get_size_mask(mask):
 def get_size_mask_efficiently(mask):
     """Get size box and volume of mask where we can fit all 1s in contour."""
     ones_pos = np.nonzero(mask)
-    box_size = np.max(ones_pos, axis=1) - np.min(ones_pos, axis=1) + 1
+    try:
+        box_size = np.max(ones_pos, axis=1) - np.min(ones_pos, axis=1) + 1
+    except ValueError:
+        box_size = np.array(mask.shape) * 0
     volume = len(ones_pos[0])
     return box_size, volume
 
@@ -365,7 +368,8 @@ def analyze_data(volumes, labels, patients, masks, plot_data=True, initial_figur
     plot_boxplot(all_sizes_masks[1], "Sizes box 1", f, 122, ylim, True, show=plot_data,
                  window_title="Sizes Box " + title_suffix)
     # Save PDF results
-    save_plt_figures_to_pdf("data/{}/results{}.pdf".format(dataset_name, suffix))
+    if dataset_name is not None and suffix is not None:
+        save_plt_figures_to_pdf("data/{}/results{}.pdf".format(dataset_name, suffix))
     if plot_data:
         input("Press ENTER to close all figures and continue.")
         plt.close("all")
