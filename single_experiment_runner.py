@@ -1283,11 +1283,12 @@ def main():
         os.makedirs(location)
     except OSError:
         pass
-    with open(location + "/args_{}".format("_".join(sys.argv[1:]).replace("/", ".")), 'w') as file:
+    with open(location + "/args_{}".format("_".join(sys.argv[1:]).replace("/", "-")), 'w') as file:
         file.write(" ".join(sys.argv))
 
     # Define parameters we want to try in our experiments
-    s = "_{}".format(args.dataset)
+    s = "_{}".format(args.dataset.replace("/", "-"))
+    s = s[:-1] if s.endswith(".") else s
     filters = [16]
     units = [16]
     if args.simplified_model:
