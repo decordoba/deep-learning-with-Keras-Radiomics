@@ -944,13 +944,24 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
         y_test_cv = y_whole[te_idx:]
         patients_test_cv = patients_whole[te_idx:]
 
-        # Train model
-        parameters = flexible_neural_net((x_train_cv, y_train_cv), (x_test_cv, y_test_cv),
-                                         optimizer, loss, *layers,
-                                         batch_size=32, epochs=num_epochs, initial_weights=weights,
-                                         early_stopping=None, verbose=verbose,
-                                         files_suffix=i, location=location, return_more=True)
-        [lTr, aTr], [lTe, aTe], time, location, n_epochs, weights, model, history = parameters
+        num_times = 0
+        max_num_times = 3
+        while num_times < max_num_times:
+            num_times += 1
+            # Train model
+            parameters = flexible_neural_net((x_train_cv, y_train_cv), (x_test_cv, y_test_cv),
+                                            optimizer, loss, *layers,
+                                            batch_size=32, epochs=num_epochs, initial_weights=weights,
+                                            early_stopping=None, verbose=verbose,
+                                            files_suffix=i, location=location, return_more=True)
+            [lTr, aTr], [lTe, aTe], time, location, n_epochs, weights, model, history = parameters
+            if aTr > 0.7:
+                break
+            else:
+                print("There was a problem running this model (there is an unknown bug somewhere "
+                      "that makes some iterations act weird and where training accuracy never "
+                      "changes). Retrying - Attempt No. {} - Number of patients: {} - Tr Acc: {}."
+                      "".format(num_times, num_patients_tr[i], aTr))
 
         # Save learning curve
         if historic_acc is None:
