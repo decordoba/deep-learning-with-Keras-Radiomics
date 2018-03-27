@@ -86,7 +86,7 @@ def plot_accuracy_curve(acc, val_acc=None, title=None, fig_num=0, filename=None,
 
 
 def plot_multiple_accuracy_curves(accs, val_accs=None, title=None, fig_num=0, filename=None,
-                                  show=True):
+                                  show=True, labels=None):
     """Plot multiple train and validation histories in several figures.
 
     If filename is None, the figure will be shown, otherwise it will be saved with name filename
@@ -109,6 +109,8 @@ def plot_multiple_accuracy_curves(accs, val_accs=None, title=None, fig_num=0, fi
         if val_acc is not None:
             subfig.plot(x_pts, val_acc, label="validation")
         subfig.set_xlabel("Epoch")
+        if labels is not None:
+            subfig.set_title(labels[i])
         plt.legend()
     if title is None:
         title = "Model Accuracy History"
@@ -123,7 +125,7 @@ def plot_multiple_accuracy_curves(accs, val_accs=None, title=None, fig_num=0, fi
         fig.clear()
 
 
-def plot_multiple_roc_curves(rocs, title=None, fig_num=0, filename=None, show=True):
+def plot_multiple_roc_curves(rocs, title=None, fig_num=0, filename=None, show=True, labels=None):
     """Docstring for plot_multiple_roc_curves."""
     if filename is None and show:
         plt.ion()
@@ -139,12 +141,14 @@ def plot_multiple_roc_curves(rocs, title=None, fig_num=0, filename=None, show=Tr
         subfig = fig.add_subplot(h, w, j + 1)
         for i, color in zip(range(2), ['aqua', 'darkorange']):
             subfig.plot(fpr[i], tpr[i], color=color, lw=2,
-                        label='ROC curve of class {} (area = {:0.2f})'.format(i, roc_auc[i]))
+                        label='class {} (area = {:0.2f})'.format(i, roc_auc[i]))
         subfig.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
         plt.xlim([0.0, 1.0])
         plt.ylim([0.0, 1.05])
         subfig.set_xlabel('False Positive Rate')
         subfig.set_ylabel('True Positive Rate')
+        if labels is not None:
+            subfig.set_title(labels[j])
         plt.legend(loc="lower right")
     if title is None:
         title = "ROC Curves"
@@ -221,7 +225,7 @@ def transform_curves_to_plot(y_pts, x_pts):
 
 def plot_line(y_pts, x_pts=None, y_label=None, x_label=None, title=None, axis=None, style="-",
               color=None, y_scale="linear", x_scale="linear", label=None, fig_num=0, show=True,
-              filename=None, n_ticks=None, linewidth=None):
+              filename=None, n_ticks=None, linewidth=None, logbase=2):
     """Plot one or several 1D or 2D lines or point clouds.
 
     :param y_pts: y coordinates. A list of list can represent several lines
@@ -256,8 +260,14 @@ def plot_line(y_pts, x_pts=None, y_label=None, x_label=None, title=None, axis=No
         fig.canvas.set_window_title("Figure {} - {}".format(fig_num, title))
     if axis is not None:
         plt.axis(axis)
-    plt.yscale(y_scale)
-    plt.xscale(x_scale)
+    if x_scale == "log":
+        plt.xscale(x_scale, basex=logbase)
+    else:
+        plt.xscale(x_scale)
+    if y_scale == "log":
+        plt.yscale(y_scale, basey=logbase)
+    else:
+        plt.yscale(y_scale)
     if n_ticks is not None:
         if n_ticks[0] is not None:
             plt.locator_params(axis='x', nbins=n_ticks[0])
