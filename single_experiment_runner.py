@@ -752,38 +752,18 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
                                   title="Model Fold Accuracy History", fig_num=f, show=show_plots)
     # Fig 3
     f = 3
-    try:
-        plot_line(all_data_log["accuracy"], range(1, num_folds + 1), label="Accuracy", fig_num=f,
-                  show=show_plots, style=".-")
-    except Exception as e:
-        print("Error while plotting accuracy")
-        print(e)
-    try:
-        plot_line(all_data_log["recall0"], range(1, num_folds + 1), label="Recall 0", fig_num=f,
-                  show=show_plots, style=".-")
-    except Exception as e:
-        print("Error while plotting recall0")
-        print(e)
-    try:
-        plot_line(all_data_log["recall1"], range(1, num_folds + 1), label="Recall 1", fig_num=f,
-                  show=show_plots, style=".-")
-    except Exception as e:
-        print("Error while plotting recall1")
-        print(e)
-    try:
-        plot_line(all_data_log["precision0"], range(1, num_folds + 1), label="Precision 0",
-                  fig_num=f, show=show_plots, style=".-")
-    except Exception as e:
-        print("Error while plotting precision0")
-        print(e)
-    try:
-        plot_line(all_data_log["precision1"], range(1, num_folds + 1), label="Precision 1",
-                  fig_num=f, title="Cross Validation Accuracy, Recall and Precision",
-                  show=show_plots, style=".-", x_label="Cross Validation Fold Number",
-                  n_ticks=[10, None])
-    except Exception as e:
-        print("Error while plotting precision1")
-        print(e)
+    plot_line(all_data_log["accuracy"], range(1, num_folds + 1), label="Accuracy", fig_num=f,
+              show=show_plots, style=".-")
+    plot_line(all_data_log["recall0"], range(1, num_folds + 1), label="Recall 0", fig_num=f,
+              show=show_plots, style=".-")
+    plot_line(all_data_log["recall1"], range(1, num_folds + 1), label="Recall 1", fig_num=f,
+              show=show_plots, style=".-")
+    plot_line(all_data_log["precision0"], range(1, num_folds + 1), label="Precision 0",
+              fig_num=f, show=show_plots, style=".-")
+    plot_line(all_data_log["precision1"], range(1, num_folds + 1), label="Precision 1",
+              fig_num=f, title="Cross Validation Accuracy, Recall and Precision",
+              show=show_plots, style=".-", x_label="Cross Validation Fold Number",
+              n_ticks=[10, None])
     # Fig 4
     f = 4
     plot_line(all_data_log["num_label1"], range(1, num_folds + 1), label="Number 1s", fig_num=f,
