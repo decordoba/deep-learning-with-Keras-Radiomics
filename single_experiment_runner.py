@@ -101,6 +101,8 @@ def plot_multiple_accuracy_curves(accs, val_accs=None, title=None, fig_num=0, fi
     else:
         h = int(np.floor(np.sqrt(num_curves)))
         w = int(np.ceil(np.sqrt(num_curves)))
+        if w * h < num_curves:
+            h += 1
     fig = plt.figure(fig_num, figsize=(8 * w, 6 * h))
     for i, (acc, val_acc) in enumerate(zip(accs, val_accs)):
         subfig = fig.add_subplot(h, w, i + 1)
@@ -136,6 +138,8 @@ def plot_multiple_roc_curves(rocs, title=None, fig_num=0, filename=None, show=Tr
     else:
         h = int(np.floor(np.sqrt(num_curves)))
         w = int(np.ceil(np.sqrt(num_curves)))
+        if w * h < num_curves:
+            h += 1
     fig = plt.figure(fig_num, figsize=(8 * w, 6 * h))
     for j, (fpr, tpr, roc_auc) in enumerate(rocs):
         subfig = fig.add_subplot(h, w, j + 1)
@@ -1288,7 +1292,7 @@ def main():
 
     # Define parameters we want to try in our experiments
     s = "_{}".format(args.dataset.replace("/", "-"))
-    s = s[:-1] if s.endswith(".") else s
+    s = s[:-1] if s.endswith("-") else s
     filters = [16]
     units = [16]
     if args.simplified_model:
