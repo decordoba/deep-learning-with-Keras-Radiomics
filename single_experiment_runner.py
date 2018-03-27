@@ -1346,11 +1346,19 @@ def main():
                                              num_epochs=args.epochs, pdf_name=pdf_name,
                                              show_plots=args.plot, shuffle=False)
             else:
+                num_patient_tr = (4, 8, 16, 32, 64)  # Default value
+                if args.size is not None:
+                    num_patient_tr = []
+                    num = 4
+                    while num <= args.size:
+                        num_patient_tr.append(num)
+                        num *= 2
+                    num_patient_tr = tuple(num_patient_tr)
                 params = do_training_test(layers, optimizer, loss, x_whole, y_whole,
                                           patients_whole, num_patients, location=sublocation,
                                           verbose=args.verbose, num_epochs=args.epochs,
                                           pdf_name=pdf_name, show_plots=args.plot,
-                                          num_patients_te=64, num_patients_tr=(4, 8, 16, 32, 64))
+                                          num_patients_te=64, num_patients_tr=num_patient_tr)
             all_data_comb = (comb, *params)
             with open(sublocation + "/" + results_name, 'wb') as f:
                 pickle.dump(all_data_comb, f)
