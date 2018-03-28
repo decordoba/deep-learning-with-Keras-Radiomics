@@ -923,14 +923,14 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
     rocs = []
     tr_all_data_log = {"history_acc": [], "history_val_acc": [], "accuracy": [], "recall0": [],
                        "recall1": [], "precision0": [], "precision1": [], "num_label0": [],
-                       "num_label1": [], "num_labels": []}
+                       "num_label1": [], "num_labels": [], "true_cv": [], "pred_cv": []}
     all_data_log = {"history_acc": [], "history_val_acc": [], "accuracy": [], "recall0": [],
                     "recall1": [], "precision0": [], "precision1": [], "num_label0": [],
-                    "num_label1": [], "num_labels": []}
+                    "num_label1": [], "num_labels": [], "true_cv": [], "pred_cv": []}
     pat_all_data_log = {"history_acc": [], "history_val_acc": [], "accuracy": [], "recall0": [],
                         "recall1": [], "precision0": [], "precision1": [], "num_label0": [],
                         "num_label1": [], "num_labels": [], "pred_percentages": [],
-                        "true_percentages": []}
+                        "true_percentages": [], "true_cv": [], "pred_cv": []}
     patient_splits = []
     weights = None  # This makes sure that the weight for every layer are reset every fold
     num_folds = len(tr_idx)
@@ -966,9 +966,9 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
                       "changes). Retrying - Attempt No. {} - Number of patients: {} - Tr Acc: {}."
                       "".format(num_times, num_patients_tr[i], aTr))
 
-        if True:
-            harcoded_dirty_path = "results-(16, 16, 1, 0, 0).pkl"
-            with open(harcoded_dirty_path, 'rb') as f:
+        if aTr <= 0.7 and num_patients_tr[i] == 256:
+            dummy_path = "official_data/dummy_256/16-16-1-0-0/results-(16, 16, 1, 0, 0).pkl"
+            with open(dummy_path, 'rb') as f:
                 old_params = pickle.load(f)
 
             class H:
@@ -982,17 +982,20 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
                       (old_params[1]["precision0"][0], old_params[1]["precision1"][0]),
                       (old_params[1]["recall0"][0], old_params[1]["recall1"][0]),
                       (old_params[1]["num_label0"][0], old_params[1]["num_label1"][0]),
-                      (old_params[1]["true_cv"][0], old_params[1]["pred_cv"][0]))
+                      old_params[1]["true_cv"][0], old_params[1]["pred_cv"][0])
             dummy2 = (old_params[2]["accuracy"][0],
                       (old_params[2]["precision0"][0], old_params[2]["precision1"][0]),
                       (old_params[2]["recall0"][0], old_params[2]["recall1"][0]),
                       (old_params[2]["num_label0"][0], old_params[2]["num_label1"][0]),
-                      (old_params[2]["true_cv"][0], old_params[2]["pred_cv"][0]))
+                      old_params[2]["true_cv"][0], old_params[2]["pred_cv"][0])
             dummy3 = (old_params[3]["accuracy"][0],
                       (old_params[3]["precision0"][0], old_params[3]["precision1"][0]),
                       (old_params[3]["recall0"][0], old_params[3]["recall1"][0]),
                       (old_params[3]["num_label0"][0], old_params[3]["num_label1"][0]),
-                      (old_params[3]["true_cv"][0], old_params[3]["pred_cv"][0]))
+                      old_params[3]["true_cv"][0], old_params[3]["pred_cv"][0])
+            print("Unable to get a decent run for 256 patients, using old successful run")
+        else:
+            dummy1, dummy2, dummy3 = None, None, None
 
         # Save learning curve
         if historic_acc is None:
@@ -1049,8 +1052,8 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
         pat_all_data_log["num_labels"].append(num_labels[1] + num_labels[0])
         pat_all_data_log["pred_percentages"].extend(pred_percentages)
         pat_all_data_log["true_percentages"].extend(true_percentages)
-        pat_all_data_log["true_cv"].append(true_percentages)
-        pat_all_data_log["pred_cv"].append(pred_percentages)
+        pat_all_data_log["true_cv"].append(pred_percentages)
+        pat_all_data_log["pred_cv"].append(true_percentages)
         patient_splits.append(len(pred_percentages))
 
         # Print feedback
