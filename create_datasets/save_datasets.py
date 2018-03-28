@@ -700,8 +700,8 @@ def save_dataset_correctly(x, y, patients, masks, parent_folder="data", dataset_
     try:
         np.savez(file_path, x=x, y=y)
         print("Dataset saved in: '{}.npz'".format(file_path))
-        print("Shape X:    {}".format(x.shape))
-        print("Shape Y:    {}".format(y.shape))
+        print("Shape X:    {}".format(np.array(x).shape))
+        print("Shape Y:    {}".format(np.array(y).shape))
     except ValueError:
         with open("{}.pkl".format(file_path), "wb") as f:
             pickle.dump([x, y], f)
@@ -712,7 +712,7 @@ def save_dataset_correctly(x, y, patients, masks, parent_folder="data", dataset_
     try:
         np.savez("{}_masks".format(file_path), masks=masks)
         print("Masks saved in: '{}_masks.npz'".format(file_path))
-        print("Shape Mask: {}".format(masks.shape))
+        print("Shape Mask: {}".format(np.array(masks).shape))
     except ValueError:
         with open("{}_masks.pkl".format(file_path), "wb") as f:
             pickle.dump(masks, f)
