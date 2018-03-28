@@ -374,22 +374,30 @@ def plot_binary_background(y_pts, first_x=0, y_label=None, x_label=None, title=N
 
 def load_organized_dataset(path):
     """Load organized dataset (contains balanced train and test set)."""
-    f = np.load(path + "/training_set.npz")
     try:
-        x_train = f["x"]
-        y_train = f["y"]
-    except KeyError:
-        x_train = f["arr_0"]
-        y_train = f["arr_1"]
-    f.close()
-    f = np.load(path + "/test_set.npz")
+        f = np.load(path + "/training_set.npz")
+        try:
+            x_train = f["x"]
+            y_train = f["y"]
+        except KeyError:
+            x_train = f["arr_0"]
+            y_train = f["arr_1"]
+        f.close()
+    except (FileNotFoundError, OSError, KeyError):
+        with open(path + "/training_set.pkl", 'rb') as f:
+            x_train, y_train = pickle.load(f)
     try:
-        x_test = f["x"]
-        y_test = f["y"]
-    except KeyError:
-        x_test = f["arr_0"]
-        y_test = f["arr_1"]
-    f.close()
+        f = np.load(path + "/test_set.npz")
+        try:
+            x_test = f["x"]
+            y_test = f["y"]
+        except KeyError:
+            x_test = f["arr_0"]
+            y_test = f["arr_1"]
+        f.close()
+    except (FileNotFoundError, OSError, KeyError):
+        with open(path + "/test_set.pkl", 'rb') as f:
+            x_test, y_test = pickle.load(f)
     with open(path + "/training_set_patients.pkl", 'rb') as f:
         patients_train = pickle.load(f)
     with open(path + "/test_set_patients.pkl", 'rb') as f:
@@ -401,7 +409,7 @@ def load_organized_dataset(path):
         except KeyError:
             mask_train = f["arr_0"]
         f.close()
-    except FileNotFoundError:
+    except (FileNotFoundError, OSError):
         with open(path + "/training_set_masks.pkl", 'rb') as f:
             mask_train = pickle.load(f)
     try:
@@ -411,7 +419,7 @@ def load_organized_dataset(path):
         except KeyError:
             mask_test = f["arr_0"]
         f.close()
-    except FileNotFoundError:
+    except (FileNotFoundError, OSError):
         with open(path + "/test_set_masks.pkl", 'rb') as f:
             mask_test = pickle.load(f)
     return (x_train, y_train), (x_test, y_test), (patients_train, mask_train), (patients_test,
@@ -463,6 +471,7 @@ def limit_number_patients_per_label(x_whole, y_whole, mask_whole, patients_whole
 def get_confusion_matrix(model, x_set, y_set, dummy=None):
     """Docstring for get_confusion_matrix."""
     if dummy is not None:
+        print("  Dummy data used")
         return dummy
     pred_percents = model.predict(x_set)
     true_labels = np.argmax(y_set, axis=1)
