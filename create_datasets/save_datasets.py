@@ -704,8 +704,7 @@ def save_dataset_correctly(x, y, patients, masks, parent_folder="data", dataset_
         print("Shape Y:    {}".format(y.shape))
     except ValueError:
         with open("{}.pkl".format(file_path), "wb") as f:
-            pickle.dump(x, f)
-            pickle.dump(y, f)
+            pickle.dump([x, y], f)
         print("Error while saving set as '.npz'. Dataset saved in: '{}.pkl'".format(file_path))
     with open("{}_patients.pkl".format(file_path), "wb") as f:
         pickle.dump(patients, f)
