@@ -1,9 +1,13 @@
 #!/usr/bin/env python3.5
+import matplotlib_handle_display  # Must be imported before anything matplotlib related
 import numpy as np
 import pickle
 from datetime import datetime
 from lumpy_model import get_params_label_0, generate_mask, get_lumpy_image
 from matplotlib import pyplot as plt
+from skimage import feature
+from scipy.ndimage.morphology import binary_erosion
+import os
 
 
 def get_current_time(time=True, date=False, microseconds=False):
@@ -29,8 +33,67 @@ def remove_healthy_top_and_bottom_slices(image, mask, margin):
     return image[:, :, min_z:max_z], mask[:, :, min_z:max_z]
 
 
-def generate_data(c, r, dataset_name="lumpy_dataset", show_images=False, pause_images=False,
-                  discrete_centers=False, lumps_version=0, num_samples=100,
+def get_glcm_statistics(volume):
+    """Get statistics realted to GLCM."""
+    image_medians = [0, 0, 0]
+    image_medians[0] = volume[int(volume.shape[0] / 2), :, :]
+    image_medians[1] = volume[:, int(volume.shape[1] / 2), :]
+    image_medians[2] = volume[:, :, int(volume.shape[2] / 2)]
+    all_d = []
+    all_c = []
+    all_a = []
+    for i in range(3):
+        image_array = image_medians[i]
+        offsets = np.array([1]).astype(np.int)
+        radians = np.pi * np.arange(4) / 4
+        LEVELS = 16
+        lo, hi = image_array.min(), image_array.max()
+        image_array = np.round((image_array - lo) / (hi - lo) * (LEVELS - 1)).astype(np.uint8)
+        glcms = feature.greycomatrix(image_array, offsets, radians, LEVELS, symmetric=True,
+                                     normed=True)
+        dissimil = feature.greycoprops(glcms, prop='dissimilarity')
+        dissimil = [dissimil[0, angle] for angle in range(radians.size)]
+        all_d.append(np.mean(dissimil))
+        correlation = feature.greycoprops(glcms, prop='correlation')
+        correlation = [correlation[0, angle] for angle in range(radians.size)]
+        all_c.append(np.mean(correlation))
+        asm = feature.greycoprops(glcms, prop='ASM')
+        asm = [asm[0, angle] for angle in range(radians.size)]
+        all_a.append(np.mean(asm))
+    return np.mean(all_d), np.mean(all_c), np.mean(all_a)
+
+
+def get_statistics_mask(mask):
+    """Get size box and volume of mask where we can fit all 1s in contour."""
+    ones_pos = np.nonzero(mask)
+    eroded = binary_erosion(mask)
+    outer_mask = mask - eroded
+    volume = len(ones_pos[0])
+    surface = outer_mask.sum()
+    return surface, volume, ones_pos
+
+
+def save_statistics(folder, image, mask):
+    """Docstring for save_statistics."""
+    std_dev = np.std(image)
+    mean = np.mean(image)
+    median = np.median(image)
+    surface, volume, mask_positions = get_statistics_mask(mask)
+    surf_to_vol = surface / volume
+    dissimilarity, correlation, asm = get_glcm_statistics(image)
+    names = ("mean, median, stddev, surface, volume, surf_vol_ratio, dissimilarity, correlation, "
+             "asm\n")
+    data = [mean, median, std_dev, surface, volume, surf_to_vol, dissimilarity, correlation, asm]
+    path = "{}statistics.csv".format(folder)
+    if not os.path.exists(path):
+        with open(path, "a+") as f:
+            f.write(names)
+    with open(path, "a+") as f:
+        f.write(" ".join(data))
+
+
+def generate_data(c, r, dataset_name="lumpy_dataset", folder="", show_images=False,
+                  pause_images=False, discrete_centers=False, lumps_version=0, num_samples=100,
                   number_first_patient=0, cut_edges_margin=None):
     """Generate num_samples lumpy images for label 0 and 1, save them, and possibly plot them."""
     print("Samples generated for each label: " + str(num_samples))
@@ -58,6 +121,8 @@ def generate_data(c, r, dataset_name="lumpy_dataset", show_images=False, pause_i
         labels.append(0)
         patients.append("{:08d}".format(patient_counter))
         patient_counter += 1
+
+        save_statistics(folder, image0, mask0)
 
         # Create and show plots
         if show_images:
@@ -109,7 +174,6 @@ def generate_data(c, r, dataset_name="lumpy_dataset", show_images=False, pause_i
 
 
 if __name__ == "__main__":
-    args = parse_arguments()
     c_min = 50
     c_max = 1000
     c_step = 50
@@ -117,15 +181,16 @@ if __name__ == "__main__":
     r_max = 3
     r_step = 0.25
     n = 256
+    folder = "lumpy_models/"
     num_comb = int((c_max - c_min) / c_step) * int((r_max - r_min) / r_step)
     print("Number of combinations: {}".format(num_comb))
     i = 0
-    for c in range(c_min, c_max, c_step):
-        for r in range(r_min, r_max, r_step):
+    for c in np.arange(c_min, c_max, c_step):
+        for r in np.arange(r_min, r_max, r_step):
             i += 1
             print("{}/{}. Centers: {}, Radius(stddev): {}".format(i, num_comb, c, r))
-            name = "lumpy_model_c{}_r{}_n{}".format(c, r)
-            generate_data(c=c, r=r, dataset_name="lumpy_dataset", num_samples=100,
+            name = "lumpy_model_c{}_r{}_n{}".format(c, r, n)
+            generate_data(c=c, r=r, num_samples=n, dataset_name=name, folder=folder,
                           show_images=False, pause_images=False,
                           discrete_centers=False, lumps_version=0,
                           number_first_patient=0, cut_edges_margin=None)
