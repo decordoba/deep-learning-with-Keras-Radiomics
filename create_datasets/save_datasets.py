@@ -1096,6 +1096,9 @@ def parse_arguments(suffix=""):
                         help="load dataset_m2{0}_images.pkl, dataset_m2{0}_labels.pkl,"
                         " etc. instead of dataset{0}_images.pkl, etc. If -l is active, "
                         "lumpy_dataset_m2{0}_images.pkl is loaded".format(suffix))
+    parser.add_argument('-dn', '--dataset_name', default=None, help="instead of "
+                        "dataset{0}_images.pkl, etc. it uses whatever name is chosen (-l and -m "
+                        "modifiers are ignored)".format(suffix))
     return parser.parse_args()
 
 
@@ -1123,19 +1126,42 @@ if __name__ == "__main__":
     dataset_name = file_prefix + m2 + "organized" + name_suffix
 
     # Load data
-    print("Reading '{}dataset{}_images.pkl'".format(file_prefix, file_suffix))
-    with open('{}dataset{}_images.pkl'.format(file_prefix, file_suffix), 'rb') as f:
-        x = pickle.load(f)
-    print("Reading '{}dataset{}_labels.pkl'".format(file_prefix, file_suffix))
-    with open('{}dataset{}_labels.pkl'.format(file_prefix, file_suffix), 'rb') as f:
-        y = pickle.load(f)
-    print("Reading '{}dataset{}_patients.pkl'".format(file_prefix, file_suffix))
-    with open('{}dataset{}_patients.pkl'.format(file_prefix, file_suffix), 'rb') as f:
-        patients = pickle.load(f)
-    if not old_format:
-        print("Reading '{}dataset{}_masks.pkl'".format(file_prefix, file_suffix))
-        with open('{}dataset{}_masks.pkl'.format(file_prefix, file_suffix), 'rb') as f:
-            masks = pickle.load(f)
+    if args.dataset_name is None:
+        print("Reading '{}dataset{}_images.pkl'".format(file_prefix, file_suffix))
+        with open('{}dataset{}_images.pkl'.format(file_prefix, file_suffix), 'rb') as f:
+            x = pickle.load(f)
+        print("Reading '{}dataset{}_labels.pkl'".format(file_prefix, file_suffix))
+        with open('{}dataset{}_labels.pkl'.format(file_prefix, file_suffix), 'rb') as f:
+            y = pickle.load(f)
+        print("Reading '{}dataset{}_patients.pkl'".format(file_prefix, file_suffix))
+        with open('{}dataset{}_patients.pkl'.format(file_prefix, file_suffix), 'rb') as f:
+            patients = pickle.load(f)
+        if not old_format:
+            print("Reading '{}dataset{}_masks.pkl'".format(file_prefix, file_suffix))
+            with open('{}dataset{}_masks.pkl'.format(file_prefix, file_suffix), 'rb') as f:
+                masks = pickle.load(f)
+    else:
+        new_prefix = args.dataset_name
+        new_prefix = new_prefix[:-4] if new_prefix.endswith(".pkl") else new_prefix
+        new_prefix = new_prefix[:-7] if new_prefix.endswith("_images") else new_prefix
+        new_prefix = new_prefix[:-7] if new_prefix.endswith("_labels") else new_prefix
+        new_prefix = new_prefix[:-6] if new_prefix.endswith("_masks") else new_prefix
+        new_prefix = new_prefix[:-9] if new_prefix.endswith("_patients") else new_prefix
+        new_prefix = new_prefix[:-1] if new_prefix.endswith("_") else new_prefix
+        print("Reading '{}_images.pkl'".format(new_prefix))
+        with open('{}_images.pkl'.format(new_prefix), 'rb') as f:
+            x = pickle.load(f)
+        print("Reading '{}_labels.pkl'".format(new_prefix))
+        with open('{}_labels.pkl'.format(new_prefix), 'rb') as f:
+            y = pickle.load(f)
+        print("Reading '{}_patients.pkl'".format(new_prefix))
+        with open('{}_patients.pkl'.format(new_prefix), 'rb') as f:
+            patients = pickle.load(f)
+        if not old_format:
+            print("Reading '{}_masks.pkl'".format(new_prefix))
+            with open('{}_masks.pkl'.format(new_prefix), 'rb') as f:
+                masks = pickle.load(f)
+        dataset_name = "custom_{}".format(new_prefix)
     # Make sure x and y are the same length
     assert(len(x) == len(y))
     assert(len(x) == len(patients))
