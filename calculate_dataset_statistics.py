@@ -10,6 +10,7 @@ from matplotlib import pyplot as plt
 from keras.utils import np_utils
 from scipy.ndimage.morphology import binary_erosion
 from skimage import feature
+from scipy.stats import ks_2samp
 sys.path.insert(0, 'create_datasets')
 from save_datasets import calculate_shared_axis, plot_boxplot, plot_histogram
 from save_datasets import save_plt_figures_to_pdf, analyze_data, simple_plot_histogram
@@ -191,6 +192,19 @@ def plot_metric(data0, data1, label0="Metrics 0", label1="Metrics 1", label_all=
         plt.ioff()
 
 
+def calculate_similarity(list0, list1, num_samples=10000):
+    """Calculate similarity between 2 1d arrays with ks_2samp."""
+    similarity = ks_2samp(list0, list1)
+    list0_sampled = np.random.choice(list0, num_samples)
+    list1_sampled = np.random.choice(list1, num_samples)
+    similarity_sampled = ks_2samp(list0_sampled, list1_sampled)
+    print("Similarity of all data (Shape: {} - {}):\n  {}".format(np.array(list0).shape,
+                                                                  np.array(list1).shape,
+                                                                  similarity))
+    print("Similarity after sampling data ({} samples):\n  {}".format(num_samples,
+                                                                      similarity_sampled))
+
+
 def main():
     """Load dataset and print statistics."""
     # Parse arguments
@@ -245,6 +259,15 @@ def main():
         metrics[label]["glcm_correlation"].append(correlation)
         metrics[label]["glcm_asm"].append(asm)
 
+    # Calculate how different samples are
+    print("KS_2SAMP similarity for masked pixels only:")
+    calculate_similarity(masked_gray_values[0], masked_gray_values[1])
+    print(" ")
+    print("KS_2SAMP similarity for all pixels:")
+    calculate_similarity(gray_values[0], gray_values[1])
+    print(" ")
+
+    # Create figures of metrics that will be saved and/or plotted
     f = 0
     plot_metric(metrics[0]["std"], metrics[1]["std"], label0="Std Dev Label 0",
                 label1="Std Dev Label 1", label_all="Std Dev Labels 0 and 1",
