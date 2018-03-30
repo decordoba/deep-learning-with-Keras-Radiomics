@@ -4,7 +4,7 @@ import os
 import sys
 import argparse
 import numpy as np
-from single_experiment_runner import load_organized_dataset, analyze_data, plot_slices
+from single_experiment_runner import load_organized_dataset, plot_slices
 from single_experiment_runner import limit_number_patients_per_label
 from matplotlib import pyplot as plt
 from keras.utils import np_utils
@@ -12,7 +12,7 @@ from scipy.ndimage.morphology import binary_erosion
 from skimage import feature
 sys.path.insert(0, 'create_datasets')
 from save_datasets import calculate_shared_axis, plot_boxplot, plot_histogram
-from save_datasets import save_plt_figures_to_pdf, analyze_data
+from save_datasets import save_plt_figures_to_pdf, analyze_data, simple_plot_histogram
 
 
 def get_statistics_mask(mask):
@@ -22,7 +22,7 @@ def get_statistics_mask(mask):
     outer_mask = mask - eroded
     volume = len(ones_pos[0])
     surface = outer_mask.sum()
-    return surface, volume
+    return surface, volume, ones_pos
 
 
 def get_glcm_statistics(volume):
@@ -165,16 +165,23 @@ def parse_arguments():
 
 def plot_metric(data0, data1, label0="Metrics 0", label1="Metrics 1", label_all="Metrics Total",
                 figure=0, plot_data=True, window_histogram="Histogram",
-                window_boxplot="Boxplot"):
+                window_boxplot="Boxplot", simple_histograms=False):
     """Plot histogram and boxplot for label0 and label1."""
+    print("Generating figures for: {} ...".format(label_all))
     num_bins = 20
     if plot_data:
         plt.ion()
     xlim = calculate_shared_axis(data0, data1)
-    plot_histogram(data0, label0, figure, 311, num_bins, xlim, show=plot_data)
-    plot_histogram(data1, label1, figure, 312, num_bins, xlim, show=plot_data)
-    plot_histogram(data0 + data1, label_all, figure, 313, num_bins, xlim,
-                   window_title=window_histogram, show=plot_data)
+    if not simple_histograms:
+        plot_histogram(data0, label0, figure, 311, num_bins, xlim, show=plot_data)
+        plot_histogram(data1, label1, figure, 312, num_bins, xlim, show=plot_data)
+        plot_histogram(data0 + data1, label_all, figure, 313, num_bins, xlim,
+                       window_title=window_histogram, show=plot_data)
+    else:
+        simple_plot_histogram(data0, label0, figure, 311, num_bins, xlim, show=plot_data)
+        simple_plot_histogram(data1, label1, figure, 312, num_bins, xlim, show=plot_data)
+        simple_plot_histogram(data0 + data1, label_all, figure, 313, num_bins, xlim,
+                              window_title=window_histogram, show=plot_data)
 
     ylim = calculate_shared_axis(data0, data1)
     plot_boxplot(data0, label0, figure + 1, 121, ylim, show=plot_data)
@@ -223,9 +230,11 @@ def main():
         std_dev = np.std(x)
         mean = np.mean(x)
         median = np.median(x)
-        surface, volume = get_statistics_mask(m)
+        surface, volume, mask_positions = get_statistics_mask(m)
         surf_to_vol = surface / volume
         dissimilarity, correlation, asm = get_glcm_statistics(x)
+        gray_values[label].extend(list(x.flatten()))
+        masked_gray_values[label].extend(list(x[mask_positions]))
         if args.verbose:
             print("Label:              {}".format(label))
             print("Mean:               {}".format(mean))
@@ -291,9 +300,35 @@ def main():
                 figure=f, plot_data=args.plot,
                 window_histogram="Histogram GLCM ASM",
                 window_boxplot="Boxplot GLCM ASM")
-
     if not args.dry_run:
-        save_plt_figures_to_pdf("{}/statistics.pdf".format(dataset_location))
+        print("Saving figures ...")
+        save_plt_figures_to_pdf("{}/statistics.pdf".format(dataset_location), verbose=True)
+    if args.plot:
+        input("Press ENTER to close all figures and continue.")
+    plt.close("all")
+
+    # Create figures of intensities that will be saved and/or plotted
+    f = 14
+    plot_metric(masked_gray_values[0], masked_gray_values[1],
+                label0="Tumor Intensities Label 0",
+                label1="Tumor Intensities Label 1",
+                label_all="Tumor Intensities Labels 0 and 1",
+                figure=f, plot_data=args.plot,
+                window_histogram="Histogram Intensities",
+                window_boxplot="Boxplot Intensities",
+                simple_histograms=True)
+    f = 16
+    plot_metric(gray_values[0], gray_values[1],
+                label0="Whole Box Intensities Label 0",
+                label1="Whole Box Intensities Label 1",
+                label_all="Whole Box Intensities Labels 0 and 1",
+                figure=f, plot_data=args.plot,
+                window_histogram="Histogram Intensities",
+                window_boxplot="Boxplot Intensities",
+                simple_histograms=True)
+    if not args.dry_run:
+        print("Saving figures ...")
+        save_plt_figures_to_pdf("{}/intensities.pdf".format(dataset_location), verbose=True)
     if args.plot:
         input("Press ENTER to close all figures and continue.")
         plt.close("all")
