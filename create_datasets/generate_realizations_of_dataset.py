@@ -73,7 +73,7 @@ def get_statistics_mask(mask):
     return surface, volume, ones_pos
 
 
-def save_statistics(folder, image, mask):
+def save_statistics(folder, dataset_name, image, mask):
     """Docstring for save_statistics."""
     std_dev = np.std(image)
     mean = np.mean(image)
@@ -82,15 +82,16 @@ def save_statistics(folder, image, mask):
     surf_to_vol = surface / volume
     dissimilarity, correlation, asm = get_glcm_statistics(image)
     names = ("mean, median, stddev, surface, volume, surf_vol_ratio, dissimilarity, correlation, "
-             "asm\n")
+             "asm")
     data = [str(mean), str(median), str(std_dev), str(surface), str(volume), str(surf_to_vol),
             str(dissimilarity), str(correlation), str(asm)]
-    path = "{}statistics.csv".format(folder)
+    path = "{}{}_statistics.csv".format(folder, dataset_name)
     if not os.path.exists(path):
         with open(path, "a+") as f:
-            f.write(names)
+            f.write(names + "\n")
     with open(path, "a+") as f:
-        f.write(" ".join(data))
+        f.write(", ".join(data) + "\n")
+    return data, names
 
 
 def generate_data(c, r, dataset_name="lumpy_dataset", folder="", show_images=False,
@@ -111,6 +112,7 @@ def generate_data(c, r, dataset_name="lumpy_dataset", folder="", show_images=Fal
     masks = []
     patient_counter = number_first_patient
     print("{}. 0% loaded (0/{} samples)".format(get_current_time(), num_samples))
+    all_stats = []
     for i in range(num_samples):
         # Save lumpy images for label 0 and 1
         image0, lumps, background, pos_lumps0 = get_lumpy_image(*params0)
@@ -123,7 +125,8 @@ def generate_data(c, r, dataset_name="lumpy_dataset", folder="", show_images=Fal
         patients.append("{:08d}".format(patient_counter))
         patient_counter += 1
 
-        save_statistics(folder, image0, mask0)
+        stats, name_stats = save_statistics(folder, dataset_name, image0, mask0)
+        all_stats.append(stats)
 
         # Create and show plots
         if show_images:
@@ -172,6 +175,21 @@ def generate_data(c, r, dataset_name="lumpy_dataset", folder="", show_images=Fal
     with open('{}_masks.pkl'.format(dataset_name), 'wb') as f:
         pickle.dump(masks, f)
     print("Data saved in '{}_masks.pkl'.".format(dataset_name))
+
+    stats = np.array(all_stats)
+    means = stats.mean(0)
+    medians = stats.median(0)
+    stddevs = stats.std(0)
+    path = "{}statistics.csv".format(folder)
+    if not os.path.exists(path):
+        name_stats = name_stats.split(", ")
+        all_name_stats = ["mean_{}".format(x) for x in name_stats]
+        all_name_stats += ["median_{}".format(x) for x in name_stats]
+        all_name_stats += ["stddev_{}".format(x) for x in name_stats]
+        with open(path, "a+") as f:
+            f.write(", ".join(name_stats) + "\n")
+    with open(path, "a+") as f:
+        f.write(", ".join(means + medians + stddevs) + "\n")
 
 
 if __name__ == "__main__":
