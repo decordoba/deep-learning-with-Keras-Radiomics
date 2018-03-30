@@ -26,7 +26,7 @@ or separate the 3D volumes in 3 channels 2D slices.
 np.random.seed(123)  # for reproducibility
 
 
-def save_plt_figures_to_pdf(filename, figs=None, dpi=200):
+def save_plt_figures_to_pdf(filename, figs=None, dpi=200, verbose=False):
     """Save all matplotlib figures in a single PDF file."""
     dirname = os.path.dirname(filename)
     try:
@@ -36,8 +36,10 @@ def save_plt_figures_to_pdf(filename, figs=None, dpi=200):
     pp = PdfPages(filename)
     if figs is None:
         figs = [plt.figure(n) for n in plt.get_fignums()]
-    for fig in figs:
+    for i, fig in enumerate(figs):
         fig.savefig(pp, format='pdf')
+        if verbose:
+            print("Figure {} saved.".format(i))
     pp.close()
     print("PDF file saved in '{}'.".format(filename))
 
