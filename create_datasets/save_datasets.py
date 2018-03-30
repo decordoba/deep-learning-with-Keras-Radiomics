@@ -127,6 +127,28 @@ def get_size_mask_efficiently(mask):
     return box_size, volume
 
 
+def simple_plot_histogram(data, title=None, figure=0, subfigure=None, bins=10, xlim=None,
+                          show=True, figsize=(8 * 2, 6 * 2), window_title=None, close_all=False):
+    """Plot histogram of data."""
+    # Close and erase all old figures
+    if close_all:
+        plt.close("all")
+    fig = plt.figure(figure, figsize=figsize)
+    if subfigure is not None:
+        fig.add_subplot(subfigure)
+    # Use this to draw histogram of the data
+    plt.hist(data, normed=True, bins=bins)
+    if xlim is not None:
+        plt.xlim(xlim)
+    if title is not None:
+        plt.title(title)
+        fig.canvas.set_window_title("Figure {} - {}".format(figure, title))
+    if window_title is not None:
+        fig.canvas.set_window_title("Figure {} - {}".format(figure, window_title))
+    if show:
+        plt.show()
+
+
 def plot_histogram(data, title=None, figure=0, subfigure=None, bins=10, xlim=None, show=True,
                    percentages=(0.1, 0.25, 0.75, 0.9), figsize=(8 * 2, 6 * 2), window_title=None,
                    close_all=False):
