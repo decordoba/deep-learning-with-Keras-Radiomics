@@ -291,7 +291,7 @@ def parse_arguments(d, n, dc, p1, p2, r, t, v):
     return parser.parse_args()
 
 
-def get_params_label_0(version=0, discrete_positions=False):
+def get_params_label_0(version=0, discrete_positions=False, c=None, r=None):
     """Return parameters for label 0."""
     if version < 0:  # for version < 0, both label0 and label1 return the same parameters
         return get_params_label_0(0, discrete_positions=discrete_positions)
@@ -325,10 +325,14 @@ def get_params_label_0(version=0, discrete_positions=False):
         RANGE_VALUES = (0, 255)
         SIGMA = 4  # Should be the same for label 0 and label 1
         MASK_THRESHOLD = 0.3
+    if c is not None:
+        NBAR = c
+    if r is not None:
+        PARS = (PARS[0], r)
     return DIM, NBAR, DC, LUMP_FUNCTION, PARS, DISCRETE_LUMPS, RANGE_VALUES, SIGMA, MASK_THRESHOLD
 
 
-def get_params_label_1(version=0, discrete_positions=False):
+def get_params_label_1(version=0, discrete_positions=False, c=None, r=None):
     """Return parameters for label 1."""
     if version < 0:  # for version < 0, both label0 and label1 return the same parameters
         return get_params_label_0(0, discrete_positions=discrete_positions)
@@ -362,6 +366,10 @@ def get_params_label_1(version=0, discrete_positions=False):
         RANGE_VALUES = (0, 255)
         SIGMA = 4  # Should be the same for label 0 and label 1
         MASK_THRESHOLD = 0.3
+    if c is not None:
+        NBAR = c
+    if r is not None:
+        PARS = (PARS[0], r)
     return DIM, NBAR, DC, LUMP_FUNCTION, PARS, DISCRETE_LUMPS, RANGE_VALUES, SIGMA, MASK_THRESHOLD
 
 
