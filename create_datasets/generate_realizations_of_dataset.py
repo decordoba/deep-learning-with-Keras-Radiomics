@@ -182,6 +182,10 @@ if __name__ == "__main__":
     r_step = 0.25
     n = 256
     folder = "lumpy_models/"
+    try:
+        os.mkdir(folder)
+    except FileExistsError:
+        pass  # File exists
     num_comb = int((c_max - c_min) / c_step) * int((r_max - r_min) / r_step)
     print("Number of combinations: {}".format(num_comb))
     i = 0
