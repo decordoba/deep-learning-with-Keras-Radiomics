@@ -160,21 +160,21 @@ def generate_data(c, r, dataset_name="lumpy_dataset", folder="", show_images=Fal
     print(" ")
     print("Saving data, this may take a few minutes")
     # Save the volumes
-    with open('{}_images.pkl'.format(dataset_name), 'wb') as f:
+    with open('{}{}_images.pkl'.format(folder, dataset_name), 'wb') as f:
         pickle.dump(volumes, f)
-    print("Data saved in '{}_images.pkl'.".format(dataset_name))
+    print("Data saved in '{}{}_images.pkl'.".format(folder, dataset_name))
 
-    with open('{}_labels.pkl'.format(dataset_name), 'wb') as f:
+    with open('{}{}_labels.pkl'.format(folder, dataset_name), 'wb') as f:
         pickle.dump(labels, f)
-    print("Data saved in '{}_labels.pkl'.".format(dataset_name))
+    print("Data saved in '{}{}_labels.pkl'.".format(folder, dataset_name))
 
-    with open('{}_patients.pkl'.format(dataset_name), 'wb') as f:
+    with open('{}{}_patients.pkl'.format(folder, dataset_name), 'wb') as f:
         pickle.dump(patients, f)
-    print("Data saved in '{}_patients.pkl'.".format(dataset_name))
+    print("Data saved in '{}{}_patients.pkl'.".format(folder, dataset_name))
 
-    with open('{}_masks.pkl'.format(dataset_name), 'wb') as f:
+    with open('{}{}_masks.pkl'.format(folder, dataset_name), 'wb') as f:
         pickle.dump(masks, f)
-    print("Data saved in '{}_masks.pkl'.".format(dataset_name))
+    print("Data saved in '{}{}_masks.pkl'.".format(folder, dataset_name))
 
     stats = np.array(all_stats)
     means = stats.mean(0)
