@@ -83,7 +83,8 @@ def save_statistics(folder, image, mask):
     dissimilarity, correlation, asm = get_glcm_statistics(image)
     names = ("mean, median, stddev, surface, volume, surf_vol_ratio, dissimilarity, correlation, "
              "asm\n")
-    data = [mean, median, std_dev, surface, volume, surf_to_vol, dissimilarity, correlation, asm]
+    data = [str(mean), str(median), str(std_dev), str(surface), str(volume), str(surf_to_vol),
+            str(dissimilarity), str(correlation), str(asm)]
     path = "{}statistics.csv".format(folder)
     if not os.path.exists(path):
         with open(path, "a+") as f:
