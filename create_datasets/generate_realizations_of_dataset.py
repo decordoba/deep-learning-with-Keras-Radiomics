@@ -83,6 +83,8 @@ def save_statistics(folder, dataset_name, image, mask):
     dissimilarity, correlation, asm = get_glcm_statistics(image)
     names = ("mean, median, stddev, surface, volume, surf_vol_ratio, dissimilarity, correlation, "
              "asm")
+    num_data = [mean, median, std_dev, surface, volume, surf_to_vol, dissimilarity, correlation,
+                asm]
     data = [str(mean), str(median), str(std_dev), str(surface), str(volume), str(surf_to_vol),
             str(dissimilarity), str(correlation), str(asm)]
     path = "{}{}_statistics.csv".format(folder, dataset_name)
@@ -91,7 +93,7 @@ def save_statistics(folder, dataset_name, image, mask):
             f.write(names + "\n")
     with open(path, "a+") as f:
         f.write(", ".join(data) + "\n")
-    return data, names
+    return num_data, names
 
 
 def generate_data(c, r, dataset_name="lumpy_dataset", folder="", show_images=False,
@@ -177,9 +179,9 @@ def generate_data(c, r, dataset_name="lumpy_dataset", folder="", show_images=Fal
     print("Data saved in '{}{}_masks.pkl'.".format(folder, dataset_name))
 
     stats = np.array(all_stats)
-    means = stats.mean(0)
-    medians = stats.median(0)
-    stddevs = stats.std(0)
+    means = np.mean(stats, axis=0)
+    medians = np.median(stats, axis=0)
+    stddevs = np.std(stats, axis=0)
     path = "{}statistics.csv".format(folder)
     if not os.path.exists(path):
         name_stats = name_stats.split(", ")
@@ -187,9 +189,10 @@ def generate_data(c, r, dataset_name="lumpy_dataset", folder="", show_images=Fal
         all_name_stats += ["median_{}".format(x) for x in name_stats]
         all_name_stats += ["stddev_{}".format(x) for x in name_stats]
         with open(path, "a+") as f:
-            f.write(", ".join(name_stats) + "\n")
+            f.write(", ".join(all_name_stats) + "\n")
     with open(path, "a+") as f:
-        f.write(", ".join(means + medians + stddevs) + "\n")
+        params = list(means) + list(medians) + list(stddevs)
+        f.write(", ".join(str(p) for p in params) + "\n")
 
 
 if __name__ == "__main__":
@@ -200,7 +203,7 @@ if __name__ == "__main__":
     r_max = 3
     r_step = 0.25
     n = 256
-    folder = "lumpy_models/"
+    folder = "artificial_images/"
     try:
         os.mkdir(folder)
     except FileExistsError:
@@ -219,7 +222,7 @@ if __name__ == "__main__":
         for r in np.arange(r_min, r_max, r_step):
             i += 1
             print("{}/{}. Centers: {}, Radius(stddev): {}".format(i, num_comb, c, r))
-            name = "lumpy_model_c{}_r{}_n{}".format(c, r, n)
+            name = "lumpy_model_c{:04d}_r{:.2f}_n{:04d}".format(c, r, n)
             generate_data(c=c, r=r, num_samples=n, dataset_name=name, folder=folder,
                           show_images=False, pause_images=False,
                           discrete_centers=False, lumps_version=0,
