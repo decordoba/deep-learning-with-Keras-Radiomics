@@ -204,7 +204,14 @@ if __name__ == "__main__":
     try:
         os.mkdir(folder)
     except FileExistsError:
-        pass  # File exists
+        # Folder exists
+        for f in os.listdir(folder):
+            file_path = os.path.join(folder, f)
+            try:
+                if file_path.endswith(".csv"):
+                    os.unlink(file_path)
+            except Exception as e:
+                print(e)
     num_comb = int((c_max - c_min) / c_step) * int((r_max - r_min) / r_step)
     print("Number of combinations: {}".format(num_comb))
     i = 0
