@@ -32,10 +32,13 @@ def remove_healthy_top_and_bottom_slices(image, mask, margin):
 
 
 def generate_data(save_lumps_pos=False, show_images=False, pause_images=False,
-                  discrete_centers=False, dataset_name="lumpy_dataset",
+                  discrete_centers=False, dataset_name="lumpy_dataset", lumps_version=0,
                   num_samples=100, number_first_patient=0, cut_edges_margin=None):
     """Generate num_samples lumpy images for label 0 and 1, save them, and possibly plot them."""
     print("Samples generated for each label: " + str(num_samples))
+
+    if lumps_version != 0:
+        dataset_name += "_v{}".format(lumps_version)
 
     if show_images:
         plt.ion()
@@ -44,8 +47,8 @@ def generate_data(save_lumps_pos=False, show_images=False, pause_images=False,
     percent = 1
     split_distance = num_samples * percent // 100
     split_distance = 1 if split_distance < 1 else split_distance
-    params0 = get_params_label_0(discrete_centers)
-    params1 = get_params_label_1(discrete_centers)
+    params0 = get_params_label_0(version=lumps_version, discrete_positions=discrete_centers)
+    params1 = get_params_label_1(version=lumps_version, discrete_positions=discrete_centers)
     volumes = []
     labels = []
     patients = []
@@ -219,6 +222,8 @@ def parse_arguments():
                         help="number of samples generated per label (default: 100)")
     parser.add_argument('-f', '--first', default=0, type=int, metavar='NUM',
                         help="number of first patient (default: 0)")
+    parser.add_argument('-v', '--version', default=1, type=int, metavar='N',
+                        help="version of lumps params for labels 0 & 1 (default: 1)")
     return parser.parse_args()
 
 
@@ -234,7 +239,8 @@ if __name__ == "__main__":
                   dataset_name=args.name,
                   num_samples=args.size,
                   number_first_patient=args.first,
-                  cut_edges_margin=cut_edges_margin)
+                  cut_edges_margin=cut_edges_margin,
+                  lumps_version=args.version)
 
     """
     HOW TO USE:

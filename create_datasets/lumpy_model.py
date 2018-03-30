@@ -257,7 +257,7 @@ def plot_slices(volume, title=None, fig_num=0, filename=None, show=True, max_sli
         fig.clear()
 
 
-def parse_arguments(d, n, dc, p1, p2, r, t):
+def parse_arguments(d, n, dc, p1, p2, r, t, v):
     """Parse arguments in code."""
     parser = argparse.ArgumentParser(description="Create lumpy image based on lumpy model")
     parser.add_argument('-d', '--dim', default=d, type=int, help="default: {}".format(d),
@@ -286,35 +286,82 @@ def parse_arguments(d, n, dc, p1, p2, r, t):
                         help="don't use seed for random numbers generator")
     parser.add_argument('--label0', default=False, action="store_true")
     parser.add_argument('--label1', default=False, action="store_true")
+    parser.add_argument('--version', default=v, type=int, help="default: {}".format(v))
     parser.add_argument('--save_image', default=False, action="store_true")
     return parser.parse_args()
 
 
-def get_params_label_0(discrete_positions=False):
+def get_params_label_0(version=0, discrete_positions=False):
     """Return parameters for label 0."""
-    DIM = 40
-    NBAR = 150
-    DC = 0
-    LUMP_FUNCTION = "GaussLmp"
-    PARS = (1, 2.5)
-    DISCRETE_LUMPS = discrete_positions
-    RANGE_VALUES = (0, 255)
-    SIGMA = 4  # Should be the same for label 0 and label 1
-    MASK_THRESHOLD = 0.3
+    if version < 0:  # for version < 0, both label0 and label1 return the same parameters
+        return get_params_label_0(0, discrete_positions=discrete_positions)
+    if version == 0:
+        DIM = 40
+        NBAR = 150
+        DC = 0
+        LUMP_FUNCTION = "GaussLmp"
+        PARS = (1, 2.5)
+        DISCRETE_LUMPS = discrete_positions
+        RANGE_VALUES = (0, 255)
+        SIGMA = 4  # Should be the same for label 0 and label 1
+        MASK_THRESHOLD = 0.3
+    elif version == 1:
+        DIM = 40
+        NBAR = 150
+        DC = 0
+        LUMP_FUNCTION = "GaussLmp"
+        PARS = (1, 2.5)
+        DISCRETE_LUMPS = discrete_positions
+        RANGE_VALUES = (0, 255)
+        SIGMA = 4  # Should be the same for label 0 and label 1
+        MASK_THRESHOLD = 0.3
+    elif version == 2:
+        DIM = 40
+        NBAR = 250
+        DC = 0
+        LUMP_FUNCTION = "GaussLmp"
+        PARS = (1, 2.25)
+        DISCRETE_LUMPS = discrete_positions
+        RANGE_VALUES = (0, 255)
+        SIGMA = 4  # Should be the same for label 0 and label 1
+        MASK_THRESHOLD = 0.3
     return DIM, NBAR, DC, LUMP_FUNCTION, PARS, DISCRETE_LUMPS, RANGE_VALUES, SIGMA, MASK_THRESHOLD
 
 
-def get_params_label_1(discrete_positions=False):
+def get_params_label_1(version=0, discrete_positions=False):
     """Return parameters for label 1."""
-    DIM = 40
-    NBAR = 500
-    DC = 0
-    LUMP_FUNCTION = "GaussLmp"
-    PARS = (1, 1.5)
-    DISCRETE_LUMPS = discrete_positions
-    RANGE_VALUES = (0, 255)
-    SIGMA = 4  # Should be the same for label 0 and label 1
-    MASK_THRESHOLD = 0.3
+    if version < 0:  # for version < 0, both label0 and label1 return the same parameters
+        return get_params_label_0(0, discrete_positions=discrete_positions)
+    if version == 0:
+        DIM = 40
+        NBAR = 500
+        DC = 0
+        LUMP_FUNCTION = "GaussLmp"
+        PARS = (1, 1.5)
+        DISCRETE_LUMPS = discrete_positions
+        RANGE_VALUES = (0, 255)
+        SIGMA = 4  # Should be the same for label 0 and label 1
+        MASK_THRESHOLD = 0.3
+    elif version == 1:
+        DIM = 40
+        NBAR = 350
+        DC = 0
+        LUMP_FUNCTION = "GaussLmp"
+        PARS = (1, 2)
+        DISCRETE_LUMPS = discrete_positions
+        RANGE_VALUES = (0, 255)
+        SIGMA = 4  # Should be the same for label 0 and label 1
+        MASK_THRESHOLD = 0.3
+    elif version == 2:
+        DIM = 40
+        NBAR = 350
+        DC = 0
+        LUMP_FUNCTION = "GaussLmp"
+        PARS = (1, 2)
+        DISCRETE_LUMPS = discrete_positions
+        RANGE_VALUES = (0, 255)
+        SIGMA = 4  # Should be the same for label 0 and label 1
+        MASK_THRESHOLD = 0.3
     return DIM, NBAR, DC, LUMP_FUNCTION, PARS, DISCRETE_LUMPS, RANGE_VALUES, SIGMA, MASK_THRESHOLD
 
 
@@ -330,11 +377,13 @@ def main():
     RANGE_VALUES = (0, 255)
     SIGMA = 5
     MASK_THRESHOLD = 0.3
+    version = 1  # This makes us use different parameters for label 0 and label 1. Original=0
     title = "Lumpy image"  # Title for plot
     title2 = "Lumpy image with mask"
 
     # Get arguments reveived from command line
-    args = parse_arguments(DIM, NBAR, DC, PARS[0], PARS[1], RANGE_VALUES[1], MASK_THRESHOLD)
+    args = parse_arguments(DIM, NBAR, DC, PARS[0], PARS[1], RANGE_VALUES[1], MASK_THRESHOLD,
+                           version)
     if args.save_image:
         try:
             os.mkdir("images")
@@ -363,7 +412,7 @@ def main():
         if not args.random:
             np.random.seed(123)  # for reproducibility
         # Create lumpy image for label 1 and plot it
-        params = get_params_label_1()
+        params = get_params_label_1(args.version)
         image, lumps, background, lumps_pos = get_lumpy_image(*params)
         if args.save_image:
             for i in range(image.shape[2]):
@@ -374,16 +423,16 @@ def main():
         plot_slices(image, fig_num=3, title="Lumpy image with mask (label 1)", max_slices=100,
                     mask=mask)
         # Set params for label 0
-        params = get_params_label_0()
+        params = get_params_label_0(args.version)
         # Change title of next plot
         title = "Lumpy image (label 0)"
         title2 = "Lumpy image with mask (label 0)"
     elif args.label0:
         # Set params for label 0
-        params = get_params_label_0()
+        params = get_params_label_0(args.version)
     else:
         # Set params for label 1
-        params = get_params_label_1()
+        params = get_params_label_1(args.version)
 
     # Create lumpy image
     image, lumps, background, lumps_pos = get_lumpy_image(*params)
