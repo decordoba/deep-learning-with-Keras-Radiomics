@@ -54,16 +54,13 @@ def get_glcm_statistics(volume):
     image_array = np.round((image_array - lo) / (hi - lo) * (LEVELS - 1)).astype(np.uint8)
     # Calculate co-matrix
     glcms = feature.greycomatrix(image_array, offsets, radians, LEVELS, symmetric=True,
-                                 normed=False)
+                                 normed=True)
     # compute the desired GLCM statistic
     dissimil = feature.greycoprops(glcms, prop='dissimilarity')
     # now that you have a GLCM for each offset and each direction, average over direction
     # 0 because there is only one offset
     dissimil = [dissimil[0, angle] for angle in range(radians.size)]
     dissimil = np.mean(dissimil)
-    correlation = feature.greycoprops(glcms, prop='correlation')
-    correlation = [correlation[0, angle] for angle in range(radians.size)]
-    correlation = np.mean(correlation)
     correlation = feature.greycoprops(glcms, prop='correlation')
     correlation = [correlation[0, angle] for angle in range(radians.size)]
     correlation = np.mean(correlation)
