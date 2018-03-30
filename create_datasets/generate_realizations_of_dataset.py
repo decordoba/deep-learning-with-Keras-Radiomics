@@ -87,12 +87,13 @@ def save_statistics(folder, dataset_name, image, mask):
                 asm]
     data = [str(mean), str(median), str(std_dev), str(surface), str(volume), str(surf_to_vol),
             str(dissimilarity), str(correlation), str(asm)]
-    path = "{}{}_statistics.csv".format(folder, dataset_name)
-    if not os.path.exists(path):
+    if folder is not None and dataset_name is not None:
+        path = "{}{}_statistics.csv".format(folder, dataset_name)
+        if not os.path.exists(path):
+            with open(path, "a+") as f:
+                f.write(names + "\n")
         with open(path, "a+") as f:
-            f.write(names + "\n")
-    with open(path, "a+") as f:
-        f.write(", ".join(data) + "\n")
+            f.write(", ".join(data) + "\n")
     return num_data, names
 
 
@@ -188,11 +189,12 @@ def generate_data(c, r, dataset_name="lumpy_dataset", folder="", show_images=Fal
         all_name_stats = ["mean_{}".format(x) for x in name_stats]
         all_name_stats += ["median_{}".format(x) for x in name_stats]
         all_name_stats += ["stddev_{}".format(x) for x in name_stats]
+        all_name_stats += ["c", "r", "n"]
         with open(path, "a+") as f:
             f.write(", ".join(all_name_stats) + "\n")
     with open(path, "a+") as f:
         params = list(means) + list(medians) + list(stddevs)
-        f.write(", ".join(str(p) for p in params) + "\n")
+        f.write(", ".join(str(p) for p in params) + ", {}, {}, {}\n".format(c, r, num_samples))
 
 
 if __name__ == "__main__":
