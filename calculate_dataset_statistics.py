@@ -205,23 +205,15 @@ def main():
 
     # Calculate statistics
     metrics = [{
-        "std": [],
-        "mean": [],
-        "median": [],
-        "surface_to_volume": [],
-        "glcm_dissimilarity": [],
-        "glcm_correlation": [],
-        "glcm_asm": []
+        "std": [], "mean": [], "median": [], "surface_to_volume": [],
+        "glcm_dissimilarity": [], "glcm_correlation": [], "glcm_asm": []
     }, {
-        "std": [],
-        "mean": [],
-        "median": [],
-        "surface_to_volume": [],
-        "glcm_dissimilarity": [],
-        "glcm_correlation": [],
-        "glcm_asm": []
+        "std": [], "mean": [], "median": [], "surface_to_volume": [],
+        "glcm_dissimilarity": [], "glcm_correlation": [], "glcm_asm": []
     }]
     patients = set()
+    gray_values = [[], []]
+    masked_gray_values = [[], []]
     for i, (x, y, m, p) in enumerate(zip(x_whole, y_whole, mask_whole, patients_whole)):
         if p in patients:
             input("Repeated patient '{}'. This should never happen.".format(p))
