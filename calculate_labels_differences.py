@@ -1,6 +1,5 @@
 #!/usr/bin/env python3.5
 """Calculate statistics of a 3D dataset."""
-import os
 import sys
 import argparse
 import numpy as np
@@ -8,9 +7,6 @@ from single_experiment_runner import load_organized_dataset, plot_slices
 from single_experiment_runner import limit_number_patients_per_label
 from matplotlib import pyplot as plt
 from keras.utils import np_utils
-from scipy.ndimage.morphology import binary_erosion
-from skimage import feature
-from scipy.stats import ks_2samp
 sys.path.insert(0, 'create_datasets')
 from generate_realizations_of_dataset import save_statistics
 from save_datasets import calculate_shared_axis, plot_boxplot, plot_histogram
@@ -135,14 +131,11 @@ def plot_metric(data0, data1, label0="Metrics 0", label1="Metrics 1", label_all=
         plt.ioff()
 
 
-def main():
+def main(dataset0, dataset1=None, size=None, plot_slices=False, plot=False):
     """Load dataset and print statistics."""
-    # Parse arguments
-    args = parse_arguments()
-
     # Load dataset
-    x_whole0, y_whole0, mask_whole0, patients_whole0 = read_dataset(args.dataset0, args.size,
-                                                                    args.plot_slices, args.plot)
+    x_whole0, y_whole0, mask_whole0, patients_whole0 = read_dataset(dataset0, size, plot_slices,
+                                                                    plot)
 
     # Calculate statistics
     metrics = [[], []]
@@ -154,13 +147,12 @@ def main():
         gray_values[label].extend(list(x.flatten()))
         mask_positions = np.nonzero(m)
         masked_gray_values[label].extend(list(x[mask_positions]))
-    if args.dataset1 is not None:
-        x_whole1, y_whole1, mask_whole1, patients_whole1 = read_dataset(args.dataset1, args.size,
-                                                                        args.plot_slices,
-                                                                        args.plot)
+    if dataset1 is not None:
+        x_whole1, y_whole1, mask_whole1, patients_whole1 = read_dataset(dataset1, size,
+                                                                        plot_slices, plot)
         print("Warning! Because dataset1 is not None, all patients in {} are considered to have"
               "label 0 and all patients in {} are considered to have label 1"
-              "".format(args.dataset0, args.dataset1))
+              "".format(dataset0, dataset1))
         metrics = [metrics[0] + metrics[1], []]
         gray_values = [gray_values[0] + gray_values[1], []]
         masked_gray_values = [masked_gray_values[0] + masked_gray_values[1], []]
@@ -174,8 +166,16 @@ def main():
     medians0 = np.median(metrics[0])
     medians1 = np.median(metrics[1])
     medians_diff = medians0 - medians1
+    if dataset1 is None:
+        print("Differences between Label 0 and label 1 ({}):".format(dataset0))
+    else:
+        print("Differences between Label 0 ({}) and label 1 ({}):".format(dataset0, dataset1))
     print(medians_diff)
+    return medians_diff
 
 
 if __name__ == "__main__":
+    # Parse arguments
+    args = parse_arguments()
+
     main()
