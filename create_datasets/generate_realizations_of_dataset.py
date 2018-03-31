@@ -73,7 +73,7 @@ def get_statistics_mask(mask):
     return surface, volume, ones_pos
 
 
-def save_statistics(folder, dataset_name, image, mask):
+def save_statistics(image, mask, folder=None, dataset_name=None):
     """Docstring for save_statistics."""
     std_dev = np.std(image)
     mean = np.mean(image)
@@ -128,7 +128,7 @@ def generate_data(c, r, dataset_name="lumpy_dataset", folder="", show_images=Fal
         patients.append("{:08d}".format(patient_counter))
         patient_counter += 1
 
-        stats, name_stats = save_statistics(folder, dataset_name, image0, mask0)
+        stats, name_stats = save_statistics(image0, mask0, folder, dataset_name)
         all_stats.append(stats)
 
         # Create and show plots
