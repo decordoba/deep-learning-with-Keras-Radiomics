@@ -178,4 +178,4 @@ if __name__ == "__main__":
     # Parse arguments
     args = parse_arguments()
 
-    main()
+    main(args.dataset0, args.dataset1, args.size, args.plot_slices, args.plot)
