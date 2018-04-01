@@ -4,4 +4,8 @@ __pycache__/
 *.pkl
 *.npy
 *.npz
+*.bak
+*.pdf
+*.png
+*.txt
 nn*
