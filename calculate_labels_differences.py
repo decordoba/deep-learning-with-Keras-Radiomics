@@ -175,7 +175,5 @@ def main(dataset0, dataset1=None, size=None, plot_slices=False, plot=False):
 
 
 if __name__ == "__main__":
-    # Parse arguments
     args = parse_arguments()
-
     main(args.dataset0, args.dataset1, args.size, args.plot_slices, args.plot)
