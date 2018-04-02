@@ -1,4 +1,5 @@
 #!/usr/bin/env python3.5
+import argparse
 import matplotlib_handle_display  # Must be imported before anything matplotlib related
 import numpy as np
 import pickle
@@ -197,6 +198,25 @@ def generate_data(c, r, dataset_name="lumpy_dataset", folder="", show_images=Fal
         f.write(", ".join(str(p) for p in params) + ", {}, {}, {}\n".format(c, r, num_samples))
 
 
+def parse_arguments():
+    """Parse arguments in code."""
+    parser = argparse.ArgumentParser(description="Create multiple datasets made of lumpy images"
+                                     " with different parameters")
+    parser.add_argument('-dc', '--delete_csv', default=False, action="store_true")
+    parser.add_argument('-p', '--plot', default=False, action="store_true", help="plot images")
+    parser.add_argument('--cmin', default=50, type=int, help="default: 50")
+    parser.add_argument('--cmax', default=1000, type=int, help="default: 1000")
+    parser.add_argument('--cstep', default=50, type=int, help="default: 50")
+    parser.add_argument('--rmin', default=1, type=float, help="default: 1")
+    parser.add_argument('--rmax', default=3, type=float, help="default: 3")
+    parser.add_argument('--rstep', default=0.25, type=float, help="default: 0.25")
+    parser.add_argument('-np', '--num_patients', default=256, type=int, help="default: 256",
+                        metavar="N")
+    parser.add_argument('-f', '--folder', default="artificial_images/", type=str, metavar="S",
+                        help="default: 'artificial_images/'")
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
     c_min = 50
     c_max = 1000
@@ -206,17 +226,29 @@ if __name__ == "__main__":
     r_step = 0.25
     n = 256
     folder = "artificial_images/"
+    args = parse_arguments()
+    c_min = args.cmin
+    c_max = args.cmax
+    c_step = args.cstep
+    r_min = args.rmin
+    r_max = args.rmax
+    r_step = args.rstep
+    n = args.num_patients
+    folder = args.folder
+    if not folder.endswith("/"):
+        folder += "/"
     try:
         os.mkdir(folder)
     except FileExistsError:
-        # Folder exists
-        for f in os.listdir(folder):
-            file_path = os.path.join(folder, f)
-            try:
-                if file_path.endswith(".csv"):
-                    os.unlink(file_path)
-            except Exception as e:
-                print(e)
+        if args.delete_csv:
+            # Folder exists
+            for f in os.listdir(folder):
+                file_path = os.path.join(folder, f)
+                try:
+                    if file_path.endswith(".csv"):
+                        os.unlink(file_path)
+                except Exception as e:
+                    print(e)
     num_comb = int((c_max - c_min) / c_step) * int((r_max - r_min) / r_step)
     print("Number of combinations: {}".format(num_comb))
     i = 0
