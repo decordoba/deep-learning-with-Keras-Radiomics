@@ -10,7 +10,7 @@ from keras.utils import np_utils
 sys.path.insert(0, 'create_datasets')
 from generate_realizations_of_dataset import save_statistics
 from save_datasets import calculate_shared_axis, plot_boxplot, plot_histogram
-from save_datasets import save_plt_figures_to_pdf, analyze_data, simple_plot_histogram
+from save_datasets import analyze_data, simple_plot_histogram
 
 
 def read_dataset(dataset_location, num_patients_per_label=None, slices_plot=False, plot=False):
@@ -143,7 +143,8 @@ def main(dataset0, dataset1=None, size=None, plot_slices=False, plot=False):
     masked_gray_values = [[], []]
     for i, (x, y, m, p) in enumerate(zip(x_whole0, y_whole0, mask_whole0, patients_whole0)):
         label = int(y[1])
-        metrics[label].append(save_statistics(x, m))
+        values, names = save_statistics(x, m)
+        metrics[label].append(values)
         gray_values[label].extend(list(x.flatten()))
         mask_positions = np.nonzero(m)
         masked_gray_values[label].extend(list(x[mask_positions]))
@@ -158,18 +159,21 @@ def main(dataset0, dataset1=None, size=None, plot_slices=False, plot=False):
         masked_gray_values = [masked_gray_values[0] + masked_gray_values[1], []]
         for i, (x, y, m, p) in enumerate(zip(x_whole1, y_whole1, mask_whole1, patients_whole1)):
             label = 1
-            metrics[label].append(save_statistics(x, m))
+            metrics[label].append(save_statistics(x, m)[0])
             gray_values[label].extend(list(x.flatten()))
             mask_positions = np.nonzero(m)
             masked_gray_values[label].extend(list(x[mask_positions]))
     metrics = [np.array(metrics[0]), np.array(metrics[1])]
-    medians0 = np.median(metrics[0])
-    medians1 = np.median(metrics[1])
+    print(metrics[0].shape)
+    print(metrics[1].shape)
+    medians0 = np.median(metrics[0], axis=0)
+    medians1 = np.median(metrics[1], axis=0)
     medians_diff = medians0 - medians1
     if dataset1 is None:
         print("Differences between Label 0 and label 1 ({}):".format(dataset0))
     else:
         print("Differences between Label 0 ({}) and label 1 ({}):".format(dataset0, dataset1))
+    print(names)
     print(medians_diff)
     return medians_diff
 
