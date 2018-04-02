@@ -84,16 +84,17 @@ def plot_statistics_for_r_c(statistics_file):
     statistics = []
     for i, line in enumerate(lines):
         if i == 0:
-            names = line.split(", ")
-            if names[-2] != "c" or names[-3] != "r" or names[-1] != "n":
+            names = line.strip().split(", ")
+            if names[-3] != "c" or names[-2] != "r" or names[-1] != "n":
+                print(names)
                 raise Exception("Unexpected data format. Expected to see n, c and r in -1, -2 and "
                                 "-3 positions in '{}'".format(statistics_file))
         else:
             statistics.append([float(x) for x in line.split(", ")])
     print(names)
     statistics = np.array(statistics)
-    c = statistics[:, -2]
-    r = statistics[:, -3]
+    c = statistics[:, -3]
+    r = statistics[:, -2]
     statistics = statistics[:, :-3]
     for i in range(statistics.shape[1]):
         values = statistics[:, i]
@@ -104,3 +105,8 @@ def plot_statistics_for_r_c(statistics_file):
         for j in range(statistics.shape[0]):
             plt.text(c[j], r[j], statistics[i, j], ha='center', va='center')
         input("{}. Press ENTER to continue".format(i))
+
+
+if __name__ == "__main__":
+    statistics_location = "create_datasets/artificial_images/statistics.csv"
+    plot_statistics_for_r_c(statistics_location)
