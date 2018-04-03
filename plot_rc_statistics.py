@@ -82,7 +82,7 @@ def circles(x, y, s, c='b', vmin=None, vmax=None, **kwargs):
 
 
 def plot_statistics_for_r_c(statistics_file, plot=False, static_statistics=None,
-                            comparison_metrics=None, skip_plots=False):
+                            comparison_metrics=None, skip_plots=False, verbose=True):
     """Docstring for plot_statistics."""
     # Open file with all realizations of R and C
     with open(statistics_file) as f:
@@ -143,6 +143,7 @@ def plot_statistics_for_r_c(statistics_file, plot=False, static_statistics=None,
     if plot:
         plt.ion()
     if not skip_plots:
+        print("Generating figurese ...")
         for i in range(statistics.shape[1]):
             values = statistics[:, i]
             fig = plt.figure()
@@ -176,7 +177,7 @@ def plot_statistics_for_r_c(statistics_file, plot=False, static_statistics=None,
             plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
         if plot:
             input("{}. Press ENTER to continue".format(i))
-        save_plt_figures_to_pdf("RC_plots.pdf", verbose=True)
+        save_plt_figures_to_pdf("RC_plots.pdf", verbose=verbose)
     if plot:
         plt.ioff()
 
@@ -254,7 +255,5 @@ if __name__ == "__main__":
     comp_metrics = [9, 11, 15]  # median mean, median stddev and median dissimilarity
     statistics_location = "create_datasets/artificial_images/statistics.csv"
     plot_statistics_for_r_c(statistics_location, static_statistics=static_statistics,
-                            comparison_metrics=comp_metrics, skip_plots=False)
-
-
+                            comparison_metrics=comp_metrics, skip_plots=False, verbose=False)
 
