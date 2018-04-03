@@ -280,6 +280,14 @@ def parse_arguments(d, n, dc, p1, p2, r, t, v):
                         metavar='N')
     parser.add_argument('-t', '--threshold', default=t, type=float, help="default: {}".format(t),
                         metavar='N')
+    parser.add_argument('-r0', default=None, type=float, help="default: {}".format(None),
+                        metavar='N')
+    parser.add_argument('-r1', default=None, type=float, help="default: {}".format(None),
+                        metavar='N')
+    parser.add_argument('-c0', default=None, type=int, help="default: {}".format(None),
+                        metavar='N')
+    parser.add_argument('-c1', default=None, type=int, help="default: {}".format(None),
+                        metavar='N')
     parser.add_argument('--discrete', default=False, action="store_true")
     parser.add_argument('--circle_lumps', default=False, action="store_true")
     parser.add_argument('--random', default=False, action="store_true",
@@ -420,7 +428,7 @@ def main():
         if not args.random:
             np.random.seed(123)  # for reproducibility
         # Create lumpy image for label 1 and plot it
-        params = get_params_label_1(args.version)
+        params = get_params_label_1(args.version, r=args.r1, c=args.c1)
         image, lumps, background, lumps_pos = get_lumpy_image(*params)
         if args.save_image:
             for i in range(image.shape[2]):
@@ -431,16 +439,16 @@ def main():
         plot_slices(image, fig_num=3, title="Lumpy image with mask (label 1)", max_slices=100,
                     mask=mask)
         # Set params for label 0
-        params = get_params_label_0(args.version)
+        params = get_params_label_0(args.version, r=args.r0, c=args.c0)
         # Change title of next plot
         title = "Lumpy image (label 0)"
         title2 = "Lumpy image with mask (label 0)"
     elif args.label0:
         # Set params for label 0
-        params = get_params_label_0(args.version)
+        params = get_params_label_0(args.version, r=args.r0, c=args.c0)
     else:
         # Set params for label 1
-        params = get_params_label_1(args.version)
+        params = get_params_label_1(args.version, r=args.r1, c=args.c1)
 
     # Create lumpy image
     image, lumps, background, lumps_pos = get_lumpy_image(*params)
