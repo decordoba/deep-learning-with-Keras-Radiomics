@@ -333,6 +333,16 @@ def get_params_label_0(version=0, discrete_positions=False, c=None, r=None):
         RANGE_VALUES = (0, 255)
         SIGMA = 4  # Should be the same for label 0 and label 1
         MASK_THRESHOLD = 0.3
+    elif version == 3:
+        DIM = 40
+        NBAR = 800
+        DC = 0
+        LUMP_FUNCTION = "GaussLmp"
+        PARS = (1, 3.0)
+        DISCRETE_LUMPS = discrete_positions
+        RANGE_VALUES = (0, 255)
+        SIGMA = 4  # Should be the same for label 0 and label 1
+        MASK_THRESHOLD = 0.3
     if c is not None:
         NBAR = c
     if r is not None:
@@ -370,6 +380,16 @@ def get_params_label_1(version=0, discrete_positions=False, c=None, r=None):
         DC = 0
         LUMP_FUNCTION = "GaussLmp"
         PARS = (1, 2)
+        DISCRETE_LUMPS = discrete_positions
+        RANGE_VALUES = (0, 255)
+        SIGMA = 4  # Should be the same for label 0 and label 1
+        MASK_THRESHOLD = 0.3
+    elif version == 3:
+        DIM = 40
+        NBAR = 50
+        DC = 0
+        LUMP_FUNCTION = "GaussLmp"
+        PARS = (1, 3.5)
         DISCRETE_LUMPS = discrete_positions
         RANGE_VALUES = (0, 255)
         SIGMA = 4  # Should be the same for label 0 and label 1
