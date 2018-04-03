@@ -11,6 +11,7 @@ from scipy.interpolate import RegularGridInterpolator
 from collections import Counter
 from parse_volumes_dataset import plot_pet_slice
 from generate_dataset import get_current_time
+from sample_dataset import convert_volumes_to_medians
 
 
 """
@@ -745,11 +746,14 @@ def save_dataset_correctly(x, y, patients, masks, parent_folder="data", dataset_
 
 def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
                        plot_data=False, trim_data=True, data_interpolation=None, normalize=True,
-                       convert_to_2d=True, resampling=None, skip_dialog=False, plot_slices=False):
+                       convert_to_2d=True, resampling=None, skip_dialog=False, plot_slices=False,
+                       medians=False):
     """Save dataset so labels & slices medians are equally distributed in training and test set."""
     # Add suffixes ta dataset name, so it is easy to know how every dataset was generated
-    if not convert_to_2d:
+    if not convert_to_2d and not medians:
         dataset_name += "_3d"
+    if medians:
+        dataset_name += "_mos"
     if not normalize:
         dataset_name += "_unnormalized"
     if trim_data:
@@ -1027,7 +1031,7 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
         print("Are you sure you want to save? This may overwrite some files.")
         answer = input("Type 'y' to save data or Ctrl-C to abort.\n>> ")
     print(" ")
-    if convert_to_2d:
+    if convert_to_2d and not medians:
         train_data = generate_2D_dataset(train_set_x, train_set_y, train_set_patients,
                                          train_set_masks, normalize=False)
         x, y, patients_dataset, masks_dataset = train_data
@@ -1035,10 +1039,12 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
     else:
         x, y = train_set_x, train_set_y
         patients_dataset, masks_dataset = train_set_patients, train_set_masks
+        if medians:
+            x, masks_dataset = convert_volumes_to_medians(x, masks_dataset)
     save_dataset_correctly(x, y, patients_dataset, masks_dataset,
                            dataset_name=dataset_name, dataset_subname="training_set")
     print(" ")
-    if convert_to_2d:
+    if convert_to_2d and not medians:
         test_data = generate_2D_dataset(test_set_x, test_set_y, test_set_patients, test_set_masks,
                                         normalize=False)  # Volumes already normalized
         x, y, patients_dataset, masks_dataset = test_data
@@ -1046,6 +1052,8 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
     else:
         x, y = test_set_x, test_set_y
         patients_dataset, masks_dataset = test_set_patients, test_set_masks
+        if medians:
+            x, masks_dataset = convert_volumes_to_medians(x, masks_dataset)
     save_dataset_correctly(x, y, patients_dataset, masks_dataset,
                            dataset_name=dataset_name, dataset_subname="test_set")
 
@@ -1084,6 +1092,8 @@ def parse_arguments(suffix=""):
                         "adjacent pixels is the same in all directions")
     parser.add_argument('-3d', '--in_3d', default=False, action="store_true",
                         help="save 3d data instead of slicing it in 3 channels 2d images")
+    parser.add_argument('-mos', '--median_orthogonal_slices', default=False, action="store_true",
+                        help="slice volumes thorough their medians to get 3 channels 2d images")
     parser.add_argument('-u', '--unnormalized', default=False, action="store_true",
                         help="do not normalize volumes")
     parser.add_argument('-y', '--yes', default=False, action="store_true",
@@ -1185,4 +1195,4 @@ if __name__ == "__main__":
                            trim_data=args.trim, data_interpolation=data_interpolation,
                            convert_to_2d=not args.in_3d, resampling=resampling,
                            normalize=not args.unnormalized, skip_dialog=args.yes,
-                           plot_slices=args.plot_slices)
+                           plot_slices=args.plot_slices, medians=args.median_orthogonal_slices)
