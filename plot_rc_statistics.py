@@ -84,6 +84,7 @@ def circles(x, y, s, c='b', vmin=None, vmax=None, **kwargs):
 def plot_statistics_for_r_c(statistics_file, plot=False, static_statistics=None,
                             comparison_metrics=None, skip_plots=False):
     """Docstring for plot_statistics."""
+    # Open file with all realizations of R and C
     with open(statistics_file) as f:
         lines = f.readlines()
     statistics = []
@@ -96,64 +97,26 @@ def plot_statistics_for_r_c(statistics_file, plot=False, static_statistics=None,
                                 "-3 positions in '{}'".format(statistics_file))
         else:
             statistics.append([float(x) for x in line.split(", ")])
+    # Format and extract data
     print(names)
     statistics = np.array(statistics)
     c = statistics[:, -3]
     r = statistics[:, -2]
     statistics = statistics[:, :-3]
-    if plot:
-        plt.ion()
+    # Find unique Rs and Cs in realizations
     ht = {}
     c_map = {}
-    unique_c = np.unique(c)
-    print("unique c", unique_c)
+    unique_c = list(np.unique(c))
+    print("Unique C:", unique_c)
     for i, cc in enumerate(unique_c):
         c_map[cc] = i
     for i, (rr, cc) in enumerate(zip(r, c)):
         if rr not in ht:
             ht[rr] = [-1] * len(unique_c)
         ht[rr][c_map[cc]] = i
-    keys = sorted(list(ht.keys()))
-    print("unique r", keys)
-    for i in range(statistics.shape[1]):
-        if skip_plots:
-            break
-        values = statistics[:, i]
-        fig = plt.figure()
-        plt.scatter(c, r, c=values)
-        plt.colorbar()
-        plt.title(names[i])
-        plt.xlabel("C")
-        plt.ylabel("R")
-        fig = plt.figure()
-        ax = plt.subplot(111)
-        for k in keys:
-            plt.plot(unique_c, statistics[ht[k], i], label="R: {}".format(k))
-        if static_statistics is not None:
-            static_names = sorted(list(static_statistics.keys()))
-            for kk, k in enumerate(static_names):
-                st = [":", "--", "-.", "-"][kk % 4]
-                if i < len(static_statistics[k]):
-                    plt.axhline(y=static_statistics[k][i], color="k", linestyle=st, label=k)
-        # Reduce box height by 10%
-        box = ax.get_position()
-        ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-        plt.title(names[i])
-        plt.xlabel("C")
-        ylabel = names[i].replace("_", " ", 1)
-        ylabel = ylabel + " intensity" if ylabel.endswith("mean") else ylabel
-        ylabel = ylabel + " intensity" if ylabel.endswith("median") else ylabel
-        ylabel = ylabel + " intensity" if ylabel.endswith("stddev") else ylabel
-        ylabel = ylabel + " (px)" if ylabel.endswith("surface") else ylabel
-        ylabel = ylabel + " (px)" if ylabel.endswith("volume") else ylabel
-        plt.ylabel(ylabel)
-        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-        if plot:
-            input("{}. Press ENTER to continue".format(i))
-    if not skip_plots:
-        save_plt_figures_to_pdf("RC_plots.pdf", verbose=True)
-    if plot:
-        plt.ioff()
+    unique_r = sorted(list(ht.keys()))
+    print("Unique R:", unique_r)
+    # Find combination most similar to real data
     if static_statistics is None:
         return
     if "real label 0" not in static_statistics or "real label 1" not in static_statistics:
@@ -174,6 +137,48 @@ def plot_statistics_for_r_c(statistics_file, plot=False, static_statistics=None,
         print("Top {} distance:\n  Distance: {}".format(i + 1, sorted_dist[i][1]))
         print("  Label 0.  R: {}, C: {}".format(r[sorted_dist[i][0][0]], c[sorted_dist[i][0][0]]))
         print("  Label 1.  R: {}, C: {}".format(r[sorted_dist[i][0][1]], c[sorted_dist[i][0][1]]))
+    static_statistics["optimal label 0"] = statistics[sorted_dist[i][0][0], :]
+    static_statistics["optimal label 1"] = statistics[sorted_dist[i][0][1], :]
+    # Plot all realizations R-C and best result
+    if plot:
+        plt.ion()
+    if not skip_plots:
+        for i in range(statistics.shape[1]):
+            values = statistics[:, i]
+            fig = plt.figure()
+            plt.scatter(c, r, c=values)
+            plt.colorbar()
+            plt.title(names[i])
+            plt.xlabel("C")
+            plt.ylabel("R")
+            fig = plt.figure()
+            ax = plt.subplot(111)
+            for k in unique_r:
+                plt.plot(unique_c, statistics[ht[k], i], label="R: {}".format(k))
+            if static_statistics is not None:
+                static_names = sorted(list(static_statistics.keys()))
+                for kk, k in enumerate(static_names):
+                    st = [":", "--", "-.", "-"][kk % 4]
+                    if i < len(static_statistics[k]):
+                        plt.axhline(y=static_statistics[k][i], color="k", linestyle=st, label=k)
+            # Reduce box height by 10%
+            box = ax.get_position()
+            ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+            plt.title(names[i])
+            plt.xlabel("C")
+            ylabel = names[i].replace("_", " ", 1)
+            ylabel = ylabel + " intensity" if ylabel.endswith("mean") else ylabel
+            ylabel = ylabel + " intensity" if ylabel.endswith("median") else ylabel
+            ylabel = ylabel + " intensity" if ylabel.endswith("stddev") else ylabel
+            ylabel = ylabel + " (px)" if ylabel.endswith("surface") else ylabel
+            ylabel = ylabel + " (px)" if ylabel.endswith("volume") else ylabel
+            plt.ylabel(ylabel)
+            plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        if plot:
+            input("{}. Press ENTER to continue".format(i))
+        save_plt_figures_to_pdf("RC_plots.pdf", verbose=True)
+    if plot:
+        plt.ioff()
 
 
 if __name__ == "__main__":
@@ -201,7 +206,7 @@ if __name__ == "__main__":
     | Labels Differences |  1.2538739494 | 1.29665291817 | -0.123478795799 | -201.864196732 | -94.3965114718 | 0.00468133805142 | -0.0238068207243 | 0.000997429749706 | -0.00133221619692 |
     +--------------------+---------------+---------------+-----------------+----------------+----------------+------------------+------------------+-------------------+-------------------+
 
-    Statistics Original Lumpy model:
+    Statistics Original Lumpy model: (r1: 1.5, c1: 500, r0: 2.5, c0: 150)
     +--------------------+---------------+--------+---------------+---------+--------+------------------+------------------+-----------------+-------------------+
     |                    |      mean     | median |     stddev    | surface | volume |  surf_vol_ratio  |  dissimilarity   |   correlation   |        asm        |
     +--------------------+---------------+--------+---------------+---------+--------+------------------+------------------+-----------------+-------------------+
@@ -236,10 +241,12 @@ if __name__ == "__main__":
     l_median1 = [33.228250000000003, 26.0, 24.750600713965479, 1298.0, 3686.0, 0.34895345204623557, 0.41723235809774267, 0.96032012332428518, 0.18331218940341465]
     l_mean1 = [33.580176600609761, 26.536585365853657, 24.919884701394967, 1353.580487804878, 3801.5414634146341, 0.35511746785240444, 0.42485881266603581, 0.95924312078585727, 0.1858963655188865]
     l_std1 = [4.006520396403995, 4.2523884879522429, 2.1735161734088924, 304.26644230338184, 729.66448988078105, 0.030817580904812177, 0.053234494378323852, 0.0056463420160174343, 0.040066723571589462]
+    # static_statistics = {"real label 0": r_mean0 + r_median0 + r_std0,
+    #                      "real label 1": r_mean1 + r_median1 + r_std1,
+    #                      "lumpy label 0": l_mean0 + l_median0 + l_std0,
+    #                      "lumpy label 1": l_mean1 + l_median1 + l_std1}
     static_statistics = {"real label 0": r_mean0 + r_median0 + r_std0,
-                         "real label 1": r_mean1 + r_median1 + r_std1,
-                         "lumpy label 0": l_mean0 + l_median0 + l_std0,
-                         "lumpy label 1": l_mean1 + l_median1 + l_std1}
+                         "real label 1": r_mean1 + r_median1 + r_std1}
     """
     27 metrics: 9 x 3 (9 are written below, 3 are mean, median and std in this order)
     'mean', 'median', 'stddev', 'surface', 'volume', 'surf_vol_ratio', 'dissimilarity', 'correlation', 'asm',
