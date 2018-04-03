@@ -100,6 +100,8 @@ def parse_arguments():
     parser.add_argument('-d1', '--dataset1', default=None, type=str,
                         help="location of the dataset for label 1; if dataset1 is None, it will "
                         "compare labels 0 and 1 in dataset0 (default: None)")
+    parser.add_argument('-f', '--factor', default=False, action="store_true",
+                        help="multiply all image values by 255")
     return parser.parse_args()
 
 
@@ -131,7 +133,7 @@ def plot_metric(data0, data1, label0="Metrics 0", label1="Metrics 1", label_all=
         plt.ioff()
 
 
-def main(dataset0, dataset1=None, size=None, plot_slices=False, plot=False):
+def main(dataset0, dataset1=None, size=None, plot_slices=False, plot=False, factor=None):
     """Load dataset and print statistics."""
     # Load dataset
     x_whole0, y_whole0, mask_whole0, patients_whole0 = read_dataset(dataset0, size, plot_slices,
@@ -143,7 +145,7 @@ def main(dataset0, dataset1=None, size=None, plot_slices=False, plot=False):
     masked_gray_values = [[], []]
     for i, (x, y, m, p) in enumerate(zip(x_whole0, y_whole0, mask_whole0, patients_whole0)):
         label = int(y[1])
-        values, names = save_statistics(x, m)
+        values, names = save_statistics(x, m, factor=factor)
         metrics[label].append(values)
         gray_values[label].extend(list(x.flatten()))
         mask_positions = np.nonzero(m)
@@ -159,13 +161,11 @@ def main(dataset0, dataset1=None, size=None, plot_slices=False, plot=False):
         masked_gray_values = [masked_gray_values[0] + masked_gray_values[1], []]
         for i, (x, y, m, p) in enumerate(zip(x_whole1, y_whole1, mask_whole1, patients_whole1)):
             label = 1
-            metrics[label].append(save_statistics(x, m)[0])
+            metrics[label].append(save_statistics(x, m, factor=factor)[0])
             gray_values[label].extend(list(x.flatten()))
             mask_positions = np.nonzero(m)
             masked_gray_values[label].extend(list(x[mask_positions]))
     metrics = [np.array(metrics[0]), np.array(metrics[1])]
-    print(metrics[0].shape)
-    print(metrics[1].shape)
     medians0 = np.median(metrics[0], axis=0)
     medians1 = np.median(metrics[1], axis=0)
     medians_diff = medians0 - medians1
@@ -180,4 +180,5 @@ def main(dataset0, dataset1=None, size=None, plot_slices=False, plot=False):
 
 if __name__ == "__main__":
     args = parse_arguments()
-    main(args.dataset0, args.dataset1, args.size, args.plot_slices, args.plot)
+    factor = None if not args.factor else 255
+    main(args.dataset0, args.dataset1, args.size, args.plot_slices, args.plot, factor)

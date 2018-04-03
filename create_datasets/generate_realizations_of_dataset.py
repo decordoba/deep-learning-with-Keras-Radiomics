@@ -74,8 +74,10 @@ def get_statistics_mask(mask):
     return surface, volume, ones_pos
 
 
-def save_statistics(image, mask, folder=None, dataset_name=None):
+def save_statistics(image, mask, folder=None, dataset_name=None, factor=None):
     """Docstring for save_statistics."""
+    if factor is not None:
+        image = image * 255
     std_dev = np.std(image)
     mean = np.mean(image)
     median = np.median(image)
