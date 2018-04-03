@@ -7,6 +7,7 @@ from single_experiment_runner import load_organized_dataset, plot_slices
 from single_experiment_runner import limit_number_patients_per_label
 from matplotlib import pyplot as plt
 from keras.utils import np_utils
+from prettytable import PrettyTable
 sys.path.insert(0, 'create_datasets')
 from generate_realizations_of_dataset import save_statistics
 from save_datasets import calculate_shared_axis, plot_boxplot, plot_histogram
@@ -169,13 +170,38 @@ def main(dataset0, dataset1=None, size=None, plot_slices=False, plot=False, fact
     medians0 = np.median(metrics[0], axis=0)
     medians1 = np.median(metrics[1], axis=0)
     medians_diff = medians0 - medians1
+    means0 = np.mean(metrics[0], axis=0)
+    means1 = np.mean(metrics[1], axis=0)
+    means_diff = means0 - means1
+    stds0 = np.std(metrics[0], axis=0)
+    stds1 = np.std(metrics[1], axis=0)
+    stds_diff = stds0 - stds1
+    print("medians0", list(medians0))
+    print("medians1", list(medians1))
+    print("means0", list(means0))
+    print("means1", list(means1))
+    print("stds0", list(stds0))
+    print("stds1", list(stds1))
     if dataset1 is None:
         print("Differences between Label 0 and label 1 ({}):".format(dataset0))
     else:
         print("Differences between Label 0 ({}) and label 1 ({}):".format(dataset0, dataset1))
-    print(names)
-    print(medians_diff)
-    return medians_diff
+    table = PrettyTable([""] + names.split(", "))
+    table.add_row(["Label 0 Medians"] + list(medians0))
+    table.add_row(["Label 1 Medians"] + list(medians1))
+    table.add_row(["Labels Differences"] + list(medians_diff))
+    print(table)
+    table = PrettyTable([""] + names.split(", "))
+    table.add_row(["Label 0 Means"] + list(means0))
+    table.add_row(["Label 1 Means"] + list(means1))
+    table.add_row(["Labels Differences"] + list(means_diff))
+    print(table)
+    table = PrettyTable([""] + names.split(", "))
+    table.add_row(["Label 0 Std Dev"] + list(stds0))
+    table.add_row(["Label 1 Std Dev"] + list(stds1))
+    table.add_row(["Labels Differences"] + list(stds_diff))
+    print(table)
+    return means_diff, medians_diff, stds_diff
 
 
 if __name__ == "__main__":
