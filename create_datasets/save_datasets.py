@@ -11,7 +11,7 @@ from scipy.interpolate import RegularGridInterpolator
 from collections import Counter
 from parse_volumes_dataset import plot_pet_slice
 from generate_dataset import get_current_time
-from sample_dataset import convert_volumes_to_medians
+from sample_dataset import convert_volumes_to_medians, augment_dataset
 
 
 """
@@ -747,11 +747,17 @@ def save_dataset_correctly(x, y, patients, masks, parent_folder="data", dataset_
 def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
                        plot_data=False, trim_data=True, data_interpolation=None, normalize=True,
                        convert_to_2d=True, resampling=None, skip_dialog=False, plot_slices=False,
-                       medians=False):
+                       medians=False, augment_rotate=None, augment_scale=None,
+                       augment_translate=None):
     """Save dataset so labels & slices medians are equally distributed in training and test set."""
     # Add suffixes ta dataset name, so it is easy to know how every dataset was generated
     if not convert_to_2d and not medians:
         dataset_name += "_3d"
+    if augment_rotate is not None or augment_scale is not None or augment_translate is not None:
+        augr = augment_rotate if augment_rotate is not None else 0
+        augt = augment_translate if augment_translate is not None else 0
+        augs = augment_scale if augment_scale is not None else 0
+        dataset_name += "_augmented-s{}-r{}-t{}".format(augs, augr, augt)
     if medians:
         dataset_name += "_mos"
     if not normalize:
@@ -1016,6 +1022,31 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
                                plot_data=plot_data, initial_figure=60, dataset_name=dataset_name,
                                suffix="_whole_set_resampled", title_suffix="(Whole Set Resampled)")
 
+    # Data augmentation
+    if augment_rotate is not None or augment_scale is not None or augment_rotate is not None:
+        # Training set
+        params = augment_dataset(train_set_x, train_set_y, train_set_masks, train_set_patients,
+                                 scale_samples=augment_scale, num_rotate_samples=augment_rotate,
+                                 num_translate_samples=augment_rotate)
+        train_set_x, train_set_y, train_set_masks, train_set_patients, _r, _t, _s = params
+        params6 = analyze_data(train_set_x, train_set_y, train_set_patients, train_set_masks,
+                               plot_data=plot_data, initial_figure=66, dataset_name=dataset_name,
+                               suffix="_train_set_augmented", title_suffix="(Train Set Augmented)")
+        # Test set
+        params = augment_dataset(test_set_x, test_set_y, test_set_masks, test_set_patients,
+                                 scale_samples=augment_scale, num_rotate_samples=augment_rotate,
+                                 num_translate_samples=augment_rotate)
+        test_set_x, test_set_y, test_set_masks, test_set_patients, _r, _t, _s = params
+        params7 = analyze_data(test_set_x, test_set_y, test_set_patients, test_set_masks,
+                               plot_data=plot_data, initial_figure=72, dataset_name=dataset_name,
+                               suffix="_test_set_augmented", title_suffix="(Test Set Augmented)")
+        # Train set and test set together
+        params8 = analyze_data(train_set_x + test_set_x, train_set_y + test_set_y,
+                               train_set_patients + test_set_patients,
+                               train_set_masks + test_set_masks,
+                               plot_data=plot_data, initial_figure=78, dataset_name=dataset_name,
+                               suffix="_whole_set_augmented", title_suffix="(Whole Set Augmented)")
+
     # Print results
     print("\nDATASET DIVIDED IN TRAINING AND TEST SET")
     print("  TRAINING SET")
@@ -1090,6 +1121,13 @@ def parse_arguments(suffix=""):
     parser.add_argument('-r', '--resample', default=False, action="store_true",
                         help="resample volumes to multiple cubes of size 5x5x5 pixels"
                         "adjacent pixels is the same in all directions")
+    parser.add_argument('-at', '--augment_translate', default=None, type=int,
+                        help="number of times to translate volume randomly to augment data")
+    parser.add_argument('-ar', '--augment_rotate', default=None, type=int,
+                        help="number of times to rotate volume randomly to augment data")
+    parser.add_argument('-as', '--augment_scale', default=None, type=int,
+                        help="number of times to scale volume to augment data "
+                        "(scales: 1, 1.2, 1.4, 1.6, ...)")
     parser.add_argument('-3d', '--in_3d', default=False, action="store_true",
                         help="save 3d data instead of slicing it in 3 channels 2d images")
     parser.add_argument('-mos', '--median_orthogonal_slices', default=False, action="store_true",
@@ -1195,4 +1233,6 @@ if __name__ == "__main__":
                            trim_data=args.trim, data_interpolation=data_interpolation,
                            convert_to_2d=not args.in_3d, resampling=resampling,
                            normalize=not args.unnormalized, skip_dialog=args.yes,
-                           plot_slices=args.plot_slices, medians=args.median_orthogonal_slices)
+                           plot_slices=args.plot_slices, medians=args.median_orthogonal_slices,
+                           augment_rotate=args.augment_rotate, augment_scale=args.augment_scale,
+                           augment_translate=args.augment_translate)
