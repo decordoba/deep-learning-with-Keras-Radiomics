@@ -975,6 +975,18 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
         test_set_patients.append(train_set_patients.pop())
         test_set_masks.append(train_set_masks.pop())
 
+    # Sort patients numbers (they get unsorted when splitting training - test
+    order = np.argsort(train_set_patients)
+    train_set_x = [train_set_x[i] for i in order]
+    train_set_y = [train_set_y[i] for i in order]
+    train_set_masks = [train_set_masks[i] for i in order]
+    train_set_patients = [train_set_patients[i] for i in order]
+    order = np.argsort(test_set_patients)
+    test_set_x = [test_set_x[i] for i in order]
+    test_set_y = [test_set_y[i] for i in order]
+    test_set_masks = [test_set_masks[i] for i in order]
+    test_set_patients = [test_set_patients[i] for i in order]
+
     # Plot and save results
     params1 = analyze_data(train_set_x, train_set_y, train_set_patients, train_set_masks,
                            plot_data=plot_data, initial_figure=36, suffix="_train_set",

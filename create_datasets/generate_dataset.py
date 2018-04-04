@@ -156,6 +156,10 @@ def generate_data(save_lumps_pos=False, show_images=False, pause_images=False,
             print("{}. {}% loaded ({}/{} samples)".format(get_current_time(),
                                                           (i + 1) * 100 // num_samples,
                                                           i + 1, num_samples))
+        elif num_samples > 8192 and i % 64 == 63:
+            print("{}. {}% loaded ({}/{} samples)".format(get_current_time(),
+                                                          (i + 1) * 100 // num_samples,
+                                                          i + 1, num_samples))
 
     if show_images:
         plt.ioff()
