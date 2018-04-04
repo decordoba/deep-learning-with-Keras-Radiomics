@@ -100,7 +100,7 @@ def scale_volume(volume, mask, scales=(1, 1.2, 1.4, 1.6)):
 
 
 def augment_dataset(volumes, labels, masks, patients, scale_samples=(1, 1.2, 1.4, 1.6),
-                    num_rotate_samples=5, num_translate_samples=5):
+                    num_rotate_samples=5, num_translate_samples=5, max_distance=4):
     """Augment dataset scaling, translating and rotating."""
     samples_x = []
     samples_y = []
@@ -108,7 +108,6 @@ def augment_dataset(volumes, labels, masks, patients, scale_samples=(1, 1.2, 1.4
     samples_p = []
     rotations = [(0, 0, 0)]
     translations = [(0, 0, 0)]
-    max_distance = 4
     if type(scale_samples) == int:
         scale_samples = [1 + 0.2 * i for i in range(scale_samples)]
     for i, (x, y, m, p) in enumerate(zip(volumes, labels, masks, patients)):

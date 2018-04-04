@@ -748,7 +748,7 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
                        plot_data=False, trim_data=True, data_interpolation=None, normalize=True,
                        convert_to_2d=True, resampling=None, skip_dialog=False, plot_slices=False,
                        medians=False, augment_rotate=None, augment_scale=None,
-                       augment_translate=None):
+                       augment_translate=None, exact_number_patients=None):
     """Save dataset so labels & slices medians are equally distributed in training and test set."""
     # Add suffixes ta dataset name, so it is easy to know how every dataset was generated
     if not convert_to_2d and not medians:
@@ -833,6 +833,11 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
             x_set, y_set, patients, masks = x_set3, y_set3, patients3, masks3
             medians_by_label, results = medians_by_label3, results3
             num_patients_by_label = num_patients_by_label3
+
+
+    if exact_number_patients is not None:
+        y_set, patients = y_set[:exact_number_patients], patients[:exact_number_patients]
+        x_set, masks = x_set[:exact_number_patients], masks[:exact_number_patients]
 
     if data_interpolation is not None:
         # Adjust slices so that all pixels are the same width, length and height
@@ -1128,6 +1133,8 @@ def parse_arguments(suffix=""):
     parser.add_argument('-as', '--augment_scale', default=None, type=int,
                         help="number of times to scale volume to augment data "
                         "(scales: 1, 1.2, 1.4, 1.6, ...)")
+    parser.add_argument('-enp', '--exact_number_patients', default=None, type=int,
+                        help="exact number of patients to use (after trimming)")
     parser.add_argument('-3d', '--in_3d', default=False, action="store_true",
                         help="save 3d data instead of slicing it in 3 channels 2d images")
     parser.add_argument('-mos', '--median_orthogonal_slices', default=False, action="store_true",
@@ -1235,4 +1242,5 @@ if __name__ == "__main__":
                            normalize=not args.unnormalized, skip_dialog=args.yes,
                            plot_slices=args.plot_slices, medians=args.median_orthogonal_slices,
                            augment_rotate=args.augment_rotate, augment_scale=args.augment_scale,
-                           augment_translate=args.augment_translate)
+                           augment_translate=args.augment_translate,
+                           exact_number_patients=args.exact_number_patients)
