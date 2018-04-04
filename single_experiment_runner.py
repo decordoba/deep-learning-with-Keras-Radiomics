@@ -570,8 +570,12 @@ def parse_arguments():
                         help="show slices of volume in dataset")
     parser.add_argument('-e', '--epochs', default=50, type=int,
                         help="number of epochs when training (default: 50)")
+    parser.add_argument('-ts', '--test_size', default=64, type=int,
+                        help="number of patients used as test every iteration (default: 64)")
     parser.add_argument('-s', '--size', default=None, type=int,
                         help="max number of patients per label (default: all)")
+    parser.add_argument('-ms', '--min_size', default=4, type=int,
+                        help="min size when testing different training set sizes (default: 4)")
     parser.add_argument('-f', '--folds', default=10, type=int,
                         help="number of cross validation folds (default: 10)")
     parser.add_argument('-d', '--dataset', default="organized", type=str,
@@ -1412,10 +1416,12 @@ def main():
                                              num_epochs=args.epochs, pdf_name=pdf_name,
                                              show_plots=args.plot, shuffle=False)
             else:
-                num_patient_tr = (4, 8, 16, 32, 64)  # Default value
+                num_patient_tr = (16, 32, 64, 128, 256)  # Default value
                 if args.size is not None:
+                    num = num_patient_tr[0]
+                    if args.min_size is not None:
+                        num = args.min_size
                     num_patient_tr = []
-                    num = 4
                     while num <= args.size:
                         num_patient_tr.append(num)
                         num *= 2
@@ -1424,7 +1430,8 @@ def main():
                                           patients_whole, num_patients, location=sublocation,
                                           verbose=args.verbose, num_epochs=args.epochs,
                                           pdf_name=pdf_name, show_plots=args.plot,
-                                          num_patients_te=64, num_patients_tr=num_patient_tr)
+                                          num_patients_te=args.test_size,
+                                          num_patients_tr=num_patient_tr)
             all_data_comb = (comb, *params)
             with open(sublocation + "/" + results_name, 'wb') as f:
                 pickle.dump(all_data_comb, f)
