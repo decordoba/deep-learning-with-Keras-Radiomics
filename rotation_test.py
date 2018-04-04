@@ -24,6 +24,8 @@ def rotate_randomly(volume, mask, rotations=None):
 
 def plot_slices_volume(vol):
     """Docstring for plot_slices_volume."""
+    w, h = int(np.ceil(np.sqrt(vol.shape[2]))), int(np.floor(np.sqrt(vol.shape[2])))
+    h = h + 1 if w * h < vol.shape[2] else h
     fig = plt.figure()
     for i in range(vol.shape[2]):
         ax = fig.add_subplot(w, h, i + 1)
@@ -74,10 +76,6 @@ a[5:16, 5:16, 5:16] = 1  # this makes a cube
 a[8:13, 1:5, 8:10] = 1  # this adds prism
 a[3:5, 11:16, 5:16] = 1  # this adds prism
 a[8:13, 12:16, 5:13] = 0  # this adds hole in cube
-
-# Needed for plotting
-w, h = int(np.ceil(np.sqrt(a.shape[2]))), int(np.floor(np.sqrt(a.shape[2])))
-h = h + 1 if w * h < a.shape[2] else h
 
 # Plot slices volume
 plot_slices_volume(a)
