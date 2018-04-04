@@ -922,10 +922,10 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
                     iii += 1
                 else:
                     break
-    print("Tr", num_patients_tr)
-    print(tr_idx)
-    print("Te", num_patients_te)
-    print(te_idx)
+    print("Tr", num_patients_tr, "( idx", tr_idx, ")")
+    print("Te", num_patients_te, "( idx", te_idx, ")")
+    if len(num_patients_tr) > len(tr_idx):
+        num_patients_tr = num_patients_tr[:len(tr_idx)]
 
     historic_acc = None
     historic_val_acc = None
@@ -952,9 +952,10 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
         x_train_cv = x_whole[te_idx:idx]
         y_train_cv = y_whole[te_idx:idx]
         patients_train_cv = patients_whole[te_idx:idx]
-        x_test_cv = x_whole[te_idx:]
-        y_test_cv = y_whole[te_idx:]
-        patients_test_cv = patients_whole[te_idx:]
+        x_test_cv = x_whole[:te_idx]
+        y_test_cv = y_whole[:te_idx]
+        patients_test_cv = patients_whole[:te_idx]
+        print("Training shape: {}, Test shape: {}".format(x_train_cv.shape, x_test_cv.shape))
 
         num_times = 0
         max_num_times = 3
