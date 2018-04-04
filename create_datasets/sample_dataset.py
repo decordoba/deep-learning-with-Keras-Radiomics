@@ -109,35 +109,49 @@ def augment_dataset(volumes, labels, masks, patients, scale_samples=(1, 1.2, 1.4
     rotations = [(0, 0, 0)]
     translations = [(0, 0, 0)]
     max_distance = 4
+    if type(scale_samples) == int:
+        scale_samples = [1 + 0.2 * i for i in range(scale_samples)]
     for i, (x, y, m, p) in enumerate(zip(volumes, labels, masks, patients)):
         # Create scaled volumes
-        augmented_x1, augmented_m1 = scale_volume(x, m, scales=scale_samples)
+        if scale_samples is None or len(scale_samples) == 0:
+            augmented_x1, augmented_m1 = x, m
+        else:
+            augmented_x1, augmented_m1 = scale_volume(x, m, scales=scale_samples)
         # Create rotations of scaled volumes
-        augmented_x2, augmented_m2 = [], []
-        for j in range(num_rotate_samples):
-            for aug_x, aug_m in zip(augmented_x1, augmented_m1):
-                try:
-                    tmp_x, tmp_m, _ = rotate_randomly(aug_x, aug_m, rotation=rotations[j])
-                except IndexError:
-                    tmp_x, tmp_m, rot = rotate_randomly(aug_x, aug_m)
-                    rotations.append(rot)
-                augmented_x2.append(tmp_x)
-                augmented_m2.append(tmp_m)
-        augmented_x3, augmented_m3 = [], []
-        for j in range(num_translate_samples):
-            for aug_x, aug_m in zip(augmented_x2, augmented_m2):
-                try:
-                    tmp_x, tmp_m, _ = translate_randomly(aug_x, aug_m, translation=translations[j])
-                except IndexError:
-                    tmp_x, tmp_m, tra = translate_randomly(aug_x, aug_m, max_distance=max_distance)
-                    translations.append(tra)
-                augmented_x3.append(tmp_x)
-                augmented_m3.append(tmp_m)
+        if num_rotate_samples is None or num_rotate_samples < 1:
+            augmented_x2, augmented_m2 = augmented_x1, augmented_m1
+        else:
+            augmented_x2, augmented_m2 = [], []
+            for j in range(num_rotate_samples):
+                for aug_x, aug_m in zip(augmented_x1, augmented_m1):
+                    try:
+                        tmp_x, tmp_m, _ = rotate_randomly(aug_x, aug_m, rotation=rotations[j])
+                    except IndexError:
+                        tmp_x, tmp_m, rot = rotate_randomly(aug_x, aug_m)
+                        rotations.append(rot)
+                    augmented_x2.append(tmp_x)
+                    augmented_m2.append(tmp_m)
+        # Create translations of scaled and rotated volumes
+        if num_translate_samples is None or num_translate_samples < 1:
+            augmented_x3, augmented_m3 = augmented_x2, augmented_m2
+        else:
+            augmented_x3, augmented_m3 = [], []
+            for j in range(num_translate_samples):
+                for aug_x, aug_m in zip(augmented_x2, augmented_m2):
+                    try:
+                        tmp_x, tmp_m, _ = translate_randomly(aug_x, aug_m,
+                                                             translation=translations[j])
+                    except IndexError:
+                        tmp_x, tmp_m, tra = translate_randomly(aug_x, aug_m,
+                                                               max_distance=max_distance)
+                        translations.append(tra)
+                    augmented_x3.append(tmp_x)
+                    augmented_m3.append(tmp_m)
         samples_x += augmented_x3
         samples_m += augmented_m3
         samples_y += [y] * len(augmented_x3)
         samples_p += [p] * len(augmented_x3)
-    return samples_x, samples_y, samples_m, samples_p, rotations, translations
+    return samples_x, samples_y, samples_m, samples_p, rotations, translations, scale_samples
 
 
 def parse_arguments():
@@ -161,4 +175,6 @@ if __name__ == "__main__":
     # Load dataset
     volumes, labels, masks, patients = read_dataset(args.dataset, args.size, args.plot_slices,
                                                     args.plot)
-    augment_dataset(volumes, labels, masks, patients, args.num_samples)
+    params = augment_dataset(volumes, labels, masks, patients, args.num_samples)
+    volumes, labels, masks, patients, rotations, translations, scales = params
+    volumes, masks = convert_volumes_to_medians(volumes, masks)
