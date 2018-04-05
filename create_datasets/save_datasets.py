@@ -794,30 +794,30 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
         box_sizes = box_sizes[0] + box_sizes[1]
         if trim_option == 1:
             # Trim based on the number of slices
-            print("Trimming based on slices...")
+            print("\nTrimming based on slices...")
             x_set1, y_set1, patients1, masks1 = trim_edges(slices, "slices", x_set, y_set,
                                                            patients, masks, trim_pos=(0.1, 0.9))
-            print("Analyzing data...")
+            print("\nAnalyzing data...")
             params = analyze_data(x_set1, y_set1, patients1, masks1, plot_data=plot_data,
                                   initial_figure=6, suffix="_trimmed_slices",
                                   title_suffix="(Trimmed Slices)", dataset_name=dataset_name)
             num_patients_by_label1, medians_by_label1, results1 = params
         elif trim_option == 2:
             # Trim based on the tumor volumes (the number of cubic pixels in the mtv contour)
-            print("Trimming based on sizes...")
+            print("\nTrimming based on sizes...")
             x_set2, y_set2, patients2, masks2 = trim_edges(sizes, "sizes", x_set, y_set, patients,
                                                            masks, trim_pos=(0.11, 0.89))
-            print("Analyzing data...")
+            print("\nAnalyzing data...")
             params = analyze_data(x_set2, y_set2, patients2, masks2, plot_data=plot_data,
                                   initial_figure=12, suffix="_trimmed_sizes",
                                   title_suffix="(Trimmed Sizes)", dataset_name=dataset_name)
             num_patients_by_label2, medians_by_label2, results2 = params
         elif trim_option == 3:
             # Trim based on the size of the boxs containing the contour
-            print("Trimming based on box sizes...")
+            print("\nTrimming based on box sizes...")
             x_set3, y_set3, patients3, masks3 = trim_edges(box_sizes, "sizes_masks", x_set, y_set,
                                                            patients, masks, trim_pos=(0.11, 0.89))
-            print("Analyzing data...")
+            print("\nAnalyzing data...")
             params = analyze_data(x_set3, y_set3, patients3, masks3, plot_data=plot_data,
                                   initial_figure=18, suffix="_trimmed_box_sizes",
                                   title_suffix="(Trimmed Box Sizes)", dataset_name=dataset_name)
@@ -836,22 +836,25 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
             medians_by_label, results = medians_by_label3, results3
             num_patients_by_label = num_patients_by_label3
 
-
     if exact_number_patients is not None:
+        print("\nRemoving all but {} patients exactly...".format(exact_number_patients))
         y_set, patients = y_set[:exact_number_patients], patients[:exact_number_patients]
         x_set, masks = x_set[:exact_number_patients], masks[:exact_number_patients]
 
     if data_interpolation is not None:
         # Adjust slices so that all pixels are the same width, length and height
         x_set, masks = interpolate_data(x_set, masks, data_interpolation)
+        print("\nAnalyzing data...")
         params = analyze_data(x_set, y_set, patients, masks, plot_data=plot_data,
                               initial_figure=24, suffix="_interpolated_slices",
                               title_suffix="(Interpolated Slices)", dataset_name=dataset_name)
         num_patients_by_label, medians_by_label, results = params
 
     if normalize:
+        print("\nNormalizing dataset...")
         # Normalize every volume of every patient so the max pixel is 1 and the min pixel is 0
         x_set = normalize_3D_volumes(x_set)
+        print("\nAnalyzing data...")
         params = analyze_data(x_set, y_set, patients, masks, plot_data=plot_data,
                               initial_figure=30, suffix="_normalized",
                               title_suffix="(Normalized)", dataset_name=dataset_name)
@@ -908,6 +911,7 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
 
     # Distribute data in train and test set
     median_indices = [[], []]
+    print("\nDividing patients in training and test set...")
     for i, (label, patient, volume, mask) in enumerate(zip(y_set, patients, x_set, masks)):
         num_slices = volume.shape[2]
         if num_slices < 3:
@@ -978,6 +982,7 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
         test_set_masks.append(train_set_masks.pop())
 
     # Sort patients numbers (they get unsorted when splitting training - test
+    print("\nSorting patients...")
     order = np.argsort(train_set_patients)
     train_set_x = [train_set_x[i] for i in order]
     train_set_y = [train_set_y[i] for i in order]
@@ -990,9 +995,11 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
     test_set_patients = [test_set_patients[i] for i in order]
 
     # Plot and save results
+    print("\nAnalyzing data...")
     params1 = analyze_data(train_set_x, train_set_y, train_set_patients, train_set_masks,
                            plot_data=plot_data, initial_figure=36, suffix="_train_set",
                            title_suffix="(Train Set)", dataset_name=dataset_name)
+    print("\nAnalyzing data...")
     params2 = analyze_data(test_set_x, test_set_y, test_set_patients, test_set_masks,
                            plot_data=plot_data, initial_figure=42, suffix="_test_set",
                            title_suffix="(Test Set)", dataset_name=dataset_name)
@@ -1000,6 +1007,7 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
     # Resample after splitting data in training and test set, to avoid putting samples in training
     # set from test set and viceversa
     if resampling is not None:
+        print("\nResampling (params: {}, {})...".format(size_box, num_samples))
         size_box, num_samples = resampling
         if type(size_box) == int:
             offset_if_None = int((size_box - 1) / 2)
@@ -1023,6 +1031,7 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
                                   num_samples, size_box, centers_train, samples_per_label,
                                   results_train)
         train_set_x, train_set_y, train_set_patients, train_set_masks = params
+        print("\nAnalyzing data...")
         params3 = analyze_data(train_set_x, train_set_y, train_set_patients, train_set_masks,
                                plot_data=plot_data, initial_figure=48, dataset_name=dataset_name,
                                suffix="_train_set_resampled", title_suffix="(Train Set Resampled)")
@@ -1031,10 +1040,12 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
                                   num_samples, size_box, centers_test, samples_per_label,
                                   results_test)
         test_set_x, test_set_y, test_set_patients, test_set_masks = params
+        print("\nAnalyzing data...")
         params4 = analyze_data(test_set_x, test_set_y, test_set_patients, test_set_masks,
                                plot_data=plot_data, initial_figure=54, dataset_name=dataset_name,
                                suffix="_test_set_resampled", title_suffix="(Test Set Resampled)")
         # Train set and test set together
+        print("\nAnalyzing data...")
         params5 = analyze_data(train_set_x + test_set_x, train_set_y + test_set_y,
                                train_set_patients + test_set_patients,
                                train_set_masks + test_set_masks,
@@ -1043,11 +1054,14 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
 
     # Data augmentation
     if augment_rotate is not None or augment_scale is not None or augment_rotate is not None:
+        print("\nAugmenting data (S: {}, R: {}, T: {})...".format(augment_scale, augment_rotate,
+                                                                  augment_translate))
         # Training set
         params = augment_dataset(train_set_x, train_set_y, train_set_masks, train_set_patients,
                                  scale_samples=augment_scale, num_rotate_samples=augment_rotate,
                                  num_translate_samples=augment_rotate)
-        train_set_x, train_set_y, train_set_masks, train_set_patients, _r, _t, _s = params
+        train_set_x, train_set_y, train_set_masks, train_set_patients = params
+        print("\nAnalyzing data...")
         params6 = analyze_data(train_set_x, train_set_y, train_set_patients, train_set_masks,
                                plot_data=plot_data, initial_figure=66, dataset_name=dataset_name,
                                suffix="_train_set_augmented", title_suffix="(Train Set Augmented)")
@@ -1055,11 +1069,13 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
         params = augment_dataset(test_set_x, test_set_y, test_set_masks, test_set_patients,
                                  scale_samples=augment_scale, num_rotate_samples=augment_rotate,
                                  num_translate_samples=augment_rotate)
-        test_set_x, test_set_y, test_set_masks, test_set_patients, _r, _t, _s = params
+        test_set_x, test_set_y, test_set_masks, test_set_patients = params
+        print("\nAnalyzing data...")
         params7 = analyze_data(test_set_x, test_set_y, test_set_patients, test_set_masks,
                                plot_data=plot_data, initial_figure=72, dataset_name=dataset_name,
                                suffix="_test_set_augmented", title_suffix="(Test Set Augmented)")
         # Train set and test set together
+        print("\nAnalyzing data...")
         params8 = analyze_data(train_set_x + test_set_x, train_set_y + test_set_y,
                                train_set_patients + test_set_patients,
                                train_set_masks + test_set_masks,
@@ -1082,6 +1098,7 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
         answer = input("Type 'y' to save data or Ctrl-C to abort.\n>> ")
     print(" ")
     if convert_to_2d and not medians:
+        print("\nSlicing Train Set...")
         train_data = generate_2D_dataset(train_set_x, train_set_y, train_set_patients,
                                          train_set_masks, normalize=False)
         x, y, patients_dataset, masks_dataset = train_data
@@ -1090,11 +1107,14 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
         x, y = train_set_x, train_set_y
         patients_dataset, masks_dataset = train_set_patients, train_set_masks
         if medians:
+            print("\nExtracting Medians from Train Set...")
             x, masks_dataset = convert_volumes_to_medians(x, masks_dataset)
+    print("\nSaving Train Set...")
     save_dataset_correctly(x, y, patients_dataset, masks_dataset,
                            dataset_name=dataset_name, dataset_subname="training_set")
     print(" ")
     if convert_to_2d and not medians:
+        print("\nSlicing Test Set...")
         test_data = generate_2D_dataset(test_set_x, test_set_y, test_set_patients, test_set_masks,
                                         normalize=False)  # Volumes already normalized
         x, y, patients_dataset, masks_dataset = test_data
@@ -1103,7 +1123,9 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
         x, y = test_set_x, test_set_y
         patients_dataset, masks_dataset = test_set_patients, test_set_masks
         if medians:
+            print("\nExtracting Medians from Test Set...")
             x, masks_dataset = convert_volumes_to_medians(x, masks_dataset)
+    print("\nSaving Test Set...")
     save_dataset_correctly(x, y, patients_dataset, masks_dataset,
                            dataset_name=dataset_name, dataset_subname="test_set")
 
@@ -1140,15 +1162,15 @@ def parse_arguments(suffix=""):
     parser.add_argument('-r', '--resample', default=False, action="store_true",
                         help="resample volumes to multiple cubes of size 5x5x5 pixels"
                         "adjacent pixels is the same in all directions")
-    parser.add_argument('-at', '--augment_translate', default=None, type=int,
+    parser.add_argument('-at', '--augment_translate', default=None, type=int, metavar="N",
                         help="number of times to translate volume randomly to augment data")
-    parser.add_argument('-ar', '--augment_rotate', default=None, type=int,
+    parser.add_argument('-ar', '--augment_rotate', default=None, type=int, metavar="N",
                         help="number of times to rotate volume randomly to augment data")
-    parser.add_argument('-as', '--augment_scale', default=None, type=int,
+    parser.add_argument('-as', '--augment_scale', default=None, type=int, metavar="N",
                         help="number of times to scale volume to augment data "
                         "(scales: 1, 1.2, 1.4, 1.6, ...)")
     parser.add_argument('-enp', '--exact_number_patients', default=None, type=int,
-                        help="exact number of patients to use (after trimming)")
+                        help="exact number of patients to use (after trimming)", metavar="N")
     parser.add_argument('-3d', '--in_3d', default=False, action="store_true",
                         help="save 3d data instead of slicing it in 3 channels 2d images")
     parser.add_argument('-mos', '--median_orthogonal_slices', default=False, action="store_true",
