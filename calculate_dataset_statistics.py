@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 from keras.utils import np_utils
 from scipy.ndimage.morphology import binary_erosion
 from skimage import feature
-from scipy.stats import ks_2samp
+from scipy.stats import ks_2samp, iqr
 sys.path.insert(0, 'create_datasets')
 from save_datasets import calculate_shared_axis, plot_boxplot, plot_histogram
 from save_datasets import save_plt_figures_to_pdf, analyze_data, simple_plot_histogram
@@ -158,28 +158,46 @@ def parse_arguments():
                         "verbose mode when training")
     parser.add_argument('-dr', '--dry_run', default=False, action="store_true", help="do not "
                         "save pdf with results")
+    parser.add_argument('-f', '--factor', default=False, action="store_true",
+                        help="multiply all data by 255")
     return parser.parse_args()
 
 
 def plot_metric(data0, data1, label0="Metrics 0", label1="Metrics 1", label_all="Metrics Total",
                 figure=0, plot_data=True, window_histogram="Histogram",
-                window_boxplot="Boxplot", simple_histograms=False):
+                window_boxplot="Boxplot", simple_histograms=False, one_histogram=False):
     """Plot histogram and boxplot for label0 and label1."""
     print("Generating figures for: {} ...".format(label_all))
     num_bins = 20
     if plot_data:
         plt.ion()
     xlim = calculate_shared_axis(data0, data1)
-    if not simple_histograms:
-        plot_histogram(data0, label0, figure, 311, num_bins, xlim, show=plot_data)
-        plot_histogram(data1, label1, figure, 312, num_bins, xlim, show=plot_data)
-        plot_histogram(data0 + data1, label_all, figure, 313, num_bins, xlim,
-                       window_title=window_histogram, show=plot_data)
+    if one_histogram:
+        # Formula Frank to know number bins
+        num_bins0 = max(int(2 * iqr(data0) / (len(data0) ** (1 / 3))), num_bins)
+        num_bins1 = max(int(2 * iqr(data1) / (len(data1) ** (1 / 3))), num_bins)
+        if not simple_histograms:
+            plot_histogram(data0, label0, figure, 111, num_bins0, xlim, show=plot_data,
+                           label_histogram="Label 0", figsize=None, alpha=0.6)
+            plot_histogram(data1, label1, figure, 111, num_bins1, xlim, show=plot_data, alpha=0.6,
+                           window_title=window_histogram, label_histogram="Label 1", figsize=None)
+        else:
+            simple_plot_histogram(data0, label0, figure, 111, num_bins0, xlim, show=plot_data,
+                                  label_histogram="Label 0", figsize=None, alpha=0.6)
+            simple_plot_histogram(data1, label1, figure, 111, num_bins1, xlim, show=plot_data,
+                                  window_title=window_histogram, label_histogram="Label 1",
+                                  figsize=None, alpha=0.6)
     else:
-        simple_plot_histogram(data0, label0, figure, 311, num_bins, xlim, show=plot_data)
-        simple_plot_histogram(data1, label1, figure, 312, num_bins, xlim, show=plot_data)
-        simple_plot_histogram(data0 + data1, label_all, figure, 313, num_bins, xlim,
-                              window_title=window_histogram, show=plot_data)
+        if not simple_histograms:
+            plot_histogram(data0, label0, figure, 311, num_bins, xlim, show=plot_data)
+            plot_histogram(data1, label1, figure, 312, num_bins, xlim, show=plot_data)
+            plot_histogram(data0 + data1, label_all, figure, 313, num_bins, xlim,
+                           window_title=window_histogram, show=plot_data)
+        else:
+            simple_plot_histogram(data0, label0, figure, 311, num_bins, xlim, show=plot_data)
+            simple_plot_histogram(data1, label1, figure, 312, num_bins, xlim, show=plot_data)
+            simple_plot_histogram(data0 + data1, label_all, figure, 313, num_bins, xlim,
+                                  window_title=window_histogram, show=plot_data)
 
     ylim = calculate_shared_axis(data0, data1)
     plot_boxplot(data0, label0, figure + 1, 121, ylim, show=plot_data)
@@ -228,6 +246,8 @@ def main():
     for i, (x, y, m, p) in enumerate(zip(x_whole, y_whole, mask_whole, patients_whole)):
         if p in patients:
             input("Repeated patient '{}'. This should never happen.".format(p))
+        if args.factor:
+            x = x * 255
         patients.add(p)
         label = int(y[1])
         std_dev = np.std(x)
@@ -238,6 +258,7 @@ def main():
         dissimilarity, correlation, asm = get_glcm_statistics(x)
         gray_values[label].extend(list(x.flatten()))
         masked_gray_values[label].extend(list(x[mask_positions]))
+
         if args.verbose:
             print("Label:              {}".format(label))
             print("Mean:               {}".format(mean))
@@ -328,7 +349,7 @@ def main():
                 figure=f, plot_data=args.plot,
                 window_histogram="Histogram Intensities",
                 window_boxplot="Boxplot Intensities",
-                simple_histograms=True)
+                simple_histograms=True, one_histogram=True)
     f = 16
     plot_metric(gray_values[0], gray_values[1],
                 label0="Whole Box Intensities Label 0",
@@ -337,13 +358,14 @@ def main():
                 figure=f, plot_data=args.plot,
                 window_histogram="Histogram Intensities",
                 window_boxplot="Boxplot Intensities",
-                simple_histograms=True)
+                simple_histograms=True, one_histogram=True)
     if not args.dry_run:
         print("Saving figures ...")
         save_plt_figures_to_pdf("{}/intensities.pdf".format(dataset_location), verbose=True)
     if args.plot:
         input("Press ENTER to close all figures and continue.")
         plt.close("all")
+    print("For more detailed printed statistics, run 'calculate_labels_differences.py'")
 
 
 if __name__ == "__main__":
