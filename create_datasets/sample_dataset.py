@@ -106,8 +106,6 @@ def augment_dataset(volumes, labels, masks, patients, scale_samples=(1, 1.2, 1.4
     samples_y = []
     samples_m = []
     samples_p = []
-    rotations = [(0, 0, 0)]
-    translations = [(0, 0, 0)]
     if type(scale_samples) == int:
         scale_samples = [1 + 0.2 * i for i in range(scale_samples)]
     for i, (x, y, m, p) in enumerate(zip(volumes, labels, masks, patients)):
@@ -117,6 +115,7 @@ def augment_dataset(volumes, labels, masks, patients, scale_samples=(1, 1.2, 1.4
         else:
             augmented_x1, augmented_m1 = scale_volume(x, m, scales=scale_samples)
         # Create rotations of scaled volumes
+        rotations = [(0, 0, 0)]  # First rotation will always be original image
         if num_rotate_samples is None or num_rotate_samples < 1:
             augmented_x2, augmented_m2 = augmented_x1, augmented_m1
         else:
@@ -131,6 +130,7 @@ def augment_dataset(volumes, labels, masks, patients, scale_samples=(1, 1.2, 1.4
                     augmented_x2.append(tmp_x)
                     augmented_m2.append(tmp_m)
         # Create translations of scaled and rotated volumes
+        translations = [(0, 0, 0)]  # First translation will always be original
         if num_translate_samples is None or num_translate_samples < 1:
             augmented_x3, augmented_m3 = augmented_x2, augmented_m2
         else:
@@ -146,11 +146,14 @@ def augment_dataset(volumes, labels, masks, patients, scale_samples=(1, 1.2, 1.4
                         translations.append(tra)
                     augmented_x3.append(tmp_x)
                     augmented_m3.append(tmp_m)
+        # Covert mask to 0s and 1s again
+        for i, tmp_m in enumerate(augmented_m3):
+            augmented_m3[i] = (tmp_m >= 0.5)
         samples_x += augmented_x3
         samples_m += augmented_m3
         samples_y += [y] * len(augmented_x3)
         samples_p += [p] * len(augmented_x3)
-    return samples_x, samples_y, samples_m, samples_p, rotations, translations, scale_samples
+    return samples_x, samples_y, samples_m, samples_p
 
 
 def parse_arguments():
