@@ -1363,14 +1363,14 @@ def main():
     units = [16]
     if args.simplified_model:
         units = [32]
-    num_convolutions = [1]
+    num_convolutions = [2]  # [1]
     dropout1 = [0]
     dropout2 = [0]
     if args.filters:
-        filters = [8, 16, 32]
+        filters = [16, 64, 256]  # [8, 16, 32]
         s += "-filters"
     if args.units:
-        units = [8, 16, 32]
+        units = [16, 64, 256]  # [8, 16, 32]
         s += "-units"
         if args.simplified_model:
             units = [16, 32, 64]
@@ -1381,12 +1381,12 @@ def main():
         dropout1 = [0, 0.25, 0.5]
         s += "-dropout1"
     if args.dropout2:
-        dropout2 = [0, 0.25, 0.5]
+        dropout2 = [0, 0.25]  # [0, 0.25, 0.5]
         s += "-dropout2"
 
     # Try all combinations of the parameters
     maxpool = True
-    padding = "valid"
+    padding = "same"  # "valid"
     if min(input_shape[:2]) < 10:
         maxpool = False
         padding = "same"
