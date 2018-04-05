@@ -129,7 +129,8 @@ def get_size_mask_efficiently(mask):
 
 
 def simple_plot_histogram(data, title=None, figure=0, subfigure=None, bins=10, xlim=None,
-                          show=True, figsize=(8 * 2, 6 * 2), window_title=None, close_all=False):
+                          show=True, figsize=(8 * 2, 6 * 2), window_title=None, close_all=False,
+                          label_histogram=None, alpha=1):
     """Plot histogram of data."""
     # Close and erase all old figures
     if close_all:
@@ -138,7 +139,7 @@ def simple_plot_histogram(data, title=None, figure=0, subfigure=None, bins=10, x
     if subfigure is not None:
         fig.add_subplot(subfigure)
     # Use this to draw histogram of the data
-    plt.hist(data, normed=True, bins=bins)
+    plt.hist(data, normed=True, bins=bins, label=label_histogram, alpha=alpha)
     if xlim is not None:
         plt.xlim(xlim)
     if title is not None:
@@ -146,13 +147,14 @@ def simple_plot_histogram(data, title=None, figure=0, subfigure=None, bins=10, x
         fig.canvas.set_window_title("Figure {} - {}".format(figure, title))
     if window_title is not None:
         fig.canvas.set_window_title("Figure {} - {}".format(figure, window_title))
+    plt.legend()
     if show:
         plt.show()
 
 
 def plot_histogram(data, title=None, figure=0, subfigure=None, bins=10, xlim=None, show=True,
                    percentages=(0.1, 0.25, 0.75, 0.9), figsize=(8 * 2, 6 * 2), window_title=None,
-                   close_all=False):
+                   close_all=False, label_histogram=None, alpha=1):
     """Plot histogram of data."""
     sorted_data = sorted(data)
     # Close and erase all old figures
@@ -165,7 +167,7 @@ def plot_histogram(data, title=None, figure=0, subfigure=None, bins=10, xlim=Non
         fig.add_subplot(subfigure)
     plt.plot(sorted_data, fit, '.-')
     # Use this to draw histogram of the data
-    plt.hist(sorted_data, normed=True, bins=bins)
+    plt.hist(sorted_data, normed=True, bins=bins, label=label_histogram, alpha=alpha)
     if xlim is not None:
         plt.xlim(xlim)
     if title is not None:
@@ -195,8 +197,8 @@ def plot_histogram(data, title=None, figure=0, subfigure=None, bins=10, xlim=Non
                 label = "25 % - 75 %"
             plt.axvline(x=sorted_data[pos], linestyle=linestyle, color=linecolor, lw=1,
                         label=label)
-        plt.legend()
         # plt.tight_layout()  # Avoids overlap text and figures
+    plt.legend()
     if show:
         plt.show()
 
