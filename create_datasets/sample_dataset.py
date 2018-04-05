@@ -3,9 +3,9 @@ import argparse
 import numpy as np
 from skimage import transform
 from scipy import ndimage
-import sys
-sys.path.insert(0, '..')
-from calculate_dataset_statistics import read_dataset
+# import sys
+# sys.path.insert(0, '..')
+# from calculate_dataset_statistics import read_dataset
 
 
 def get_3_medians(volume, mask):
@@ -172,8 +172,8 @@ def parse_arguments():
 if __name__ == "__main__":
     args = parse_arguments()
     # Load dataset
-    volumes, labels, masks, patients = read_dataset(args.dataset, args.size, args.plot_slices,
-                                                    args.plot)
-    params = augment_dataset(volumes, labels, masks, patients, args.num_samples)
-    volumes, labels, masks, patients, rotations, translations, scales = params
-    volumes, masks = convert_volumes_to_medians(volumes, masks)
+    # volumes, labels, masks, patients = read_dataset(args.dataset, args.size, args.plot_slices,
+    #                                                 args.plot)
+    # params = augment_dataset(volumes, labels, masks, patients, args.num_samples)
+    # volumes, labels, masks, patients, rotations, translations, scales = params
+    # volumes, masks = convert_volumes_to_medians(volumes, masks)
