@@ -85,17 +85,28 @@ def translate_randomly(volume, mask, translation=None, max_distance=5):
 def scale_volume(volume, mask, scales=(1, 1.2, 1.4, 1.6)):
     """Scale volume and mask, and cut it to have same shape as original.
 
-    Scales must be greater or equal to 1. Volume and mask must have same shape.
+    Volume and mask must have same shape.
     """
+    if type(scales) == float or type(scales) == int:
+        v, m = scale_volume(volume, mask, scales=(scales, ))
+        return v[0], m[0]
     scaled_volumes = []
     scaled_masks = []
     for scale in scales:
         scaled_volume = ndimage.zoom(volume, scale)
         scaled_mask = ndimage.zoom(mask, scale)
         ml = ((np.array(scaled_volume.shape) - volume.shape) / 2).astype(int)
-        mr = ml + volume.shape
-        scaled_volumes.append(scaled_volume[ml[0]:mr[0], ml[1]:mr[1], ml[2]:mr[2]])
-        scaled_masks.append(scaled_mask[ml[0]:mr[0], ml[1]:mr[1], ml[2]:mr[2]])
+        if scale >= 1:
+            mr = ml + volume.shape
+            scaled_volumes.append(scaled_volume[ml[0]:mr[0], ml[1]:mr[1], ml[2]:mr[2]])
+            scaled_masks.append(scaled_mask[ml[0]:mr[0], ml[1]:mr[1], ml[2]:mr[2]])
+        else:
+            ml = -ml
+            mr = ml + scaled_volume.shape
+            scaled_volumes.append(np.zeros(volume.shape))
+            scaled_volumes[-1][ml[0]:mr[0], ml[1]:mr[1], ml[2]:mr[2]] = scaled_volume
+            scaled_masks.append(np.zeros(mask.shape))
+            scaled_masks[-1][ml[0]:mr[0], ml[1]:mr[1], ml[2]:mr[2]] = scaled_mask
     return scaled_volumes, scaled_masks
 
 
