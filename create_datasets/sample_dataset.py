@@ -157,9 +157,10 @@ def augment_dataset(volumes, labels, masks, patients, scale_samples=(1, 1.2, 1.4
                         translations.append(tra)
                     augmented_x3.append(tmp_x)
                     augmented_m3.append(tmp_m)
-        # Covert mask to 0s and 1s again
-        for i, tmp_m in enumerate(augmented_m3):
-            augmented_m3[i] = (tmp_m >= 0.5)
+        # Covert mask to 0s and 1s again, limit number of decimals saved
+        for j, (tmp_x, tmp_m) in enumerate(zip(augmented_x3, augmented_m3)):
+            augmented_x3[j] = np.around(tmp_x, decimals=6)
+            augmented_m3[j] = (tmp_m >= 0.5).astype(int)
         samples_x += augmented_x3
         samples_m += augmented_m3
         samples_y += [y] * len(augmented_x3)
