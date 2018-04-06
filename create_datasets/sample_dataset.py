@@ -194,8 +194,31 @@ def augment_dataset(volumes, labels, masks, patients, scale_samples=(1, 1.2, 1.4
     return samples_x, samples_y, samples_m, samples_p
 
 
-def bootstrap_augment_dataset(volumes, labels, masks, patients, num_samples, max_distance=4):
-    """Augment dataset scaling, translating and rotating, bootstrapping data."""
+def bootstrap_augment_dataset(volumes, labels, masks, patients, num_samples, max_distance=None,
+                              max_scale_difference=0.5):
+    """Augment dataset scaling, translating and rotating, bootstrapping data.
+
+    Expects volumes and masks to be perfect cubes.
+    max_scale_difference = how much bigger or smaller the volume can get (0.2 means 20%)
+    max_distance=None means the max distance is half the radius of the tumor
+    """
+    # Get approximation of median radius of tumor and radius of every tumor
+    middle = np.array(volumes[0].shape) / 2
+    radius_mins = []
+    radius_maxs = []
+    radius = []
+    for i, m in enumerate(masks):
+        ones_pos = np.nonzero(m)
+        radius_maxs.append(np.max(ones_pos, axis=1) - middle)
+        radius_mins.append(middle - np.min(ones_pos, axis=1))
+        radius.append(np.mean((radius_maxs[-1] + radius_mins[-1]) / 2))
+    max_radius = np.percentile(radius_mins + radius_maxs, 66.6)
+    min_radius = np.percentile(radius_mins + radius_maxs, 33.3)
+    max_radius_diff = ((1 + max_scale_difference) ** (1 / 3))
+    min_radius_diff = ((1 - max_scale_difference) ** (1 / 3))
+    # Bootstrap augmentation
+    if max_distance is not None:
+        current_max_distance = max_distance
     samples_x = []
     samples_y = []
     samples_m = []
@@ -214,14 +237,26 @@ def bootstrap_augment_dataset(volumes, labels, masks, patients, num_samples, max
             x = x.astype(float)
         if not np.issubdtype(m[0, 0, 0], np.floating):
             m = m.astype(float)
-        # Get random scale and scale image
-        scale = np.random.random() * 6 - 3
+        # Get random scale (possible scales depend on the size of the tumor in comprison to others)
+        if radius[idx] < min_radius:
+            min_scale = 1
+            max_scale = max_radius_diff  # median_radius / radius[idx]
+        elif radius[idx] > max_radius:
+            min_scale = min_radius_diff  # median_radius / radius[idx]
+            max_scale = 1
+        else:
+            min_scale = min_radius_diff  # min_radius / radius[idx]
+            max_scale = max_radius_diff  # max_radius / radius[idx]
+        scale = np.random.random() * (max_scale - min_scale) + min_scale
+        # Scale images
         scaled_x, scaled_m = scale_volume(x, m, scales=scale)
         # Randomly rotate scaled image
         rotated_x, rotated_m, rot = rotate_randomly(scaled_x, scaled_m)
         # Randomly translate scaled image
+        if max_distance is None:
+            current_max_distance = radius[idx] * scale / 2  # only get slices close to middle
         translated_x, translated_m, tra = translate_randomly(rotated_x, rotated_m,
-                                                             max_distance=max_distance)
+                                                             max_distance=current_max_distance)
         # Covert mask to 0s and 1s again, and limit the number of decimals saved
         translated_x = np.around(translated_x, decimals=6)
         translated_m = (translated_m >= 0.5).astype(int)
