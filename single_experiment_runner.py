@@ -610,7 +610,7 @@ def parse_arguments():
 def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whole, num_patients,
                         location="cross_validation_results", patient_level_cv=False, verbose=False,
                         num_epochs=50, pdf_name="figures.pdf", show_plots=False, shuffle=False,
-                        num_folds=10):
+                        num_folds=10, comb=None):
     """Do cross validation on dataset."""
     # Do 10-fold CV in whole set
     if patient_level_cv:
@@ -654,6 +654,8 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
     for i in range(num_folds):
         print("\n--------------------------------------------------------------------------------")
         print("\nFold {}/{} in Cross Validation Analysis".format(i + 1, num_folds))
+        if comb is not None:
+            print("Combination: {}".format(comb))
         # Split dataset in training and cross-validation sets
         if not patient_level_cv:
             idx0 = int(np.round(i * size_fold))
@@ -894,7 +896,7 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
 
 
 def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, num_patients,
-                     location="training_results", verbose=False, num_epochs=50,
+                     location="training_results", verbose=False, num_epochs=50, comb=None,
                      pdf_name="figures.pdf", show_plots=False, num_patients_te=64,
                      num_patients_tr=(4, 8, 16, 32, 64, 128, 256, 512, 1024)):
     """Do training on dataset, this is dirty code, sorry."""
@@ -952,6 +954,8 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
         print("\nStep {}/{}. Training: {} patients. Test: {} patients".format(i + 1, num_folds,
                                                                               num_patients_tr[i],
                                                                               num_patients_te))
+        if comb is not None:
+            print("Combination: {}".format(comb))
         # Split dataset in training and cross-validation sets
         x_train_cv = x_whole[te_idx:idx]
         y_train_cv = y_whole[te_idx:idx]
@@ -1393,6 +1397,8 @@ def main():
         maxpool = False
         padding = "same"
     all_data = []
+    num_comb = len(filters) * len(units) * len(num_convolutions) * len(dropout1) * len(dropout2)
+    i = 0
     for comb in itertools.product(filters, units, num_convolutions, dropout1, dropout2):
         # Create layers list that will define model
         f, u, c, d1, d2 = comb
@@ -1404,6 +1410,9 @@ def main():
             layers, optimizer, loss = create_layers(input_shape, labels, filters=f, units=u,
                                                     num_convolutions=c, dropout1=d1, dropout2=d2,
                                                     maxpool=maxpool, padding=padding)
+        i += 1
+        print("\n================================================================================")
+        print("\nCombination {}/{}. Combination: {}".format(i, num_comb, comb))
         # Do cross validation and save results
         sublocation = location + "/" + "-".join([str(x) for x in comb])
         suffix = "-{}".format(comb)
@@ -1415,7 +1424,7 @@ def main():
                                              patients_whole, num_patients, location=sublocation,
                                              num_folds=args.folds, verbose=args.verbose,
                                              patient_level_cv=not args.slice_level_cross_val,
-                                             num_epochs=args.epochs, pdf_name=pdf_name,
+                                             num_epochs=args.epochs, pdf_name=pdf_name, comb=comb,
                                              show_plots=args.plot, shuffle=False)
             else:
                 num_patient_tr = (16, 32, 64, 128, 256)  # Default value
@@ -1431,7 +1440,7 @@ def main():
                 params = do_training_test(layers, optimizer, loss, x_whole, y_whole,
                                           patients_whole, num_patients, location=sublocation,
                                           verbose=args.verbose, num_epochs=args.epochs,
-                                          pdf_name=pdf_name, show_plots=args.plot,
+                                          pdf_name=pdf_name, show_plots=args.plot, comb=comb,
                                           num_patients_te=args.test_size,
                                           num_patients_tr=num_patient_tr)
             all_data_comb = (comb, *params)
