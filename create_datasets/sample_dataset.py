@@ -80,9 +80,12 @@ def translate_randomly(volume, mask, translation=None, max_distance=5):
     if translation is None:
         dist = np.square(np.random.random() * max_distance)
         translation = np.zeros(3)
-        translation[0] = np.random.random() * dist
-        translation[1] = np.random.random() * (dist - translation[0])
-        translation[2] = dist - translation[0] - translation[1]
+        pt1 = np.random.random() * dist
+        pt2 = np.random.random() * dist
+        pt1, pt2 = pt2, pt1 if pt1 > pt2 else pt1, pt2
+        translation[0] = pt1
+        translation[1] = pt2 - pt1
+        translation[2] = dist - pt1
         translation = np.sqrt(translation) * ((np.random.randint(0, 2, 3) * 2) - 1)
     translated_volume = volume
     translated_mask = mask
