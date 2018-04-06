@@ -3,9 +3,23 @@ import argparse
 import numpy as np
 from skimage import transform
 from scipy import ndimage
+from matplotlib import pyplot as plt
 # import sys
 # sys.path.insert(0, '..')
 # from calculate_dataset_statistics import read_dataset
+
+
+def plot_slices_volume(vol, vmin=0, vmax=1):
+    """Docstring for plot_slices_volume."""
+    w, h = int(np.ceil(np.sqrt(vol.shape[2]))), int(np.floor(np.sqrt(vol.shape[2])))
+    h = h + 1 if w * h < vol.shape[2] else h
+    fig = plt.figure()
+    for i in range(vol.shape[2]):
+        ax = fig.add_subplot(w, h, i + 1)
+        ax.set_aspect('equal')
+        plt.imshow(vol[:, :, i], interpolation='nearest', cmap="gray", vmin=vmin, vmax=vmax)
+        plt.xticks([])
+        plt.yticks([])
 
 
 def get_3_medians(volume, mask):
@@ -38,7 +52,10 @@ def convert_volumes_to_medians(volumes, masks):
 
 
 def rotate_randomly(volume, mask, rotation=None):
-    """Rotate volume and mask randomly."""
+    """Rotate volume and mask randomly.
+
+    Warning! Won't work well if volume or mask have types int.
+    """
     if rotation is None:
         rotation = np.random.random(3) * 360
     rotated_volume = volume
@@ -56,7 +73,10 @@ def rotate_randomly(volume, mask, rotation=None):
 
 
 def translate_randomly(volume, mask, translation=None, max_distance=5):
-    """Translate (move) volume and mask randomly."""
+    """Translate (move) volume and mask randomly.
+
+    Warning! Won't work well if volume or mask have types int.
+    """
     if translation is None:
         dist = np.square(np.random.random() * max_distance)
         translation = np.zeros(3)
@@ -86,6 +106,7 @@ def scale_volume(volume, mask, scales=(1, 1.2, 1.4, 1.6)):
     """Scale volume and mask, and cut it to have same shape as original.
 
     Volume and mask must have same shape.
+    Warning! Won't work well if volume or mask have types int.
     """
     if type(scales) == float or type(scales) == int:
         v, m = scale_volume(volume, mask, scales=(scales, ))
@@ -120,6 +141,11 @@ def augment_dataset(volumes, labels, masks, patients, scale_samples=(1, 1.2, 1.4
     if type(scale_samples) == int:
         scale_samples = [1 + 0.2 * i for i in range(scale_samples)]
     for i, (x, y, m, p) in enumerate(zip(volumes, labels, masks, patients)):
+        # Make sure we use floats instead of ints (transformations don't work for ints)
+        if not np.issubdtype(x[0, 0, 0], np.floating):
+            x = x.astype(float)
+        if not np.issubdtype(m[0, 0, 0], np.floating):
+            m = m.astype(float)
         # Create scaled volumes
         if scale_samples is None or len(scale_samples) == 0:
             augmented_x1, augmented_m1 = x, m
@@ -181,9 +207,16 @@ def boostrap_augment_dataset(volumes, labels, masks, patients, num_samples, max_
         # Save patient and label
         samples_p.append(patients[idx])
         samples_y.append(labels[idx])
+        # Make sure we use floats instead of ints (transformations don't work for ints)
+        x = volumes[idx]
+        m = masks[idx]
+        if not np.issubdtype(x[0, 0, 0], np.floating):
+            x = x.astype(float)
+        if not np.issubdtype(m[0, 0, 0], np.floating):
+            m = m.astype(float)
         # Get random scale and scale image
         scale = np.random.random() * 6 - 3
-        scaled_x, scaled_m = scale_volume(volumes[idx], masks[idx], scales=scale)
+        scaled_x, scaled_m = scale_volume(x, m, scales=scale)
         # Randomly rotate scaled image
         rotated_x, rotated_m, rot = rotate_randomly(scaled_x, scaled_m)
         # Randomly translate scaled image
