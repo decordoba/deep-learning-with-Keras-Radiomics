@@ -194,7 +194,7 @@ def augment_dataset(volumes, labels, masks, patients, scale_samples=(1, 1.2, 1.4
     return samples_x, samples_y, samples_m, samples_p
 
 
-def boostrap_augment_dataset(volumes, labels, masks, patients, num_samples, max_distance=4):
+def bootstrap_augment_dataset(volumes, labels, masks, patients, num_samples, max_distance=4):
     """Augment dataset scaling, translating and rotating, bootstrapping data."""
     samples_x = []
     samples_y = []
