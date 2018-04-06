@@ -967,10 +967,10 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
             num_times += 1
             # Train model
             parameters = flexible_neural_net((x_train_cv, y_train_cv), (x_test_cv, y_test_cv),
-                                            optimizer, loss, *layers,
-                                            batch_size=32, epochs=num_epochs, initial_weights=weights,
-                                            early_stopping=None, verbose=verbose,
-                                            files_suffix=i, location=location, return_more=True)
+                                             optimizer, loss, *layers, initial_weights=weights,
+                                             batch_size=32, epochs=num_epochs,
+                                             early_stopping=None, verbose=verbose,
+                                             files_suffix=i, location=location, return_more=True)
             [lTr, aTr], [lTe, aTe], time, location, n_epochs, weights, model, history = parameters
             if aTr > 0.7:
                 break
@@ -979,8 +979,10 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
                       "that makes some iterations act weird and where training accuracy never "
                       "changes). Retrying - Attempt No. {} - Number of patients: {} - Tr Acc: {}."
                       "".format(num_times, num_patients_tr[i], aTr))
+                with open(location + "/unknown_error.txt", 'w') as f:
+                    f.write("{}, {}, {}".format(i, num_patients_tr[i], num_patients_te))
 
-        if aTr <= 0.7 and num_patients_tr[i] == 256:
+        if aTr <= 0.7 and num_patients_tr[i] == 256 and False:  # Will never run
             dummy_path = "official_data/dummy_256/16-16-1-0-0/results-(16, 16, 1, 0, 0).pkl"
             with open(dummy_path, 'rb') as f:
                 old_params = pickle.load(f)
