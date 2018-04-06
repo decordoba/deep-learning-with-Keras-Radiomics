@@ -168,6 +168,36 @@ def augment_dataset(volumes, labels, masks, patients, scale_samples=(1, 1.2, 1.4
     return samples_x, samples_y, samples_m, samples_p
 
 
+def boostrap_augment_dataset(volumes, labels, masks, patients, num_samples, max_distance=4):
+    """Augment dataset scaling, translating and rotating, bootstrapping data."""
+    samples_x = []
+    samples_y = []
+    samples_m = []
+    samples_p = []
+    num_patients = len(patients)
+    for i in range(num_samples):
+        # Pick patient with replacement
+        idx = np.random.randint(num_patients)
+        # Save patient and label
+        samples_p.append(patients[idx])
+        samples_y.append(labels[idx])
+        # Get random scale and scale image
+        scale = np.random.random() * 6 - 3
+        scaled_x, scaled_m = scale_volume(volumes[idx], masks[idx], scales=scale)
+        # Randomly rotate scaled image
+        rotated_x, rotated_m, rot = rotate_randomly(scaled_x, scaled_m)
+        # Randomly translate scaled image
+        translated_x, translated_m, tra = translate_randomly(rotated_x, rotated_m,
+                                                             max_distance=max_distance)
+        # Covert mask to 0s and 1s again, and limit the number of decimals saved
+        translated_x = np.around(translated_x, decimals=6)
+        translated_m = (translated_m >= 0.5).astype(int)
+        # Save new image and mask
+        samples_x.append(translated_x)
+        samples_m.append(translated_m)
+    return samples_x, samples_y, samples_m, samples_p
+
+
 def parse_arguments():
     """Parse arguments in code."""
     parser = argparse.ArgumentParser(description="Calculate several statistics from dataset.")
