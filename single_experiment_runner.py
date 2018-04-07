@@ -987,8 +987,9 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
                       "that makes some iterations act weird and where training accuracy never "
                       "changes). Retrying - Attempt No. {} - Number of patients: {} - Tr Acc: {}."
                       "".format(num_times, num_patients_tr[i], aTr))
-                with open(location + "/unknown_error.txt", 'w') as f:
-                    f.write("{}, {}, {}".format(i, num_patients_tr[i], num_patients_te))
+        if aTr <= 0.7:
+            with open(location + "/unknown_error.txt", 'a') as f:
+                f.write("{}\n".format(num_patients_tr[i]))
 
         if aTr <= 0.7 and num_patients_tr[i] == 256 and False:  # Will never run
             dummy_path = "official_data/dummy_256/16-16-1-0-0/results-(16, 16, 1, 0, 0).pkl"
@@ -1280,6 +1281,8 @@ def correct_old_runs(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
 
         # Use old_data for cases that don't need to be corrected
         if num_patients_tr[i] not in corrections:
+            print("\nUsing previously saved data (no correction here)")
+
             if historic_acc is None:
                 historic_acc = np.array(adl["history_acc"][i])
                 historic_val_acc = np.array(adl["history_val_acc"][i])
@@ -1354,8 +1357,8 @@ def correct_old_runs(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
                       "that makes some iterations act weird and where training accuracy never "
                       "changes). Retrying - Attempt No. {} - Number of patients: {} - Tr Acc: {}."
                       "".format(num_times, num_patients_tr[i], aTr))
-                with open(location + "/unknown_error.txt", 'w') as f:
-                    f.write("{}, {}, {}".format(i, num_patients_tr[i], num_patients_te))
+                with open(location + "/unknown_error.txt", 'a') as f:
+                    f.write("{}".format(num_patients_tr[i]))
 
         if aTr <= 0.7 and num_patients_tr[i] == 256 and False:  # Will never run
             dummy_path = "official_data/dummy_256/16-16-1-0-0/results-(16, 16, 1, 0, 0).pkl"
@@ -1846,7 +1849,8 @@ def main(correction):
                       "".format(sublocation + "/" + results_name))
                 # This will be called when a correction has to be performed
                 if args.correction and comb in correction_ht:
-                    print("Correction on the way! Training sizes: {}".format(correction_ht[comb]))
+                    print("\nCorrection on the way! Training sizes: {}\n"
+                          "".format(correction_ht[comb]))
                     if comb != all_data_comb[0]:
                         raise Exception("Error. Data was saved differently in this folder")
                     all_data_comb = correct_old_runs(layers, optimizer, loss, x_whole, y_whole,
@@ -1865,6 +1869,7 @@ def main(correction):
             all_data.append(all_data_comb)
 
     # Plot summary of results
+    print("\nGenerating global figures...")
     show_plots = args.plot
     plt.close("all")
     if args.do_cross_val:
@@ -1926,4 +1931,45 @@ def main(correction):
 
 
 if __name__ == "__main__":
-    main(correction=[(256, 16, 2, 0, 0.25), [256, 1024, 2048, 4096]])
+    # Run with no corrections
+    main(correction=[])
+    """
+    # nn_models1
+    main(correction=[
+                     [(64, 16, 2, 0, 0), [128, 512, 4096]],
+                     [(64, 16, 2, 0, 0.25), [2048]],
+                     [(64, 256, 2, 0, 0), [1024, 2048, 4096]],
+                     [(256, 16, 2, 0, 0), [256]],
+                     [(256, 16, 2, 0, 0.25), [256, 1024, 2048, 4096]],
+                     [(256, 64, 2, 0, 0.25), [512, 2048]],
+                     [(256, 256, 2, 0, 0), [2048]],
+                     [(256, 256, 2, 0, 0.25), [512, 1024, 4096]]
+                    ])
+    """
+    """
+    # nn_models2
+    main(correction=[
+                     [(64, 16, 2, 0, 0.25), [256, 1024, 4096]],
+                     [(64, 64, 2, 0, 0.25), [2048]],
+                     [(64, 256, 2, 0, 0), [512]],
+                     [(256, 16, 2, 0, 0), [1024, 2048]],
+                     [(256, 16, 2, 0, 0.25), [512, 1024, 2048, 4096]],
+                     [(256, 64, 2, 0, 0.25), [512]],
+                     [(256, 256, 2, 0, 0), [256, 2048, 4096]],
+                     [(256, 256, 2, 0, 0.25), [256]]
+                    ])
+    """
+    """
+    # nn_models3
+    main(correction=[
+                     [(16, 16, 2, 0, 0.25), [512]],
+                     [(64, 16, 2, 0, 0), [1024, 2048]],
+                     [(64, 64, 2, 0, 0.25), [4096]],
+                     [(64, 256, 2, 0, 0), [256, 1024, 2048, 4096]],
+                     [(64, 256, 2, 0, 0.25), [256, 512, 1024, 2048]],
+                     [(256, 16, 2, 0, 0.25), [256, 1024, 4096]],
+                     [(256, 64, 2, 0, 0.25), [1024, 4096]],
+                     [(256, 256, 2, 0, 0), [512, 4096]],
+                     [(256, 256, 2, 0, 0.25), [512, 2048, 4096]]
+                    ])
+    """
