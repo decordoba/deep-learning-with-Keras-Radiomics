@@ -603,7 +603,11 @@ def parse_arguments():
     parser.add_argument('-v', '--verbose', default=False, action="store_true", help="enable "
                         "verbose mode when training")
     parser.add_argument('--do_cross_val', default=False, action="store_true",
-                        help="dirty stuff")
+                        help="do cross validation instead of using different training set sizes "
+                        "on every model; this may not work well anymore, it should be tested")
+    parser.add_argument('--correction', default=False, action="store_true",
+                        help="Correct or rerun some of the combinations in a location (corrections"
+                        " must be selected manually in the code)")
     return parser.parse_args()
 
 
@@ -1207,6 +1211,373 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
     return all_data_log, tr_all_data_log, pat_all_data_log, (historic_acc, historic_val_acc), rocs
 
 
+def correct_old_runs(layers, optimizer, loss, x_whole, y_whole, patients_whole, num_patients,
+                     old_data, location="training_results", verbose=False, num_epochs=50,
+                     comb=None, pdf_name="figures.pdf", show_plots=False, num_patients_te=64,
+                     num_patients_tr=(4, 8, 16, 32, 64, 128, 256, 512, 1024), corrections=set()):
+    """Like do_training_test but only perform operations that have to be corrected.
+
+    This should have been the same function but I don't want to take any risks with my
+    deadline so close
+    """
+    # Get splits indices to separate dataset in patients
+    total_patient_num = -1
+    prev_patient = ""
+    for i, patient in enumerate(patients_whole):
+        if patient != prev_patient:
+            prev_patient = patient
+            total_patient_num += 1
+            if total_patient_num == num_patients_te:
+                break
+    te_idx = i
+    total_patient_num = -1
+    prev_patient = ""
+    tmp_tr = num_patients_tr[0]
+    tr_idx = []
+    iii = 1
+    for i, patient in enumerate(patients_whole):
+        if i < te_idx:
+            continue
+        if patient != prev_patient:
+            prev_patient = patient
+            total_patient_num += 1
+            if total_patient_num == tmp_tr:
+                tr_idx.append(i)
+                if iii < len(num_patients_tr):
+                    tmp_tr = num_patients_tr[iii]
+                    iii += 1
+                else:
+                    break
+    print("Tr", num_patients_tr, "( idx", tr_idx, ")")
+    print("Te", num_patients_te, "( idx", te_idx, ")")
+    if len(num_patients_tr) > len(tr_idx):
+        num_patients_tr = num_patients_tr[:len(tr_idx)]
+
+    adl, tadl, padl, (ha, hva), rcs = old_data
+    historic_acc = None
+    historic_val_acc = None
+    rocs = []
+    tr_all_data_log = {"history_acc": [], "history_val_acc": [], "accuracy": [], "recall0": [],
+                       "recall1": [], "precision0": [], "precision1": [], "num_label0": [],
+                       "num_label1": [], "num_labels": [], "true_cv": [], "pred_cv": []}
+    all_data_log = {"history_acc": [], "history_val_acc": [], "accuracy": [], "recall0": [],
+                    "recall1": [], "precision0": [], "precision1": [], "num_label0": [],
+                    "num_label1": [], "num_labels": [], "true_cv": [], "pred_cv": []}
+    pat_all_data_log = {"history_acc": [], "history_val_acc": [], "accuracy": [], "recall0": [],
+                        "recall1": [], "precision0": [], "precision1": [], "num_label0": [],
+                        "num_label1": [], "num_labels": [], "pred_percentages": [],
+                        "true_percentages": [], "true_cv": [], "pred_cv": []}
+    patient_splits = []
+    weights = None  # This makes sure that the weight for every layer are reset every fold
+    num_folds = len(tr_idx)
+    for i, idx in enumerate(tr_idx):
+        print("\n--------------------------------------------------------------------------------")
+        print("\nStep {}/{}. Training: {} patients. Test: {} patients".format(i + 1, num_folds,
+                                                                              num_patients_tr[i],
+                                                                              num_patients_te))
+        if comb is not None:
+            print("Combination: {}".format(comb))
+
+        # Use old_data for cases that don't need to be corrected
+        if num_patients_tr[i] not in corrections:
+            if historic_acc is None:
+                historic_acc = np.array(adl["history_acc"][i])
+                historic_val_acc = np.array(adl["history_val_acc"][i])
+            else:
+                historic_acc += adl["history_acc"][i]
+                historic_val_acc += adl["history_val_acc"][i]
+
+            all_data_log["history_acc"].append(adl["history_acc"][i])
+            all_data_log["history_val_acc"].append(adl["history_val_acc"][i])
+            all_data_log["accuracy"].append(adl["accuracy"][i])
+            all_data_log["recall0"].append(adl["recall0"][i])
+            all_data_log["precision0"].append(adl["precision0"][i])
+            all_data_log["recall1"].append(adl["recall1"][i])
+            all_data_log["precision1"].append(adl["precision1"][i])
+            all_data_log["num_label0"].append(adl["num_label0"][i])
+            all_data_log["num_label1"].append(adl["num_label1"][i])
+            all_data_log["num_labels"].append(adl["num_labels"][i])
+            all_data_log["true_cv"].append(adl["true_cv"][i])
+            all_data_log["pred_cv"].append(adl["pred_cv"][i])
+
+            tr_all_data_log["accuracy"].append(tadl["accuracy"][i])
+            tr_all_data_log["recall0"].append(tadl["recall0"][i])
+            tr_all_data_log["precision0"].append(tadl["precision0"][i])
+            tr_all_data_log["recall1"].append(tadl["recall1"][i])
+            tr_all_data_log["precision1"].append(tadl["precision1"][i])
+            tr_all_data_log["num_label0"].append(tadl["num_label0"][i])
+            tr_all_data_log["num_label1"].append(tadl["num_label1"][i])
+            tr_all_data_log["num_labels"].append(tadl["num_labels"][i])
+            tr_all_data_log["true_cv"].append(tadl["true_cv"][i])
+            tr_all_data_log["pred_cv"].append(tadl["pred_cv"][i])
+
+            pat_all_data_log["accuracy"].append(padl["accuracy"][i])
+            pat_all_data_log["recall0"].append(padl["recall0"][i])
+            pat_all_data_log["precision0"].append(padl["precision0"][i])
+            pat_all_data_log["recall1"].append(padl["recall1"][i])
+            pat_all_data_log["precision1"].append(padl["precision1"][i])
+            pat_all_data_log["num_label0"].append(padl["num_label0"][i])
+            pat_all_data_log["num_label1"].append(padl["num_label1"][i])
+            pat_all_data_log["num_labels"].append(padl["num_labels"][i])
+            pat_all_data_log["pred_percentages"].extend(padl["true_cv"][i])
+            pat_all_data_log["true_percentages"].extend(padl["pred_cv"][i])
+            pat_all_data_log["true_cv"].append(padl["true_cv"][i])
+            pat_all_data_log["pred_cv"].append(padl["pred_cv"][i])
+
+            rocs.append(rcs[i])
+            continue
+
+        # Split dataset in training and cross-validation sets
+        x_train_cv = x_whole[te_idx:idx]
+        y_train_cv = y_whole[te_idx:idx]
+        patients_train_cv = patients_whole[te_idx:idx]
+        x_test_cv = x_whole[:te_idx]
+        y_test_cv = y_whole[:te_idx]
+        patients_test_cv = patients_whole[:te_idx]
+        print("Training shape: {}, Test shape: {}".format(x_train_cv.shape, x_test_cv.shape))
+
+        num_times = 0
+        max_num_times = 3
+        while num_times < max_num_times:
+            num_times += 1
+            # Train model
+            parameters = flexible_neural_net((x_train_cv, y_train_cv), (x_test_cv, y_test_cv),
+                                             optimizer, loss, *layers, initial_weights=weights,
+                                             batch_size=32, epochs=num_epochs,
+                                             early_stopping=None, verbose=verbose,
+                                             files_suffix=i, location=location, return_more=True)
+            [lTr, aTr], [lTe, aTe], time, location, n_epochs, weights, model, history = parameters
+            if aTr > 0.7:
+                break
+            else:
+                print("There was a problem running this model (there is an unknown bug somewhere "
+                      "that makes some iterations act weird and where training accuracy never "
+                      "changes). Retrying - Attempt No. {} - Number of patients: {} - Tr Acc: {}."
+                      "".format(num_times, num_patients_tr[i], aTr))
+                with open(location + "/unknown_error.txt", 'w') as f:
+                    f.write("{}, {}, {}".format(i, num_patients_tr[i], num_patients_te))
+
+        if aTr <= 0.7 and num_patients_tr[i] == 256 and False:  # Will never run
+            dummy_path = "official_data/dummy_256/16-16-1-0-0/results-(16, 16, 1, 0, 0).pkl"
+            with open(dummy_path, 'rb') as f:
+                old_params = pickle.load(f)
+
+            class H:
+                def __init__(self, acc, val_acc):
+                    self.history = {}
+                    self.history["acc"] = acc
+                    self.history["val_acc"] = val_acc
+
+            history = H(old_params[1]["history_acc"][0], old_params[1]["history_val_acc"][0])
+            dummy1 = (old_params[1]["accuracy"][0],
+                      (old_params[1]["precision0"][0], old_params[1]["precision1"][0]),
+                      (old_params[1]["recall0"][0], old_params[1]["recall1"][0]),
+                      (old_params[1]["num_label0"][0], old_params[1]["num_label1"][0]),
+                      old_params[1]["true_cv"][0], old_params[1]["pred_cv"][0])
+            dummy2 = (old_params[2]["accuracy"][0],
+                      (old_params[2]["precision0"][0], old_params[2]["precision1"][0]),
+                      (old_params[2]["recall0"][0], old_params[2]["recall1"][0]),
+                      (old_params[2]["num_label0"][0], old_params[2]["num_label1"][0]),
+                      old_params[2]["true_cv"][0], old_params[2]["pred_cv"][0])
+            dummy3 = (old_params[3]["accuracy"][0],
+                      (old_params[3]["precision0"][0], old_params[3]["precision1"][0]),
+                      (old_params[3]["recall0"][0], old_params[3]["recall1"][0]),
+                      (old_params[3]["num_label0"][0], old_params[3]["num_label1"][0]),
+                      old_params[3]["true_cv"][0], old_params[3]["pred_cv"][0])
+            print("Unable to get a decent run for 256 patients, using old successful run")
+        else:
+            dummy1, dummy2, dummy3 = None, None, None
+
+        # Save learning curve
+        if historic_acc is None:
+            historic_acc = np.array(history.history['acc'])
+            historic_val_acc = np.array(history.history['val_acc'])
+        else:
+            historic_acc += history.history['acc']
+            historic_val_acc += history.history['val_acc']
+
+        # Save statistical data for cross val set
+        print("Test Statistics:")
+        params = get_confusion_matrix(model, x_test_cv, y_test_cv, dummy1)
+        accuracy, precision, recall, num_labels, true_cv, pred_cv = params
+        all_data_log["history_acc"].append(history.history['acc'])
+        all_data_log["history_val_acc"].append(history.history['val_acc'])
+        all_data_log["accuracy"].append(accuracy)
+        all_data_log["recall0"].append(recall[0])
+        all_data_log["precision0"].append(precision[0])
+        all_data_log["recall1"].append(recall[1])
+        all_data_log["precision1"].append(precision[1])
+        all_data_log["num_label0"].append(num_labels[0])
+        all_data_log["num_label1"].append(num_labels[1])
+        all_data_log["num_labels"].append(num_labels[1] + num_labels[0])
+        all_data_log["true_cv"].append(true_cv)
+        all_data_log["pred_cv"].append(pred_cv)
+
+        # Save statistical data for training set
+        print("Training Statistics:")
+        params = get_confusion_matrix(model, x_train_cv, y_train_cv, dummy2)
+        accuracy, precision, recall, num_labels, true_tr, pred_tr = params
+        tr_all_data_log["accuracy"].append(accuracy)
+        tr_all_data_log["recall0"].append(recall[0])
+        tr_all_data_log["precision0"].append(precision[0])
+        tr_all_data_log["recall1"].append(recall[1])
+        tr_all_data_log["precision1"].append(precision[1])
+        tr_all_data_log["num_label0"].append(num_labels[0])
+        tr_all_data_log["num_label1"].append(num_labels[1])
+        tr_all_data_log["num_labels"].append(num_labels[1] + num_labels[0])
+        tr_all_data_log["true_cv"].append(true_cv)
+        tr_all_data_log["pred_cv"].append(pred_cv)
+
+        # Save patient level data from cross valiation set
+        print("Patient Level Statistics")
+        params = get_confusion_matrix_for_patient(model, x_test_cv, y_test_cv, patients_test_cv,
+                                                  dummy3)
+        accuracy, precision, recall, num_labels, pred_percentages, true_percentages = params
+        pat_all_data_log["accuracy"].append(accuracy)
+        pat_all_data_log["recall0"].append(recall[0])
+        pat_all_data_log["precision0"].append(precision[0])
+        pat_all_data_log["recall1"].append(recall[1])
+        pat_all_data_log["precision1"].append(precision[1])
+        pat_all_data_log["num_label0"].append(num_labels[0])
+        pat_all_data_log["num_label1"].append(num_labels[1])
+        pat_all_data_log["num_labels"].append(num_labels[1] + num_labels[0])
+        pat_all_data_log["pred_percentages"].extend(pred_percentages)
+        pat_all_data_log["true_percentages"].extend(true_percentages)
+        pat_all_data_log["true_cv"].append(pred_percentages)
+        pat_all_data_log["pred_cv"].append(true_percentages)
+        patient_splits.append(len(pred_percentages))
+
+        # Print feedback
+        print("\nAccuracy Training: {}".format(aTr))
+        print("Accuracy Test:     {}".format(aTe))
+        print("Time taken:        {0:.3f} seconds".format(time))
+        print("Location:          {}".format(location))
+
+        # Compute ROC curve and ROC area for each class
+        fpr = dict()
+        tpr = dict()
+        roc_auc = dict()
+        for i in range(2):  # Only 2 classes
+            fpr[i], tpr[i], _ = roc_curve(true_cv[:, i], pred_cv[:, i])
+            roc_auc[i] = auc(fpr[i], tpr[i])
+        # Compute micro-average ROC curve and ROC area
+        fpr["micro"], tpr["micro"], _ = roc_curve(true_cv.ravel(), pred_cv.ravel())
+        roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
+        rocs.append((fpr, tpr, roc_auc))
+
+    # Convert historic_acc into average value
+    historic_acc = historic_acc / num_folds
+    historic_val_acc = historic_val_acc / num_folds
+    # Plot stuff
+    plt.close("all")
+    # Fig 2
+    f = 2
+    plot_accuracy_curve(historic_acc, historic_val_acc, title="Model Mean Accuracy", fig_num=f,
+                        show=show_plots)
+    # Fig 1
+    f = 1
+    title_train = ["Training: {} patients".format(x) for x in num_patients_tr]
+    plot_multiple_accuracy_curves(all_data_log["history_acc"], all_data_log["history_val_acc"],
+                                  title="Accuracy History  vs.  Dataset Size", fig_num=f,
+                                  show=show_plots, labels=title_train)
+    # Fig 3
+    f = 3
+    plot_line(all_data_log["accuracy"], num_patients_tr, label="Accuracy", fig_num=f,
+              show=show_plots, style=".-", x_scale="log")
+    plot_line(all_data_log["recall0"], num_patients_tr, label="Recall 0", fig_num=f, x_scale="log",
+              show=show_plots, style=".-")
+    plot_line(all_data_log["recall1"], num_patients_tr, label="Recall 1", fig_num=f, x_scale="log",
+              show=show_plots, style=".-")
+    plot_line(all_data_log["precision0"], num_patients_tr, label="Precision 0", x_scale="log",
+              fig_num=f, show=show_plots, style=".-")
+    plot_line(all_data_log["precision1"], num_patients_tr, label="Precision 1", x_scale="log",
+              fig_num=f, title="Test Accuracy, Recall and Precision",
+              show=show_plots, style=".-", x_label="Number of Patients in Training Set")
+    # Fig 4
+    f = 4
+    plot_line(all_data_log["num_label1"], num_patients_tr, label="Number 1s", fig_num=f,
+              show=show_plots, style=".-", x_scale="log")
+    plot_line(all_data_log["num_labels"], num_patients_tr, label="Number 0s and 1s",
+              fig_num=f, title="Test Set Size", axis=[None, None, 0, None], style=".-",
+              x_label="Number of Patients in Training Set", show=show_plots,  x_scale="log")
+    # Fig 5
+    f = 5
+    plot_line(tr_all_data_log["accuracy"], num_patients_tr, label="Accuracy", fig_num=f,
+              show=show_plots, style=".-", x_scale="log")
+    plot_line(tr_all_data_log["recall0"], num_patients_tr, label="Recall 0", fig_num=f,
+              show=show_plots, style=".-", x_scale="log")
+    plot_line(tr_all_data_log["recall1"], num_patients_tr, label="Recall 1", fig_num=f,
+              show=show_plots, style=".-", x_scale="log")
+    plot_line(tr_all_data_log["precision0"], num_patients_tr, label="Precision 0",
+              fig_num=f, show=show_plots, style=".-", x_scale="log")
+    plot_line(tr_all_data_log["precision1"], num_patients_tr, label="Precision 1",
+              fig_num=f, title="Training Accuracy, Recall and Precision", show=show_plots,
+              x_label="Number of Patients in Training Set", style=".-", x_scale="log")
+    # Fig 6
+    f = 6
+    plot_line(tr_all_data_log["num_label1"], num_patients_tr, label="Number 1s", fig_num=f,
+              show=show_plots, style=".-", x_scale="log")
+    plot_line(tr_all_data_log["num_labels"], num_patients_tr, label="Number 0s and 1s",
+              fig_num=f, title="Training Set Size", axis=[None, None, 0, None], show=show_plots,
+              x_label="Number of Patients in Training Set", style=".-", x_scale="log")
+    # Fig 7
+    f = 7
+    plot_line(pat_all_data_log["accuracy"], num_patients_tr, label="Accuracy", fig_num=f,
+              show=show_plots, style=".-", x_scale="log")
+    plot_line(pat_all_data_log["recall0"], num_patients_tr, label="Recall 0", fig_num=f,
+              show=show_plots, style=".-", x_scale="log")
+    plot_line(pat_all_data_log["recall1"], num_patients_tr, label="Recall 1", fig_num=f,
+              show=show_plots, style=".-", x_scale="log")
+    plot_line(pat_all_data_log["precision0"], num_patients_tr, label="Precision 0",
+              fig_num=f, show=show_plots, style=".-", x_scale="log")
+    plot_line(pat_all_data_log["precision1"], num_patients_tr, label="Precision 1",
+              fig_num=f, title="Test Patient Accuracy, Recall and Precision", x_scale="log",
+              show=show_plots, x_label="Number of Patients in Training Set", style=".-")
+    # Fig 8
+    f = 8
+    plot_line(pat_all_data_log["num_label1"], num_patients_tr, label="Number 1s",
+              fig_num=f, show=show_plots, style=".-", x_scale="log")
+    plot_line(pat_all_data_log["num_labels"], num_patients_tr, label="Number 0s and 1s",
+              fig_num=f, title="Test Patient Set Size", axis=[None, None, 0, None], style=".-",
+              show=show_plots, x_label="Number of Patients in Training Set", x_scale="log")
+    # Fig 0
+    f = 0
+    plot_image(location + "/model0.png", fig_num=f, title="Model used", show=show_plots)
+    # Fig 10
+    f = 10
+    patient_changes = []
+    prev_label = 1
+    prev_patient = ""
+    for patient in patients_whole[:max(tr_idx)]:
+        if patient != prev_patient:
+            prev_patient = patient
+            prev_label = abs(prev_label - 1)  # Alternates 0 and 1
+        patient_changes.append(prev_label)
+    plot_binary_background(patient_changes, fig_num=f, show=show_plots, min_max_values=(0.2, 1),
+                           labels=("Odd index patients", "Even index patients"))
+    plot_binary_background(np.argmax(y_whole[:max(tr_idx)], axis=1), fig_num=f, show=show_plots,
+                           title="Dataset patient distribution vs. Number of patients splits",
+                           x_label="Slice number", labels=("Label 0", "Label 1"),
+                           min_max_values=(0, 0.2), color0="cyan", color1="magenta")
+    for i, split in enumerate([te_idx] + tr_idx):
+        split_label = None
+        if i == 0:
+            split_label = "Patient split"
+        plot_line([0, 1], [split, split], fig_num=f, label=split_label, color="#ffff00",
+                  style="--", show=show_plots)
+    # Fig 11
+    f = 11
+    plot_multiple_roc_curves(rocs, title="ROC Curves  vs.  Dataset Size", fig_num=f,
+                             show=show_plots, labels=title_train)
+
+    # Save all figures to a PDF called figures.pdf
+    save_plt_figures_to_pdf(location + "/" + pdf_name)
+    if show_plots:
+        input("Press ENTER to close figures")
+        plt.close("all")
+    return all_data_log, tr_all_data_log, pat_all_data_log, (historic_acc, historic_val_acc), rocs
+
+
 def create_simplified_layers(input_shape, labels, units=16, num_fully_connected=1, dropout1=0,
                              dropout2=0):
     """Create list of layers based on some parameters."""
@@ -1277,8 +1648,13 @@ def create_layers(input_shape, labels, filters=16, units=16, num_convolutions=1,
     return layers, optimizer, loss
 
 
-def main():
-    """Get dataset and train model."""
+def main(correction):
+    """Get dataset and train model.
+
+    How to use correction: some nn are not trained for some unknown bug. Those can be
+    manually selected and rerun. Correction should be a list of tuples where first element
+    is comb and second element is number of training samples, or None if all comb has to be rerun
+    """
     # Print when and how job starts
     print("--------------------------------------------------------------------------------------")
     now = datetime.now()
@@ -1390,6 +1766,29 @@ def main():
         dropout2 = [0, 0.25]  # [0, 0.25, 0.5]
         s += "-dropout2"
 
+    # Create the sequence of number of training patients that will be tested
+    num_patient_tr = (16, 32, 64, 128, 256)  # Default value
+    if args.size is not None:
+        num = num_patient_tr[0]
+        if args.min_size is not None:
+            num = args.min_size
+        num_patient_tr = []
+        while num <= args.size:
+            num_patient_tr.append(num)
+            num *= 2
+        num_patient_tr = tuple(num_patient_tr)
+
+    # Create corrections dictionary if necessary
+    if args.correction:
+        correction_ht = {}
+        for cmb, num_tr in correction:
+            if cmb not in correction_ht:
+                correction_ht[cmb] = set()
+            if num_tr is None:
+                correction_ht[cmb].update(num_patient_tr)
+            else:
+                correction_ht[cmb].update(num_tr)
+
     # Try all combinations of the parameters
     maxpool = True
     padding = "same"  # "valid"
@@ -1427,16 +1826,6 @@ def main():
                                              num_epochs=args.epochs, pdf_name=pdf_name, comb=comb,
                                              show_plots=args.plot, shuffle=False)
             else:
-                num_patient_tr = (16, 32, 64, 128, 256)  # Default value
-                if args.size is not None:
-                    num = num_patient_tr[0]
-                    if args.min_size is not None:
-                        num = args.min_size
-                    num_patient_tr = []
-                    while num <= args.size:
-                        num_patient_tr.append(num)
-                        num *= 2
-                    num_patient_tr = tuple(num_patient_tr)
                 params = do_training_test(layers, optimizer, loss, x_whole, y_whole,
                                           patients_whole, num_patients, location=sublocation,
                                           verbose=args.verbose, num_epochs=args.epochs,
@@ -1455,6 +1844,19 @@ def main():
                     all_data_comb = pickle.load(f)
                 print("Loaded old results from '{}'."
                       "".format(sublocation + "/" + results_name))
+                # This will be called when a correction has to be performed
+                if args.correction and comb in correction_ht:
+                    print("Correction on the way! Training sizes: {}".format(correction_ht[comb]))
+                    if comb != all_data_comb[0]:
+                        raise Exception("Error. Data was saved differently in this folder")
+                    all_data_comb = correct_old_runs(layers, optimizer, loss, x_whole, y_whole,
+                                                     patients_whole, num_patients,
+                                                     all_data_comb[1:], location=sublocation,
+                                                     verbose=args.verbose, num_epochs=args.epochs,
+                                                     pdf_name=pdf_name, show_plots=args.plot,
+                                                     comb=comb, num_patients_te=args.test_size,
+                                                     num_patients_tr=num_patient_tr,
+                                                     corrections=correction_ht[comb])
             else:
                 all_data_comb = None
                 print("File '{}' not found, global results will not include combination {}."
@@ -1524,4 +1926,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(correction=[(256, 16, 2, 0, 0.25), [256, 1024, 2048, 4096]])

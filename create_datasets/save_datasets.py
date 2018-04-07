@@ -1056,7 +1056,7 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
 
     # Data augmentation
     if augment_bootstrap is not None:
-        print("\nAugmenting data boostraping (Num samples: {})...".format(augment_bootstrap))
+        print("\nAugmenting data boostraping (number samples: {})...".format(augment_bootstrap))
         # Training set and test set done together (there may be same patient in training and test)
         train_test_split = (augment_bootstrap * len(train_set_y) /
                             (len(test_set_y) + len(train_set_y)))
