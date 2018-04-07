@@ -158,6 +158,8 @@ def parse_arguments():
                         "verbose mode when training")
     parser.add_argument('-dr', '--dry_run', default=False, action="store_true", help="do not "
                         "save pdf with results")
+    parser.add_argument('-sd', '--save_dataset', default=False, action="store_true", help="save "
+                        "a features dataset (mean, std, volume...)")
     parser.add_argument('-f', '--factor', default=False, action="store_true",
                         help="multiply all data by 255")
     return parser.parse_args()
@@ -243,6 +245,9 @@ def main():
     patients = set()
     gray_values = [[], []]
     masked_gray_values = [[], []]
+    dataset_x = []
+    dataset_y = []
+    dataset_info = ""
     for i, (x, y, m, p) in enumerate(zip(x_whole, y_whole, mask_whole, patients_whole)):
         if p in patients:
             input("Repeated patient '{}'. This should never happen.".format(p))
@@ -258,7 +263,6 @@ def main():
         dissimilarity, correlation, asm = get_glcm_statistics(x)
         gray_values[label].extend(list(x.flatten()))
         masked_gray_values[label].extend(list(x[mask_positions]))
-
         if args.verbose:
             print("Label:              {}".format(label))
             print("Mean:               {}".format(mean))
@@ -276,6 +280,10 @@ def main():
         metrics[label]["glcm_dissimilarity"].append(dissimilarity)
         metrics[label]["glcm_correlation"].append(correlation)
         metrics[label]["glcm_asm"].append(asm)
+        if args.save_dataset:
+            dataset_info = "mean_std_volume"
+            dataset_x.append([mean, std_dev, volume])
+            dataset_y.append(y)
 
     # Calculate how different samples are
     print("KS_2SAMP similarity for masked pixels only:")
@@ -284,6 +292,17 @@ def main():
     print("KS_2SAMP similarity for all pixels:")
     calculate_similarity(gray_values[0], gray_values[1])
     print(" ")
+
+    if args.save_dataset:
+        dataset_x = np.array(dataset_x)
+        dataset_y = np.array(dataset_y)
+        print("Saving dataset with following characteristics:")
+        print("    Data saved: {}".format(dataset_info))
+        print("    X shape:    {}".format(dataset_x.shape))
+        print("    Y shape:    {}".format(dataset_y.shape))
+        dataset_name = "features_dataset_{}".format(dataset_info)
+        np.savez(dataset_name, x=dataset_x, y=dataset_y)
+        print("Dataset saved in: '{}.npz'".format(dataset_name))
 
     # Create figures of metrics that will be saved and/or plotted
     f = 0
