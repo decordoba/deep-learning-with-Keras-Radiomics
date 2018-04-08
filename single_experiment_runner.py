@@ -1893,6 +1893,7 @@ def main(correction):
                                                      comb=comb, num_patients_te=args.test_size,
                                                      num_patients_tr=num_patient_tr,
                                                      corrections=correction_ht[comb])
+                    all_data_comb = (comb, ) + all_data_comb
             else:
                 all_data_comb = None
                 print("File '{}' not found, global results will not include combination {}."
