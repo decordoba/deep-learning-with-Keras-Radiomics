@@ -1885,15 +1885,19 @@ def main(correction):
                           "".format(correction_ht[comb]))
                     if comb != all_data_comb[0]:
                         raise Exception("Error. Data was saved differently in this folder")
-                    all_data_comb = correct_old_runs(layers, optimizer, loss, x_whole, y_whole,
-                                                     patients_whole, num_patients,
-                                                     all_data_comb[1:], location=sublocation,
-                                                     verbose=args.verbose, num_epochs=args.epochs,
-                                                     pdf_name=pdf_name, show_plots=args.plot,
-                                                     comb=comb, num_patients_te=args.test_size,
-                                                     num_patients_tr=num_patient_tr,
-                                                     corrections=correction_ht[comb])
-                    all_data_comb = (comb, ) + all_data_comb
+                    # Correct selected runs
+                    params = correct_old_runs(layers, optimizer, loss, x_whole, y_whole,
+                                              patients_whole, num_patients,
+                                              all_data_comb[1:], location=sublocation,
+                                              verbose=args.verbose, num_epochs=args.epochs,
+                                              pdf_name=pdf_name, show_plots=args.plot,
+                                              comb=comb, num_patients_te=args.test_size,
+                                              num_patients_tr=num_patient_tr,
+                                              corrections=correction_ht[comb])
+                    all_data_comb = (comb, *params)
+                    # Save corrected results
+                    with open(sublocation + "/" + results_name, 'wb') as f:
+                        pickle.dump(all_data_comb, f)
             else:
                 all_data_comb = None
                 print("File '{}' not found, global results will not include combination {}."
