@@ -6,6 +6,7 @@ import os
 import pickle
 import sys
 from datetime import datetime
+from cycler import cycler
 from matplotlib import pyplot as plt
 import matplotlib.image as mpimg
 from matplotlib.backends.backend_pdf import PdfPages
@@ -19,6 +20,15 @@ from sklearn.metrics import classification_report, confusion_matrix, roc_curve, 
 from keras_utils import flexible_neural_net
 sys.path.insert(0, 'create_datasets')
 from save_datasets import analyze_data
+
+
+# Cycle colors from normal line to dotted line (allows to tell 20 plots apart)
+plt.rc('axes', prop_cycle=(cycler('color', ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728',
+                                            '#9467bd', '#8c564b', '#e377c2', '#7f7f7f',
+                                            '#bcbd22', '#17becf', '#1f77b4', '#ff7f0e',
+                                            '#2ca02c', '#d62728', '#9467bd', '#8c564b',
+                                            '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']) +
+                           cycler('linestyle', ['-'] * 10 + ['--'] * 10)))
 
 
 def plot_slices(volume, title=None, fig_num=0, filename=None, show=True):
@@ -227,9 +237,10 @@ def transform_curves_to_plot(y_pts, x_pts):
     return (new_y_pts, new_x_pts)
 
 
-def plot_line(y_pts, x_pts=None, y_label=None, x_label=None, title=None, axis=None, style="-",
+def plot_line(y_pts, x_pts=None, y_label=None, x_label=None, title=None, axis=None, style=None,
               color=None, y_scale="linear", x_scale="linear", label=None, fig_num=0, show=True,
-              filename=None, n_ticks=None, linewidth=None, logbase=2):
+              filename=None, n_ticks=None, linewidth=None, logbase=2, legend_out=False,
+              figsize=None, marker=None, linestyle=None):
     """Plot one or several 1D or 2D lines or point clouds.
 
     :param y_pts: y coordinates. A list of list can represent several lines
@@ -248,37 +259,58 @@ def plot_line(y_pts, x_pts=None, y_label=None, x_label=None, title=None, axis=No
     """
     if filename is None and show:
         plt.ion()
-    fig = plt.figure(fig_num)
+    if figsize is not None:
+        fig = plt.figure(fig_num, figsize=figsize)
+    else:
+        fig = plt.figure(fig_num)
+    ax = plt.subplot(111)
     if x_pts is None:
-        plt.plot(y_pts, style, color=color, linewidth=linewidth, label=label)
+        if style is None:
+            ax.plot(y_pts, marker=marker, linestyle=linestyle, color=color, linewidth=linewidth,
+                    label=label)
+        else:
+            ax.plot(y_pts, style, marker=marker, linestyle=linestyle, color=color,
+                    linewidth=linewidth, label=label)
     else:
         if isinstance(y_pts, list) and isinstance(y_pts[0], list):
             (y_pts, x_pts) = transform_curves_to_plot(y_pts, x_pts)
-        plt.plot(x_pts, y_pts, style, color=color, linewidth=linewidth, label=label)
+        if style is None:
+            ax.plot(x_pts, y_pts, marker=marker, linestyle=linestyle, color=color,
+                    linewidth=linewidth, label=label)
+        else:
+            ax.plot(x_pts, y_pts, style, marker=marker, linestyle=linestyle, color=color,
+                    linewidth=linewidth, label=label)
     if y_label is not None:
-        plt.ylabel(y_label)
+        ax.set_ylabel(y_label)
     if x_label is not None:
-        plt.xlabel(x_label)
+        ax.set_xlabel(x_label)
     if title is not None:
         plt.title(title)
         fig.canvas.set_window_title("Figure {} - {}".format(fig_num, title))
     if axis is not None:
-        plt.axis(axis)
+        ax.set_axis(axis)
     if x_scale == "log":
-        plt.xscale(x_scale, basex=logbase)
+        ax.set_xscale(x_scale, basex=logbase)
     else:
-        plt.xscale(x_scale)
+        ax.set_xscale(x_scale)
     if y_scale == "log":
-        plt.yscale(y_scale, basey=logbase)
+        ax.set_yscale(y_scale, basey=logbase)
     else:
-        plt.yscale(y_scale)
+        ax.set_yscale(y_scale)
     if n_ticks is not None:
         if n_ticks[0] is not None:
             plt.locator_params(axis='x', nbins=n_ticks[0])
         if n_ticks[1] is not None:
             plt.locator_params(axis='y', nbins=n_ticks[1])
+    if legend_out:
+        # Reduce box width by 20%
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0, box.width * 0.75, box.height])
     if label is not None:
-        plt.legend()
+        if legend_out:
+            plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        else:
+            plt.legend()
     plt.draw()
     if filename is None:
         if show:
@@ -1876,39 +1908,51 @@ def main(correction):
         title = "Cross Validation"
     else:
         title = "Test"
-    for comb, all_cv, all_train, pat_cv, history, rocs in all_data:
-        plot_line(all_cv["accuracy"], label=str(comb), fig_num=0, show=show_plots, style=".-",
-                  title="{} Accuracy".format(title))
-        plot_line(all_cv["recall0"], label=str(comb), fig_num=1, show=show_plots, style=".-",
-                  title="{} Recall (0)".format(title))
-        plot_line(all_cv["recall1"], label=str(comb), fig_num=2, show=show_plots, style=".-",
-                  title="{} Recall (1)".format(title))
-        plot_line(all_cv["precision0"], label=str(comb), fig_num=3, show=show_plots, style=".-",
-                  title="{} Precision (0)".format(title))
-        plot_line(all_cv["precision1"], label=str(comb), fig_num=4, show=show_plots, style=".-",
-                  title="{} Precision (1)".format(title))
+    last_idx = len(all_data) - 1
+    wider_figsize = list(plt.rcParams.get('figure.figsize'))
+    wider_figsize[0] += 2.1
+    for i, (comb, all_cv, all_train, pat_cv, history, rocs) in enumerate(all_data):
+        figsize = wider_figsize if i == 0 else None
 
-        plot_line(all_train["accuracy"], label=str(comb), fig_num=5, show=show_plots, style=".-",
-                  title="Training Accuracy")
-        plot_line(all_train["recall0"], label=str(comb), fig_num=6, show=show_plots, style=".-",
-                  title="Training Recall (0)")
-        plot_line(all_train["recall1"], label=str(comb), fig_num=7, show=show_plots, style=".-",
-                  title="Training Recall (1)")
-        plot_line(all_train["precision0"], label=str(comb), fig_num=8, show=show_plots, style=".-",
-                  title="Training Precision (0)")
-        plot_line(all_train["precision1"], label=str(comb), fig_num=9, show=show_plots, style=".-",
-                  title="Training Precision (1)")
+        plot_line(all_cv["accuracy"], label=str(comb), fig_num=0, show=show_plots, marker=".",
+                  title="{} Accuracy".format(title), legend_out=(i == last_idx), figsize=figsize)
+        plot_line(all_cv["recall0"], label=str(comb), fig_num=1, show=show_plots, marker=".",
+                  title="{} Recall (0)".format(title), legend_out=(i == last_idx), figsize=figsize)
+        plot_line(all_cv["recall1"], label=str(comb), fig_num=2, show=show_plots, marker=".",
+                  title="{} Recall (1)".format(title), legend_out=(i == last_idx), figsize=figsize)
+        plot_line(all_cv["precision0"], label=str(comb), fig_num=3, show=show_plots, marker=".",
+                  title="{} Precision (0)".format(title), legend_out=(i == last_idx),
+                  figsize=figsize)
+        plot_line(all_cv["precision1"], label=str(comb), fig_num=4, show=show_plots, marker=".",
+                  title="{} Precision (1)".format(title), legend_out=(i == last_idx),
+                  figsize=figsize)
 
-        plot_line(pat_cv["accuracy"], label=str(comb), fig_num=10, show=show_plots, style=".-",
-                  title="{} Patient Accuracy".format(title))
-        plot_line(pat_cv["recall0"], label=str(comb), fig_num=11, show=show_plots, style=".-",
-                  title="{} Patient Recall (0)".format(title))
-        plot_line(pat_cv["recall1"], label=str(comb), fig_num=12, show=show_plots, style=".-",
-                  title="{} Patient Recall (1)".format(title))
-        plot_line(pat_cv["precision0"], label=str(comb), fig_num=13, show=show_plots, style=".-",
-                  title="{} Patient Precision (0)".format(title))
-        plot_line(pat_cv["precision1"], label=str(comb), fig_num=14, show=show_plots, style=".-",
-                  title="{} Patient Precision (1)".format(title))
+        plot_line(all_train["accuracy"], label=str(comb), fig_num=5, show=show_plots, marker=".",
+                  title="Training Accuracy", legend_out=(i == last_idx), figsize=figsize)
+        plot_line(all_train["recall0"], label=str(comb), fig_num=6, show=show_plots, marker=".",
+                  title="Training Recall (0)", legend_out=(i == last_idx), figsize=figsize)
+        plot_line(all_train["recall1"], label=str(comb), fig_num=7, show=show_plots, marker=".",
+                  title="Training Recall (1)", legend_out=(i == last_idx), figsize=figsize)
+        plot_line(all_train["precision0"], label=str(comb), fig_num=8, show=show_plots, marker=".",
+                  title="Training Precision (0)", legend_out=(i == last_idx), figsize=figsize)
+        plot_line(all_train["precision1"], label=str(comb), fig_num=9, show=show_plots, marker=".",
+                  title="Training Precision (1)", legend_out=(i == last_idx), figsize=figsize)
+
+        plot_line(pat_cv["accuracy"], label=str(comb), fig_num=10, show=show_plots, marker=".",
+                  title="{} Patient Accuracy".format(title), legend_out=(i == last_idx),
+                  figsize=figsize)
+        plot_line(pat_cv["recall0"], label=str(comb), fig_num=11, show=show_plots, marker=".",
+                  title="{} Patient Recall (0)".format(title), legend_out=(i == last_idx),
+                  figsize=figsize)
+        plot_line(pat_cv["recall1"], label=str(comb), fig_num=12, show=show_plots, marker=".",
+                  title="{} Patient Recall (1)".format(title), legend_out=(i == last_idx),
+                  figsize=figsize)
+        plot_line(pat_cv["precision0"], label=str(comb), fig_num=13, show=show_plots, marker=".",
+                  title="{} Patient Precision (0)".format(title), legend_out=(i == last_idx),
+                  figsize=figsize)
+        plot_line(pat_cv["precision1"], label=str(comb), fig_num=14, show=show_plots, marker=".",
+                  title="{} Patient Precision (1)".format(title), legend_out=(i == last_idx),
+                  figsize=figsize)
 
         plot_line(history[0], label=str(comb) + " training", fig_num=15, show=show_plots,
                   title="Training History")
