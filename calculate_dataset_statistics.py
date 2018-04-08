@@ -283,7 +283,7 @@ def main():
         if args.save_dataset:
             dataset_info = "mean_std_volume"
             dataset_x.append([mean, std_dev, volume])
-            dataset_y.append(y)
+            dataset_y.append(label)
 
     # Calculate how different samples are
     print("KS_2SAMP similarity for masked pixels only:")
@@ -296,13 +296,13 @@ def main():
     if args.save_dataset:
         dataset_x = np.array(dataset_x)
         dataset_y = np.array(dataset_y)
-        print("Saving dataset with following characteristics:")
+        print("Saving dataset with the following characteristics:")
         print("    Data saved: {}".format(dataset_info))
         print("    X shape:    {}".format(dataset_x.shape))
         print("    Y shape:    {}".format(dataset_y.shape))
         dataset_name = "features_dataset_{}".format(dataset_info)
         np.savez(dataset_name, x=dataset_x, y=dataset_y)
-        print("Dataset saved in: '{}.npz'".format(dataset_name))
+        print("Dataset saved in: '{}.npz'\n".format(dataset_name))
 
     # Create figures of metrics that will be saved and/or plotted
     f = 0
