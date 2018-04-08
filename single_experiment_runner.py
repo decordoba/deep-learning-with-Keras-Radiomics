@@ -1955,10 +1955,10 @@ def main(correction):
                   title="{} Patient Precision (1)".format(title), legend_out=(i == last_idx),
                   figsize=figsize)
 
-        plot_line(history[0], label=str(comb) + " training", fig_num=15, show=show_plots,
-                  title="Training History")
-        plot_line(history[1], label=str(comb) + " test", fig_num=15, show=show_plots,
-                  title="Training History")
+        plot_line(history[0], label=str(comb), fig_num=15, show=show_plots, figsize=figsize,
+                  title="Mean Training Accuracy History", legend_out=(i == last_idx))
+        plot_line(history[1], label=str(comb), fig_num=16, show=show_plots, figsize=figsize,
+                  title="Mean Test Accuracy History", legend_out=(i == last_idx))
     # Save PDF results
     save_plt_figures_to_pdf(location + "/figures{}.pdf".format(s))
     # Show plots
