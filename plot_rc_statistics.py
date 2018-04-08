@@ -2,83 +2,10 @@
 from __future__ import division, print_function, absolute_import
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.patches import Circle
-from matplotlib.collections import PatchCollection
 import operator
 import sys
 sys.path.insert(0, 'create_datasets')
 from save_datasets import save_plt_figures_to_pdf
-
-
-def circles(x, y, s, c='b', vmin=None, vmax=None, **kwargs):
-    """Make a scatter plot of circles.
-
-    Similar to plt.scatter, but the size of circles are in data scale.
-    Parameters
-    ----------
-    x, y : scalar or array_like, shape (n, )
-        Input data
-    s : scalar or array_like, shape (n, )
-        Radius of circles.
-    c : color or sequence of color, optional, default : 'b'
-        `c` can be a single color format string, or a sequence of color
-        specifications of length `N`, or a sequence of `N` numbers to be
-        mapped to colors using the `cmap` and `norm` specified via kwargs.
-        Note that `c` should not be a single numeric RGB or RGBA sequence
-        because that is indistinguishable from an array of values
-        to be colormapped. (If you insist, use `color` instead.)
-        `c` can be a 2-D array in which the rows are RGB or RGBA, however.
-    vmin, vmax : scalar, optional, default: None
-        `vmin` and `vmax` are used in conjunction with `norm` to normalize
-        luminance data.  If either are `None`, the min and max of the
-        color array is used.
-    kwargs : `~matplotlib.collections.Collection` properties
-        Eg. alpha, edgecolor(ec), facecolor(fc), linewidth(lw), linestyle(ls),
-        norm, cmap, transform, etc.
-    Returns
-    -------
-    paths : `~matplotlib.collections.PathCollection`
-    Examples
-    --------
-    a = np.arange(11)
-    circles(a, a, s=a*0.2, c=a, alpha=0.5, ec='none')
-    plt.colorbar()
-    License
-    --------
-    This code is under [The BSD 3-Clause License]
-    (http://opensource.org/licenses/BSD-3-Clause)
-    """
-    if np.isscalar(c):
-        kwargs.setdefault('color', c)
-        c = None
-
-    if 'fc' in kwargs:
-        kwargs.setdefault('facecolor', kwargs.pop('fc'))
-    if 'ec' in kwargs:
-        kwargs.setdefault('edgecolor', kwargs.pop('ec'))
-    if 'ls' in kwargs:
-        kwargs.setdefault('linestyle', kwargs.pop('ls'))
-    if 'lw' in kwargs:
-        kwargs.setdefault('linewidth', kwargs.pop('lw'))
-    # You can set `facecolor` with an array for each patch,
-    # while you can only set `facecolors` with a value for all.
-
-    zipped = np.broadcast(x, y, s)
-    patches = [Circle((x_, y_), s_)
-               for x_, y_, s_ in zipped]
-    collection = PatchCollection(patches, **kwargs)
-    if c is not None:
-        c = np.broadcast_to(c, zipped.shape).ravel()
-        collection.set_array(c)
-        collection.set_clim(vmin, vmax)
-
-    ax = plt.gca()
-    ax.add_collection(collection)
-    ax.autoscale_view()
-    plt.draw_if_interactive()
-    if c is not None:
-        plt.sci(collection)
-    return collection
 
 
 def plot_statistics_for_r_c(statistics_file, plot=False, static_statistics=None,
@@ -146,13 +73,13 @@ def plot_statistics_for_r_c(statistics_file, plot=False, static_statistics=None,
         print("Generating figurese ...")
         for i in range(statistics.shape[1]):
             values = statistics[:, i]
-            fig = plt.figure()
+            plt.figure()
             plt.scatter(c, r, c=values)
             plt.colorbar()
             plt.title(names[i])
             plt.xlabel("C")
             plt.ylabel("R")
-            fig = plt.figure()
+            plt.figure()
             ax = plt.subplot(111)
             for k in unique_r:
                 plt.plot(unique_c, statistics[ht[k], i], label="R: {}".format(k))
@@ -162,7 +89,7 @@ def plot_statistics_for_r_c(statistics_file, plot=False, static_statistics=None,
                     st = [":", "--", "-.", "-"][kk % 4]
                     if i < len(static_statistics[k]):
                         plt.axhline(y=static_statistics[k][i], color="k", linestyle=st, label=k)
-            # Reduce box height by 10%
+            # Reduce box width by 20%
             box = ax.get_position()
             ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
             plt.title(names[i])
@@ -250,10 +177,10 @@ if __name__ == "__main__":
                          "real label 1": r_mean1 + r_median1 + r_std1}
     """
     27 metrics: 9 x 3 (9 are written below, 3 are mean, median and std in this order)
-    'mean', 'median', 'stddev', 'surface', 'volume', 'surf_vol_ratio', 'dissimilarity', 'correlation', 'asm',
+    'mean', 'median', 'stddev', 'surface', 'volume', 'surf_vol_ratio', 'dissimilarity',
+    'correlation', 'asm',
     """
     comp_metrics = [9, 11, 15]  # median mean, median stddev and median dissimilarity
     statistics_location = "create_datasets/artificial_images/statistics.csv"
     plot_statistics_for_r_c(statistics_location, static_statistics=static_statistics,
                             comparison_metrics=comp_metrics, skip_plots=False, verbose=False)
-
