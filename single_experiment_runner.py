@@ -1916,53 +1916,72 @@ def main(correction):
     last_idx = len(all_data) - 1
     wider_figsize = list(plt.rcParams.get('figure.figsize'))
     wider_figsize[0] += 2.1
+    if args.do_cross_val:
+        x_axis = range(1, args.folds + 1)
+        x_scale = "linear"
+        x_label = "Cross Validation Fold Number"
+    else:
+        x_axis = num_patient_tr
+        x_scale = "log"
+        x_label = "Number of Patients in Training Set"
+    x_history = range(1, args.epochs + 1)
     for i, (comb, all_cv, all_train, pat_cv, history, rocs) in enumerate(all_data):
         figsize = wider_figsize if i == 0 else None
 
-        plot_line(all_cv["accuracy"], label=str(comb), fig_num=0, show=show_plots, marker=".",
-                  title="{} Accuracy".format(title), legend_out=(i == last_idx), figsize=figsize)
-        plot_line(all_cv["recall0"], label=str(comb), fig_num=1, show=show_plots, marker=".",
-                  title="{} Recall (0)".format(title), legend_out=(i == last_idx), figsize=figsize)
-        plot_line(all_cv["recall1"], label=str(comb), fig_num=2, show=show_plots, marker=".",
-                  title="{} Recall (1)".format(title), legend_out=(i == last_idx), figsize=figsize)
-        plot_line(all_cv["precision0"], label=str(comb), fig_num=3, show=show_plots, marker=".",
-                  title="{} Precision (0)".format(title), legend_out=(i == last_idx),
-                  figsize=figsize)
-        plot_line(all_cv["precision1"], label=str(comb), fig_num=4, show=show_plots, marker=".",
-                  title="{} Precision (1)".format(title), legend_out=(i == last_idx),
-                  figsize=figsize)
+        plot_line(all_cv["accuracy"], x_axis, label=str(comb), fig_num=0, show=show_plots,
+                  marker=".", x_label=x_label, x_scale=x_scale, figsize=figsize,
+                  title="{} Accuracy".format(title), legend_out=(i == last_idx))
+        plot_line(all_cv["recall0"], x_axis, label=str(comb), fig_num=1, show=show_plots,
+                  marker=".", x_label=x_label, x_scale=x_scale, figsize=figsize,
+                  title="{} Recall (0)".format(title), legend_out=(i == last_idx))
+        plot_line(all_cv["recall1"], x_axis, label=str(comb), fig_num=2, show=show_plots,
+                  marker=".", x_label=x_label, x_scale=x_scale, figsize=figsize,
+                  title="{} Recall (1)".format(title), legend_out=(i == last_idx))
+        plot_line(all_cv["precision0"], x_axis, label=str(comb), fig_num=3, show=show_plots,
+                  marker=".", x_label=x_label, x_scale=x_scale, figsize=figsize,
+                  title="{} Precision (0)".format(title), legend_out=(i == last_idx))
+        plot_line(all_cv["precision1"], x_axis, label=str(comb), fig_num=4, show=show_plots,
+                  marker=".", x_label=x_label, x_scale=x_scale, figsize=figsize,
+                  title="{} Precision (1)".format(title), legend_out=(i == last_idx))
 
-        plot_line(all_train["accuracy"], label=str(comb), fig_num=5, show=show_plots, marker=".",
-                  title="Training Accuracy", legend_out=(i == last_idx), figsize=figsize)
-        plot_line(all_train["recall0"], label=str(comb), fig_num=6, show=show_plots, marker=".",
-                  title="Training Recall (0)", legend_out=(i == last_idx), figsize=figsize)
-        plot_line(all_train["recall1"], label=str(comb), fig_num=7, show=show_plots, marker=".",
-                  title="Training Recall (1)", legend_out=(i == last_idx), figsize=figsize)
-        plot_line(all_train["precision0"], label=str(comb), fig_num=8, show=show_plots, marker=".",
-                  title="Training Precision (0)", legend_out=(i == last_idx), figsize=figsize)
-        plot_line(all_train["precision1"], label=str(comb), fig_num=9, show=show_plots, marker=".",
-                  title="Training Precision (1)", legend_out=(i == last_idx), figsize=figsize)
+        plot_line(all_train["accuracy"], x_axis, label=str(comb), fig_num=5, show=show_plots,
+                  marker=".",  x_label=x_label, x_scale=x_scale, figsize=figsize,
+                  title="Training Accuracy", legend_out=(i == last_idx))
+        plot_line(all_train["recall0"], x_axis, label=str(comb), fig_num=6, show=show_plots,
+                  marker=".", x_label=x_label, x_scale=x_scale, figsize=figsize,
+                  title="Training Recall (0)", legend_out=(i == last_idx))
+        plot_line(all_train["recall1"], x_axis, label=str(comb), fig_num=7, show=show_plots,
+                  marker=".", x_label=x_label, x_scale=x_scale, figsize=figsize,
+                  title="Training Recall (1)", legend_out=(i == last_idx))
+        plot_line(all_train["precision0"], x_axis, label=str(comb), fig_num=8, show=show_plots,
+                  marker=".", x_label=x_label, x_scale=x_scale, figsize=figsize,
+                  title="Training Precision (0)", legend_out=(i == last_idx))
+        plot_line(all_train["precision1"], x_axis, label=str(comb), fig_num=9, show=show_plots,
+                  marker=".", x_label=x_label, x_scale=x_scale, figsize=figsize,
+                  title="Training Precision (1)", legend_out=(i == last_idx))
 
-        plot_line(pat_cv["accuracy"], label=str(comb), fig_num=10, show=show_plots, marker=".",
-                  title="{} Patient Accuracy".format(title), legend_out=(i == last_idx),
-                  figsize=figsize)
-        plot_line(pat_cv["recall0"], label=str(comb), fig_num=11, show=show_plots, marker=".",
-                  title="{} Patient Recall (0)".format(title), legend_out=(i == last_idx),
-                  figsize=figsize)
-        plot_line(pat_cv["recall1"], label=str(comb), fig_num=12, show=show_plots, marker=".",
-                  title="{} Patient Recall (1)".format(title), legend_out=(i == last_idx),
-                  figsize=figsize)
-        plot_line(pat_cv["precision0"], label=str(comb), fig_num=13, show=show_plots, marker=".",
-                  title="{} Patient Precision (0)".format(title), legend_out=(i == last_idx),
-                  figsize=figsize)
-        plot_line(pat_cv["precision1"], label=str(comb), fig_num=14, show=show_plots, marker=".",
-                  title="{} Patient Precision (1)".format(title), legend_out=(i == last_idx),
-                  figsize=figsize)
+        plot_line(pat_cv["accuracy"], x_axis, label=str(comb), fig_num=10, show=show_plots,
+                  marker=".", x_label=x_label, x_scale=x_scale, figsize=figsize,
+                  title="{} Patient Accuracy".format(title), legend_out=(i == last_idx))
+        plot_line(pat_cv["recall0"], x_axis, label=str(comb), fig_num=11, show=show_plots,
+                  marker=".", x_label=x_label, x_scale=x_scale, figsize=figsize,
+                  title="{} Patient Recall (0)".format(title), legend_out=(i == last_idx))
+        plot_line(pat_cv["recall1"], x_axis, label=str(comb), fig_num=12, show=show_plots,
+                  marker=".", x_label=x_label, x_scale=x_scale, figsize=figsize,
+                  title="{} Patient Recall (1)".format(title), legend_out=(i == last_idx))
+        plot_line(pat_cv["precision0"], x_axis, label=str(comb), fig_num=13, show=show_plots,
+                  marker=".", x_label=x_label, x_scale=x_scale, figsize=figsize,
+                  title="{} Patient Precision (0)".format(title), legend_out=(i == last_idx))
+        plot_line(pat_cv["precision1"], x_axis, label=str(comb), fig_num=14, show=show_plots,
+                  marker=".", x_label=x_label, x_scale=x_scale, figsize=figsize,
+                  title="{} Patient Precision (1)".format(title), legend_out=(i == last_idx))
 
-        plot_line(history[0], label=str(comb), fig_num=15, show=show_plots, figsize=figsize,
-                  title="Mean Training Accuracy History", legend_out=(i == last_idx))
-        plot_line(history[1], label=str(comb), fig_num=16, show=show_plots, figsize=figsize,
-                  title="Mean Test Accuracy History", legend_out=(i == last_idx))
+        plot_line(history[0], x_history, label=str(comb), fig_num=15, show=show_plots,
+                  figsize=figsize, title="Mean Training Accuracy History",
+                  legend_out=(i == last_idx), x_label="Epoch")
+        plot_line(history[1], x_history, label=str(comb), fig_num=16, show=show_plots,
+                  figsize=figsize, title="Mean Test Accuracy History", legend_out=(i == last_idx),
+                  x_label="Epoch")
     # Save PDF results
     save_plt_figures_to_pdf(location + "/figures{}.pdf".format(s))
     # Show plots
