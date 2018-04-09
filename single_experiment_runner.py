@@ -632,6 +632,9 @@ def parse_arguments():
     parser.add_argument('-d', '--dataset', default="organized", type=str,
                         help="location of the dataset inside the ./data folder "
                         "(default: organized)")
+    parser.add_argument('-dt', '--dataset_test', default=None, type=str,
+                        help="location of the dataset where test set is found; if unset, use "
+                        "some of training set")
     parser.add_argument('-l', '--location', default=None, type=str,
                         help="name of folder where data is saved, if a folder that was used before"
                         " is selected, the training previously done will not be done again")
@@ -953,18 +956,35 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
 def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, num_patients,
                      location="training_results", verbose=False, num_epochs=50, comb=None,
                      pdf_name="figures.pdf", show_plots=False, num_patients_te=64,
-                     num_patients_tr=(4, 8, 16, 32, 64, 128, 256, 512, 1024)):
+                     num_patients_tr=(4, 8, 16, 32, 64, 128, 256, 512, 1024), test_data=None):
     """Do training on dataset, this is dirty code, sorry."""
     # Get splits indices to separate dataset in patients
     total_patient_num = -1
     prev_patient = ""
-    for i, patient in enumerate(patients_whole):
-        if patient != prev_patient:
-            prev_patient = patient
-            total_patient_num += 1
-            if total_patient_num == num_patients_te:
-                break
-    te_idx = i
+    if test_data is None:
+        for i, patient in enumerate(patients_whole):
+            if patient != prev_patient:
+                prev_patient = patient
+                total_patient_num += 1
+                if total_patient_num == num_patients_te:
+                    break
+        if total_patient_num < num_patients_te:
+            te_idx = len(patients_whole)
+        else:
+            te_idx = i
+    else:
+        te_idx = 0
+        x_t_whole, y_t_whole, patients_t_whole, mask_t_whole = test_data
+        for i, patient in enumerate(patients_t_whole):
+            if patient != prev_patient:
+                prev_patient = patient
+                total_patient_num += 1
+                if total_patient_num == num_patients_te:
+                    break
+        if total_patient_num < num_patients_te:
+            te_t_idx = len(patients_t_whole)
+        else:
+            te_t_idx = i
     total_patient_num = -1
     prev_patient = ""
     tmp_tr = num_patients_tr[0]
@@ -983,8 +1003,13 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
                     iii += 1
                 else:
                     break
+    if total_patient_num < tmp_tr:
+        tr_idx.append(len(patients_whole))
     print("Tr", num_patients_tr, "( idx", tr_idx, ")")
-    print("Te", num_patients_te, "( idx", te_idx, ")")
+    if test_data is None:
+        print("Te", num_patients_te, "( idx", te_idx, ")")
+    else:
+        print("Te", num_patients_te, "( idx", te_t_idx, "-", te_idx, ")")
     if len(num_patients_tr) > len(tr_idx):
         num_patients_tr = num_patients_tr[:len(tr_idx)]
 
@@ -1015,9 +1040,14 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
         x_train_cv = x_whole[te_idx:idx]
         y_train_cv = y_whole[te_idx:idx]
         patients_train_cv = patients_whole[te_idx:idx]
-        x_test_cv = x_whole[:te_idx]
-        y_test_cv = y_whole[:te_idx]
-        patients_test_cv = patients_whole[:te_idx]
+        if test_data is None:
+            x_test_cv = x_whole[:te_idx]
+            y_test_cv = y_whole[:te_idx]
+            patients_test_cv = patients_whole[:te_idx]
+        else:
+            x_test_cv = x_t_whole[:te_t_idx]
+            y_test_cv = y_t_whole[:te_t_idx]
+            patients_test_cv = patients_t_whole[:te_t_idx]
         print("Training shape: {}, Test shape: {}".format(x_train_cv.shape, x_test_cv.shape))
 
         num_times = 0
@@ -1733,6 +1763,21 @@ def main(correction):
     patients_whole = np.append(patients_train, patients_test, axis=0)
     analyze_data(x_whole, y_whole, patients_whole, mask_whole, plot_data=False, dataset_name=None)
 
+    # Load test dataset if it exists
+    if args.dataset_test is not None:
+        dataset_tst_location = args.dataset_test
+        if not os.path.exists(dataset_tst_location) and not dataset_tst_location.startswith("data/"):
+            dataset_tst_location = "data/{}".format(dataset_tst_location)
+        train_t_set, test_t_set, train_t_aux, test_t_aux = load_organized_dataset(dataset_tst_location)
+        (x_t_train, y_t_train), (x_t_test, y_t_test), = train_t_set, test_t_set
+        (patients_t_train, mask_t_train), (patients_t_test, mask_t_test) = train_t_aux, test_t_aux
+        x_t_whole = np.append(x_t_train, x_t_test, axis=0)
+        y_t_whole = np.append(y_t_train, y_t_test, axis=0)
+        mask_t_whole = np.append(mask_t_train, mask_t_test, axis=0)
+        patients_t_whole = np.append(patients_t_train, patients_t_test, axis=0)
+        analyze_data(x_t_whole, y_t_whole, patients_t_whole, mask_t_whole, plot_data=False,
+                    dataset_name=None)
+
     # Remove elements of the dataset if necessary
     if args.size is not None:
         params = limit_number_patients_per_label(x_whole, y_whole, mask_whole, patients_whole,
@@ -1742,12 +1787,24 @@ def main(correction):
                      dataset_name=None)
 
     patients = np.unique(patients_whole)
+    if args.dataset_test is not None:
+        patients_te = np.unique(patients_t_whole)
+        for p in patients:
+            if p in patients_te:
+                raise Exception("Training and test set have repeated patients")
     input_shape = x_whole.shape[1:]
     num_patients = len(patients)
     labels = np.unique(y_whole)
     y_whole = np_utils.to_categorical(y_whole, len(labels))
     y_train = np_utils.to_categorical(y_train, len(labels))
     y_test = np_utils.to_categorical(y_test, len(labels))
+    if args.dataset_test is not None:
+        y_t_whole = np_utils.to_categorical(y_t_whole, len(labels))
+        y_t_train = np_utils.to_categorical(y_t_train, len(labels))
+        y_t_test = np_utils.to_categorical(y_t_test, len(labels))
+        test_data = x_t_whole, y_t_whole, patients_t_whole, mask_t_whole
+    else:
+        test_data = None
 
     if args.plot_slices:
         plt.close("all")
@@ -1775,6 +1832,8 @@ def main(correction):
     print("Existing labels:     {}".format(labels))
     print("Number of patients:  {}".format(num_patients))
     print("Number of slices:    {}".format(x_whole.shape[0]))
+    if args.dataset_test is not None:
+        print("Number of patients test: {}".format(len(patients_te)))
 
     # Create folder where we will save data
     location = args.location  # Use already existing folder, will not do work already done again
@@ -1796,7 +1855,7 @@ def main(correction):
     s = "_{}".format(args.dataset.replace("/", "-"))
     s = s[:-1] if s.endswith("-") else s
     filters = [16]
-    units = [16]
+    units = [64]  # [16]
     if args.simplified_model:
         units = [32]
     num_convolutions = [2]  # [1]
@@ -1885,7 +1944,7 @@ def main(correction):
                                           verbose=args.verbose, num_epochs=args.epochs,
                                           pdf_name=pdf_name, show_plots=args.plot, comb=comb,
                                           num_patients_te=args.test_size,
-                                          num_patients_tr=num_patient_tr)
+                                          num_patients_tr=num_patient_tr, test_data=test_data)
             all_data_comb = (comb, *params)
             with open(sublocation + "/" + results_name, 'wb') as f:
                 pickle.dump(all_data_comb, f)
@@ -2034,6 +2093,13 @@ if __name__ == "__main__":
                     ])
     """
     """
+    # nn_models1 v2
+    main(correction=[
+                     [(256, 16, 2, 0, 0.25), [2048]],
+                     [(256, 256, 2, 0, 0.25), [4096]]
+                    ])
+    """
+    """
     # nn_models2
     main(correction=[
                      [(64, 16, 2, 0, 0.25), [256, 1024, 4096]],
@@ -2044,6 +2110,19 @@ if __name__ == "__main__":
                      [(256, 64, 2, 0, 0.25), [512]],
                      [(256, 256, 2, 0, 0), [256, 2048, 4096]],
                      [(256, 256, 2, 0, 0.25), [256]]
+                    ])
+    """
+    """
+    # nn_models2 v2
+    main(correction=[
+                     [(256, 16, 2, 0, 0.25), [1024, 2048]],
+                     [(256, 256, 2, 0, 0), [4096]]
+                    ])
+    """
+    """
+    # nn_models2 v3
+    main(correction=[
+                     [(256, 16, 2, 0, 0.25), [2048]],
                     ])
     """
     """
@@ -2058,5 +2137,30 @@ if __name__ == "__main__":
                      [(256, 64, 2, 0, 0.25), [1024, 4096]],
                      [(256, 256, 2, 0, 0), [512, 4096]],
                      [(256, 256, 2, 0, 0.25), [512, 2048, 4096]]
+                    ])
+    """
+    """
+    # nn_models3 v2
+    main(correction=[
+                     [(64, 256, 2, 0, 0.25), [512, 1024]],
+                     [(64, 64, 2, 0, 0), [1024, 2048]],
+                     [(64, 256, 2, 0, 0), [2048, 4096]],
+                     [(256, 16, 2, 0, 0.25), [4096]],
+                     [(256, 256, 2, 0, 0), [4096]]
+                    ])
+    """
+    """
+    # nn_models3 v3
+    main(correction=[
+                     [(64, 256, 2, 0, 0.25), [2048]],
+                     [(64, 64, 2, 0, 0), [1024, 2048]],
+                     [(64, 256, 2, 0, 0), [4096]],
+                     [(256, 16, 2, 0, 0.25), [1024]],
+                    ])
+    """
+    """
+    # nn_models3 v4
+    main(correction=[
+                     [(64, 16, 2, 0, 0), [2048]],
                     ])
     """
