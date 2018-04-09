@@ -240,7 +240,7 @@ def transform_curves_to_plot(y_pts, x_pts):
 def plot_line(y_pts, x_pts=None, y_label=None, x_label=None, title=None, axis=None, style=None,
               color=None, y_scale="linear", x_scale="linear", label=None, fig_num=0, show=True,
               filename=None, n_ticks=None, linewidth=None, logbase=2, legend_out=False,
-              figsize=None, marker=None, linestyle=None):
+              figsize=None, marker=None, linestyle=None, xticks_labels=None):
     """Plot one or several 1D or 2D lines or point clouds.
 
     :param y_pts: y coordinates. A list of list can represent several lines
@@ -302,6 +302,11 @@ def plot_line(y_pts, x_pts=None, y_label=None, x_label=None, title=None, axis=No
             plt.locator_params(axis='x', nbins=n_ticks[0])
         if n_ticks[1] is not None:
             plt.locator_params(axis='y', nbins=n_ticks[1])
+    if xticks_labels is not None:
+        if x_pts is not None:
+            plt.xticks(x_pts, xticks_labels, rotation='vertical')
+        else:
+            plt.xticks(range(len(y_pts)), xticks_labels, rotation='vertical')
     if legend_out:
         # Reduce box width by 20%
         box = ax.get_position()
