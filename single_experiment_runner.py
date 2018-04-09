@@ -288,7 +288,7 @@ def plot_line(y_pts, x_pts=None, y_label=None, x_label=None, title=None, axis=No
         plt.title(title)
         fig.canvas.set_window_title("Figure {} - {}".format(fig_num, title))
     if axis is not None:
-        ax.set_axis(axis)
+        plt.axis(axis)
     if x_scale == "log":
         ax.set_xscale(x_scale, basex=logbase)
     else:
