@@ -755,6 +755,8 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
     # Add suffixes ta dataset name, so it is easy to know how every dataset was generated
     if not convert_to_2d and not medians:
         dataset_name += "_3d"
+    if exact_number_patients is not None:
+        dataset_name += "_exactly{}".format(exact_number_patients)
     if augment_bootstrap is not None:
         dataset_name += "_augmented-b{}".format(augment_bootstrap)
     elif augment_rotate is not None or augment_scale is not None or augment_translate is not None:
