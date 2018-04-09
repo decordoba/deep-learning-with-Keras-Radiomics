@@ -82,7 +82,8 @@ def translate_randomly(volume, mask, translation=None, max_distance=5):
         translation = np.zeros(3)
         pt1 = np.random.random() * dist
         pt2 = np.random.random() * dist
-        pt1, pt2 = pt2, pt1 if pt1 > pt2 else pt1, pt2
+        if pt1 > pt2:
+            pt1, pt2 = pt2, pt1
         translation[0] = pt1
         translation[1] = pt2 - pt1
         translation[2] = dist - pt1
@@ -227,6 +228,7 @@ def bootstrap_augment_dataset(volumes, labels, masks, patients, num_samples, max
     samples_m = []
     samples_p = []
     num_patients = len(patients)
+    print_when = int(num_samples / 100)
     for i in range(num_samples):
         # Pick patient with replacement
         idx = np.random.randint(num_patients)
@@ -266,6 +268,9 @@ def bootstrap_augment_dataset(volumes, labels, masks, patients, num_samples, max
         # Save new image and mask
         samples_x.append(translated_x)
         samples_m.append(translated_m)
+        if (i + 1) % print_when == 0:
+            print("{}%. {}/{} samples".format(int(np.round((i + 1) * 100 / num_samples)), i + 1,
+                                              num_samples))
     return samples_x, samples_y, samples_m, samples_p
 
 
