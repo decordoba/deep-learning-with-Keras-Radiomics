@@ -749,7 +749,7 @@ def save_dataset_correctly(x, y, patients, masks, parent_folder="data", dataset_
 def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
                        plot_data=False, trim_data=True, data_interpolation=None, normalize=True,
                        convert_to_2d=True, resampling=None, skip_dialog=False, plot_slices=False,
-                       medians=False, augment_rotate=None, augment_scale=None,
+                       medians=False, augment_rotate=None, augment_scale=None, skip_patients=None,
                        augment_translate=None, exact_number_patients=None, augment_bootstrap=None):
     """Save dataset so labels & slices medians are equally distributed in training and test set."""
     # Add suffixes ta dataset name, so it is easy to know how every dataset was generated
@@ -757,6 +757,8 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
         dataset_name += "_3d"
     if exact_number_patients is not None:
         dataset_name += "_exactly{}".format(exact_number_patients)
+        if skip_patients is not None and skip_patients > 0:
+            dataset_name += "-{}".format(skip_patients)
     if augment_bootstrap is not None:
         dataset_name += "_augmented-b{}".format(augment_bootstrap)
     elif augment_rotate is not None or augment_scale is not None or augment_translate is not None:
@@ -841,9 +843,13 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
             num_patients_by_label = num_patients_by_label3
 
     if exact_number_patients is not None:
+        if skip_patients is None or skip_patients < 0:
+            skip_patients = 0
         print("\nRemoving all but {} patients exactly...".format(exact_number_patients))
-        y_set, patients = y_set[:exact_number_patients], patients[:exact_number_patients]
-        x_set, masks = x_set[:exact_number_patients], masks[:exact_number_patients]
+        y_set = y_set[skip_patients:exact_number_patients + skip_patients]
+        x_set = x_set[skip_patients:exact_number_patients + skip_patients]
+        patients = patients[skip_patients:exact_number_patients + skip_patients]
+        masks = masks[skip_patients:exact_number_patients + skip_patients]
 
     if data_interpolation is not None:
         # Adjust slices so that all pixels are the same width, length and height
@@ -1228,6 +1234,8 @@ def parse_arguments(suffix=""):
                         "(scales: 1, 1.2, 1.4, 1.6, ...)")
     parser.add_argument('-enp', '--exact_number_patients', default=None, type=int,
                         help="exact number of patients to use (after trimming)", metavar="N")
+    parser.add_argument('-sp', '--skip_patients', default=None, type=int,
+                        help="skip this number of patients when using --enp", metavar="N")
     parser.add_argument('-3d', '--in_3d', default=False, action="store_true",
                         help="save 3d data instead of slicing it in 3 channels 2d images")
     parser.add_argument('-mos', '--median_orthogonal_slices', default=False, action="store_true",
@@ -1337,4 +1345,5 @@ if __name__ == "__main__":
                            augment_rotate=args.augment_rotate, augment_scale=args.augment_scale,
                            augment_translate=args.augment_translate,
                            augment_bootstrap=args.augment_bootstrap,
-                           exact_number_patients=args.exact_number_patients)
+                           exact_number_patients=args.exact_number_patients,
+                           skip_patients=args.skip_patients)
