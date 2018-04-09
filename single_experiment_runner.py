@@ -468,6 +468,20 @@ def limit_number_patients_per_label(x_whole, y_whole, mask_whole, patients_whole
     """Return only first num_patients_by_label patients, and forget all the others."""
     if num_patients_per_label is None:
         return x_whole, y_whole, mask_whole, patients_whole
+    # Make patients adjacent
+    if not adjacent:
+        order = np.argsort(patients_whole)
+        s_x_whole, s_y_whole, s_mask_whole, s_patients_whole = [], [], [], []
+        for i in order:
+            s_x_whole.append(x_whole[i])
+            s_y_whole.append(y_whole[i])
+            s_mask_whole.append(mask_whole[i])
+            s_patients_whole.append(patients_whole[i])
+        x_whole = s_x_whole
+        y_whole = s_y_whole
+        mask_whole = s_mask_whole
+        patients_whole = s_patients_whole
+    # Get only first num_patients_per_label patients
     n0, n1, i0, i1 = 0, 0, None, None
     new_x, new_y, new_mask, new_patients = [], [], [], []
     ht = set()
@@ -1722,7 +1736,7 @@ def main(correction):
     # Remove elements of the dataset if necessary
     if args.size is not None:
         params = limit_number_patients_per_label(x_whole, y_whole, mask_whole, patients_whole,
-                                                 num_patients_per_label=args.size)
+                                                 num_patients_per_label=args.size, adjacent=False)
         x_whole, y_whole, mask_whole, patients_whole = params
         analyze_data(x_whole, y_whole, patients_whole, mask_whole, plot_data=False,
                      dataset_name=None)
