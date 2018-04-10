@@ -553,8 +553,12 @@ def interpolate_data(x_set, masks, pixels_separation):
                              mask[idx1x, idx1y, idx0z] * diff1x * diff1y * diff0z +
                              mask[idx1x, idx1y, idx1z] * diff1x * diff1y * diff1z)
                     new_mask[ii, jj, kk] = int(np.round(value))
-        x_set[i] = xlist
-        masks[i] = new_mask
+        # Reshape interpolated image to have same size as original image
+        # Only works if shape xlist >= shape x_set[i], and if shape x_set[i] == shape masks[i]
+        left = ((np.array(xlist.shape) - x_set[i].shape) / 2).astype(int)
+        right = left + x_set[i].shape
+        x_set[i] = xlist[left[0]:right[0], left[1]:right[1], left[2]:right[2]]
+        masks[i] = new_mask[left[0]:right[0], left[1]:right[1], left[2]:right[2]]
     return x_set, masks
 
 
@@ -854,6 +858,11 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
     if data_interpolation is not None:
         # Adjust slices so that all pixels are the same width, length and height
         x_set, masks = interpolate_data(x_set, masks, data_interpolation)
+        # for i in range(len(x_set)):
+        #     if x_set[i].shape[2] == 48:
+        #         x_set[i] = x_set[i][:, :, 4:44]
+        #     if masks[i].shape[2] == 48:
+        #         masks[i] = masks[i][:, :, 4:44]
         print("\nAnalyzing data...")
         params = analyze_data(x_set, y_set, patients, masks, plot_data=plot_data,
                               initial_figure=24, suffix="_interpolated_slices",
