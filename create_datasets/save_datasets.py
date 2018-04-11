@@ -754,7 +754,8 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
                        plot_data=False, trim_data=True, data_interpolation=None, normalize=True,
                        convert_to_2d=True, resampling=None, skip_dialog=False, plot_slices=False,
                        medians=False, augment_rotate=None, augment_scale=None, skip_patients=None,
-                       augment_translate=None, exact_number_patients=None, augment_bootstrap=None):
+                       augment_translate=None, exact_number_patients=None, augment_bootstrap=None,
+                       balanced_augmentation=False):
     """Save dataset so labels & slices medians are equally distributed in training and test set."""
     # Add suffixes ta dataset name, so it is easy to know how every dataset was generated
     if not convert_to_2d and not medians:
@@ -765,6 +766,8 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
             dataset_name += "-{}".format(skip_patients)
     if augment_bootstrap is not None:
         dataset_name += "_augmented-b{}".format(augment_bootstrap)
+        if balanced_augmentation:
+            dataset_name += "-balanced"
     elif augment_rotate is not None or augment_scale is not None or augment_translate is not None:
         augr = augment_rotate if augment_rotate is not None else 0
         augt = augment_translate if augment_translate is not None else 0
@@ -1073,14 +1076,15 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
 
     # Data augmentation
     if augment_bootstrap is not None:
-        print("\nAugmenting data boostraping (number samples: {})...".format(augment_bootstrap))
+        print("\nAugmenting data boostraping (number samples: {}, balanced: {})..."
+                "".format(augment_bootstrap, balanced_augmentation))
         # Training set and test set done together (there may be same patient in training and test)
         train_test_split = (augment_bootstrap * len(train_set_y) /
                             (len(test_set_y) + len(train_set_y)))
         params = bootstrap_augment_dataset(train_set_x + test_set_x, train_set_y + test_set_y,
                                            train_set_masks + test_set_masks,
                                            train_set_patients + test_set_patients,
-                                           augment_bootstrap)
+                                           augment_bootstrap, balance_labels=balanced_augmentation)
         all_set_x, all_set_y, all_set_masks, all_set_patients = params
         # Separate training and test once more
         print("\nSeparating train and test sets...")
@@ -1234,6 +1238,8 @@ def parse_arguments(suffix=""):
     parser.add_argument('-ab', '--augment_bootstrap', default=None, type=int, metavar="N",
                         help="number of samples to create by scaling, rotating and translating "
                         "randomly with replacement the data we have (runs after -enp)")
+    parser.add_argument('-ba', '--balanced_augmentation', default=False, action="store_true",
+                        help="bootstrap augmentation (-ab argument) is done balancing labels")
     parser.add_argument('-at', '--augment_translate', default=None, type=int, metavar="N",
                         help="number of times to translate volume randomly to augment data")
     parser.add_argument('-ar', '--augment_rotate', default=None, type=int, metavar="N",
@@ -1354,5 +1360,6 @@ if __name__ == "__main__":
                            augment_rotate=args.augment_rotate, augment_scale=args.augment_scale,
                            augment_translate=args.augment_translate,
                            augment_bootstrap=args.augment_bootstrap,
+                           balanced_augmentation=args.balanced_augmentation,
                            exact_number_patients=args.exact_number_patients,
                            skip_patients=args.skip_patients)
