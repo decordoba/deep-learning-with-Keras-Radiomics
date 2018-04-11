@@ -68,6 +68,63 @@ def plot_pet_volume(pet_image, pixel_shape, pixel_spacing, mask=None, patient="?
         i += 1
 
 
+def plot_pet_medians(pet_image, pixel_spacing, mask, patient="?", mask_name="?",
+                     median=0, fig_num=0):
+    """
+    Plot pet_medians and project mask. median can be 0, 1 or 2
+    """
+    # create axis for plotting
+    pixel_shape = pet_image.shape
+    x = np.arange(0.0, (pixel_shape[1] + 1) * pixel_spacing[0], pixel_spacing[0])
+    y = np.arange(0.0, (pixel_shape[0] + 1) * pixel_spacing[1], pixel_spacing[1])
+    z = np.arange(0.0, (pixel_shape[2] + 1) * pixel_spacing[2], pixel_spacing[2])
+    if median == 2:
+        x, y = x, y
+        median_pet_image = pet_image[:, :, int(pet_image.shape[2] / 2)]
+        projected_mask = mask[:, :, 0]
+        for i in range(mask.shape[2]):
+            projected_mask += mask[:, :, i]
+    elif median == 1:
+        x, y = y, z
+        median_pet_image = pet_image[:, int(pet_image.shape[1] / 2), :]
+        projected_mask = mask[:, 0, :]
+        for i in range(mask.shape[1]):
+            projected_mask += mask[:, i, :]
+    elif median == 0:
+        x, y = x, z
+        median_pet_image = pet_image[int(pet_image.shape[0] / 2), :, :]
+        projected_mask = mask[0, :, :]
+        for i in range(mask.shape[0]):
+            projected_mask += mask[i, :, :]
+    print(median_pet_image.shape)
+    masked_pet_image = np.ma.masked_array(median_pet_image, projected_mask)
+    if median == 0 or median == 1:
+        masked_pet_image = np.rot90(masked_pet_image)
+        median_pet_image = np.rot90(median_pet_image)
+    # normalize values
+    vmin = np.min(pet_image)
+    vmax = np.max(pet_image)
+    cmap = plt.cm.gray
+    cmap.set_bad('r', 1)
+    # show images
+    fig = plt.figure(fig_num)
+    plt.clf()
+    ax = fig.add_subplot(121)
+    ax.pcolormesh(x, y, median_pet_image, vmin=vmin, vmax=vmax, cmap=cmap)
+    ax.set_aspect('equal')
+    plt.xticks([])
+    plt.yticks([])
+    ax = fig.add_subplot(122)
+    ax.pcolormesh(x, y, masked_pet_image, vmin=vmin, vmax=vmax, cmap=cmap,
+                  rasterized=True, linewidth=0)
+    ax.set_aspect('equal')
+    plt.xticks([])
+    plt.yticks([])
+    title = "Patient: {} - Slice: {}/{}".format(patient, i + 1, pet_image.shape[2])
+    title += " - Contour Name: {}".format(mask_name)
+    fig.canvas.set_window_title("Figure {} - {}".format(fig_num, title))
+
+
 def plot_pet_image(pet_image, yz_slice_pos, xz_slice_pos, xy_slice_pos, pixel_shape,
                    pixel_spacing, mask=None):
     """
@@ -270,6 +327,13 @@ def get_volumes(patient, pet_folder, struct_folders, number, volumes, plot_data=
         patient_volumes.append((current_mask, mtv_label, mask_range, mtv_folder))
         # Plot volumes
         if plot_data:
+            plot_pet_medians(pet_image, pixel_spacing, mask=tumor_volume, median=0, fig_num=0,
+                             patient=patient, mask_name=mtv_label.split("/")[-1])
+            plot_pet_medians(pet_image, pixel_spacing, mask=tumor_volume, median=1, fig_num=1,
+                             patient=patient, mask_name=mtv_label.split("/")[-1])
+            plot_pet_medians(pet_image, pixel_spacing, mask=tumor_volume, median=2, fig_num=2,
+                             patient=patient, mask_name=mtv_label.split("/")[-1])
+            input("press ENTER to continue... ")
             plot_pet_volume(current_volume, pixel_shape, pixel_spacing, mask=current_mask,
                             patient=patient, mask_name=mtv_label.split("/")[-1])
     volumes[patient] = patient_volumes
