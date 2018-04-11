@@ -466,8 +466,6 @@ def load_organized_dataset(path):
 def limit_number_patients_per_label(x_whole, y_whole, mask_whole, patients_whole,
                                     num_patients_per_label=None, adjacent=True):
     """Return only first num_patients_by_label patients, and forget all the others."""
-    if num_patients_per_label is None:
-        return x_whole, y_whole, mask_whole, patients_whole
     # Make patients adjacent
     if not adjacent:
         order = np.argsort(patients_whole)
@@ -481,6 +479,9 @@ def limit_number_patients_per_label(x_whole, y_whole, mask_whole, patients_whole
         y_whole = s_y_whole
         mask_whole = s_mask_whole
         patients_whole = s_patients_whole
+    # If no change needed in number of patients, return them all
+    if num_patients_per_label is None:
+        return x_whole, y_whole, mask_whole, patients_whole
     # Get only first num_patients_per_label patients
     n0, n1, i0, i1 = 0, 0, None, None
     new_x, new_y, new_mask, new_patients = [], [], [], []
@@ -669,12 +670,13 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
                         location="cross_validation_results", patient_level_cv=False, verbose=False,
                         num_epochs=50, pdf_name="figures.pdf", show_plots=False, shuffle=False,
                         num_folds=10, comb=None):
-    """Do cross validation on dataset."""
-    # Do 10-fold CV in whole set
+    """Do cross validation on dataset.
+
+    Needs same patient samples to be adjacent.
+    """
+    # Do N-fold CV in whole set
     if patient_level_cv:
         # Get splits indices to separate dataset in patients
-        if num_patients % 11 == 0:  # Warning! This may overwrite the num_folds argument
-            num_folds = 11  # 11 because 77 % 11 = 0
         num_patients_per_fold = num_patients / num_folds
         patient_num = 0
         total_patient_num = -1
@@ -682,7 +684,7 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
         folds_indices = []
         prev_factor = -1
         for i, patient in enumerate(patients_whole):
-            if patient != prev_patient:
+            if patient != prev_patient:  # Assumes same patient samples are adjacent
                 prev_patient = patient
                 patient_num += 1
                 total_patient_num += 1
@@ -693,19 +695,22 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
         folds_indices.append(len(patients_whole))
     else:
         size_fold = x_whole.shape[0] / num_folds
+
+    # Create variables where training data will be saved
     historic_acc = None
     historic_val_acc = None
     rocs = []
     tr_all_data_log = {"history_acc": [], "history_val_acc": [], "accuracy": [], "recall0": [],
                        "recall1": [], "precision0": [], "precision1": [], "num_label0": [],
-                       "num_label1": [], "num_labels": []}
+                       "num_label1": [], "num_labels": [], "true_cv": [], "pred_cv": []}
     all_data_log = {"history_acc": [], "history_val_acc": [], "accuracy": [], "recall0": [],
                     "recall1": [], "precision0": [], "precision1": [], "num_label0": [],
-                    "num_label1": [], "num_labels": []}
+                    "num_label1": [], "num_labels": [], "true_cv": [], "pred_cv": []}
     pat_all_data_log = {"history_acc": [], "history_val_acc": [], "accuracy": [], "recall0": [],
                         "recall1": [], "precision0": [], "precision1": [], "num_label0": [],
                         "num_label1": [], "num_labels": [], "pred_percentages": [],
-                        "true_percentages": []}
+                        "true_percentages": [], "true_cv": [], "pred_cv": []}
+    # Do cross validation
     data_splits = []
     patient_splits = []
     weights = None  # This makes sure that the weight for every layer are reset every fold
@@ -729,6 +734,9 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
         x_test_cv = x_whole[idx0:idx1]
         y_test_cv = y_whole[idx0:idx1]
         patients_test_cv = patients_whole[idx0:idx1]
+        print("Training set indices: {}-{} AND {}-{} [{} samples]"
+              "".format(0, idx0, idx1, len(y_whole), idx0 + len(y_whole) - idx1))
+        print("Test set indices: {}-{} [{} samples]".format(idx0, idx1, idx1 - idx0))
 
         if shuffle:
             shuffle_train = np.random.permutation(len(x_train_cv))
@@ -742,8 +750,8 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
         # callbacks = [cbPlotEpoch, cbROC(training_data=(x_train_cv, y_train_cv),
         #                                 validation_data=(x_test_cv, y_test_cv))]
         parameters = flexible_neural_net((x_train_cv, y_train_cv), (x_test_cv, y_test_cv),
-                                         optimizer, loss, *layers,
-                                         batch_size=32, epochs=num_epochs, initial_weights=weights,
+                                         optimizer, loss, *layers, initial_weights=weights,
+                                         batch_size=32, epochs=num_epochs,
                                          early_stopping=None, verbose=verbose,
                                          files_suffix=i, location=location, return_more=True)
         [lTr, aTr], [lTe, aTe], time, location, n_epochs, weights, model, history = parameters
@@ -770,6 +778,8 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
         all_data_log["num_label0"].append(num_labels[0])
         all_data_log["num_label1"].append(num_labels[1])
         all_data_log["num_labels"].append(num_labels[1] + num_labels[0])
+        all_data_log["true_cv"].append(true_cv)
+        all_data_log["pred_cv"].append(pred_cv)
 
         # Save statistical data for training set
         print("Training Statistics:")
@@ -783,6 +793,8 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
         tr_all_data_log["num_label0"].append(num_labels[0])
         tr_all_data_log["num_label1"].append(num_labels[1])
         tr_all_data_log["num_labels"].append(num_labels[1] + num_labels[0])
+        tr_all_data_log["true_cv"].append(true_cv)
+        tr_all_data_log["pred_cv"].append(pred_cv)
 
         # Save patient level data from cross valiation set
         print("Patient Level Statistics")
@@ -798,6 +810,8 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
         pat_all_data_log["num_labels"].append(num_labels[1] + num_labels[0])
         pat_all_data_log["pred_percentages"].extend(pred_percentages)
         pat_all_data_log["true_percentages"].extend(true_percentages)
+        pat_all_data_log["true_cv"].append(pred_percentages)
+        pat_all_data_log["pred_cv"].append(true_percentages)
         patient_splits.append(len(pred_percentages))
 
         # Print feedback
@@ -829,8 +843,10 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
                         show=show_plots)
     # Fig 1
     f = 1
+    title_train = ["Fold {} / {}".format(x + 1, num_folds) for x in range(num_folds)]
     plot_multiple_accuracy_curves(all_data_log["history_acc"], all_data_log["history_val_acc"],
-                                  title="Model Fold Accuracy History", fig_num=f, show=show_plots)
+                                  title="Model Fold Accuracy History", fig_num=f, show=show_plots,
+                                  labels=title_train)
     # Fig 3
     f = 3
     plot_line(all_data_log["accuracy"], range(1, num_folds + 1), label="Accuracy", fig_num=f,
@@ -958,7 +974,7 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
                      pdf_name="figures.pdf", show_plots=False, num_patients_te=64,
                      num_patients_tr=(4, 8, 16, 32, 64, 128, 256, 512, 1024), test_data=None):
     """Do training on dataset, this is dirty code, sorry."""
-    # Get splits indices to separate dataset in patients
+    # Get splits indices to separate dataset in patients (test set split)
     total_patient_num = -1
     prev_patient = ""
     if test_data is None:
@@ -985,6 +1001,7 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
             te_t_idx = len(patients_t_whole)
         else:
             te_t_idx = i
+    # Get splits indices to separate dataset in patients (training set splits)
     total_patient_num = -1
     prev_patient = ""
     tmp_tr = num_patients_tr[0]
@@ -1005,6 +1022,7 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
                     break
     if total_patient_num < tmp_tr:
         tr_idx.append(len(patients_whole))
+    # Print logs
     print("Tr", num_patients_tr, "( idx", tr_idx, ")")
     if test_data is None:
         print("Te", num_patients_te, "( idx", te_idx, ")")
@@ -1013,6 +1031,7 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
     if len(num_patients_tr) > len(tr_idx):
         num_patients_tr = num_patients_tr[:len(tr_idx)]
 
+    # Create variables where training data will be saved
     historic_acc = None
     historic_val_acc = None
     rocs = []
@@ -1026,6 +1045,7 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
                         "recall1": [], "precision0": [], "precision1": [], "num_label0": [],
                         "num_label1": [], "num_labels": [], "pred_percentages": [],
                         "true_percentages": [], "true_cv": [], "pred_cv": []}
+    # Do training
     patient_splits = []
     weights = None  # This makes sure that the weight for every layer are reset every fold
     num_folds = len(tr_idx)
@@ -1072,7 +1092,10 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
             with open(location + "/unknown_error.txt", 'a') as f:
                 f.write("{}\n".format(num_patients_tr[i]))
 
-        if aTr <= 0.7 and num_patients_tr[i] == 256 and False:  # Will never run
+        # This uses some old file if the training fails 3 times, but now I use corrections a
+        # posteriori (unlike this which was using a figure generated a priori), to fix problems
+        # when training, which basically run the faulty training step again, and normally fixes it
+        if aTr <= 0.7 and num_patients_tr[i] == 256 and False:  # Will never run anymore
             dummy_path = "official_data/dummy_256/16-16-1-0-0/results-(16, 16, 1, 0, 0).pkl"
             with open(dummy_path, 'rb') as f:
                 old_params = pickle.load(f)
@@ -1737,7 +1760,9 @@ def main(correction):
 
     How to use correction: some nn are not trained for some unknown bug. Those can be
     manually selected and rerun. Correction should be a list of tuples where first element
-    is comb and second element is number of training samples, or None if all comb has to be rerun
+    is comb and second element is number of training samples, or None if all comb has to be rerun.
+
+    Corrections only work for training, they have not been tested for cross validation!
     """
     # Print when and how job starts
     print("--------------------------------------------------------------------------------------")
@@ -1779,12 +1804,18 @@ def main(correction):
                     dataset_name=None)
 
     # Remove elements of the dataset if necessary
+    # Also, make sure all same patients are adjacent by ordering patient ids
+    params = limit_number_patients_per_label(x_whole, y_whole, mask_whole, patients_whole,
+                                            num_patients_per_label=args.size, adjacent=False)
+    x_whole, y_whole, mask_whole, patients_whole = params
     if args.size is not None:
-        params = limit_number_patients_per_label(x_whole, y_whole, mask_whole, patients_whole,
-                                                 num_patients_per_label=args.size, adjacent=False)
-        x_whole, y_whole, mask_whole, patients_whole = params
+        print("Dataset limited to {} samples which contain {} unique patients"
+                "".format(len(x_whole), len(np.unique(patients_whole))))
         analyze_data(x_whole, y_whole, patients_whole, mask_whole, plot_data=False,
                      dataset_name=None)
+    else:
+        print("Dataset contains {} samples which contain {} unique patients"
+                "".format(len(x_whole)), len(np.unique(patients_whole)))
 
     patients = np.unique(patients_whole)
     if args.dataset_test is not None:
@@ -1925,7 +1956,7 @@ def main(correction):
         i += 1
         print("\n================================================================================")
         print("\nCombination {}/{}. Combination: {}".format(i, num_comb, comb))
-        # Do cross validation and save results
+        # Do cross validation or regular training with a separate test set, and save results
         sublocation = location + "/" + "-".join([str(x) for x in comb])
         suffix = "-{}".format(comb)
         pdf_name = "figures{}.pdf".format(suffix)
@@ -1949,7 +1980,7 @@ def main(correction):
             with open(sublocation + "/" + results_name, 'wb') as f:
                 pickle.dump(all_data_comb, f)
         else:
-            # Instead of doing cross validation again, if the data already exists, load data saved
+            # Instead of doing training or cv again, if the data already exists, load data saved
             print("\nFile '{}' already exists, skipping combination {}."
                   "".format(sublocation + "/" + pdf_name, comb))
             if os.path.isfile(sublocation + "/" + results_name):
@@ -1963,7 +1994,7 @@ def main(correction):
                           "".format(correction_ht[comb]))
                     if comb != all_data_comb[0]:
                         raise Exception("Error. Data was saved differently in this folder")
-                    # Correct selected runs
+                    # Correct selected runs. Only works for training, not cv!
                     params = correct_old_runs(layers, optimizer, loss, x_whole, y_whole,
                                               patients_whole, num_patients,
                                               all_data_comb[1:], location=sublocation,
