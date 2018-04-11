@@ -134,17 +134,18 @@ def main():
     # Print accuracies
     print(table_acc)
 
-    # Save PDF results
-    save_plt_figures_to_pdf("figures_median.pdf")
-
-    plt.close("all")
     mean_accuracies = np.array(mean_accuracies)
-    plt.figure(0)
+    bigger_figsize = list(plt.rcParams.get('figure.figsize'))
+    bigger_figsize[0] += 2
+    bigger_figsize[1] += 1.5
+    fig_num = 17 + len(all_cv1["history_val_acc"])
+    plt.figure(fig_num, figsize=bigger_figsize)
     plt.axhline(0.93, color='k', linestyle=':', label="BFT accuracy")
     for i in range(len(x_axis)):
-        figsize = wider_figsize if i == 0 else None
-        plot_line(mean_accuracies[:, i], show=True, label="{} patients in training".format(x_axis[i]),
-                  figsize=figsize, legend_out=(i == len(x_axis) - 1), xticks_labels=combs)
+        plot_line(mean_accuracies[:, i], show=show_plots, fig_num=fig_num,
+                  label="{} patients training".format(x_axis[i]), y_label="Accuracy",
+                  title="Training set size vs. Model",
+                  legend_out=(i == len(x_axis) - 1), xticks_labels=combs)
         print("Training: {} patients".format(x_axis[i]))
         print("  {}. Accuracy: {}".format(0, np.mean(mean_accuracies[:, i])))
         for k, j in enumerate(np.argsort(mean_accuracies[:, i])[::-1]):
@@ -152,7 +153,9 @@ def main():
                 break
             print("  {}. Accuracy: {}".format(k + 1, mean_accuracies[j, i]))
             print("     Model:    {}".format(combs[j]))
-    input("Press ENTER to continue...")
+
+    # Save PDF results
+    save_plt_figures_to_pdf("figures_median.pdf")
 
     # Print mean results
     print("Raw Data:")
