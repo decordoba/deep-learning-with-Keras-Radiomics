@@ -199,7 +199,7 @@ def augment_dataset(volumes, labels, masks, patients, scale_samples=(1, 1.2, 1.4
 
 
 def bootstrap_augment_dataset(volumes, labels, masks, patients, num_samples, max_distance=None,
-                              max_scale_difference=0.5):
+                              max_scale_difference=0.5, balance_labels=False):
     """Augment dataset scaling, translating and rotating, bootstrapping data.
 
     Expects volumes and masks to be perfect cubes.
@@ -220,6 +220,10 @@ def bootstrap_augment_dataset(volumes, labels, masks, patients, num_samples, max
     min_radius = np.percentile(radius_mins + radius_maxs, 33.3)
     max_radius_diff = ((1 + max_scale_difference) ** (1 / 3))
     min_radius_diff = ((1 - max_scale_difference) ** (1 / 3))
+    # Create structures to balance dataset later if necessary
+    if balance_labels:
+        idx_ones = np.argwhere(labels == 1)
+        idx_zeros = np.argwhere(labels == 0)
     # Bootstrap augmentation
     if max_distance is not None:
         current_max_distance = max_distance
@@ -231,7 +235,16 @@ def bootstrap_augment_dataset(volumes, labels, masks, patients, num_samples, max
     print_when = int(num_samples / 100)
     for i in range(num_samples):
         # Pick patient with replacement
-        idx = np.random.randint(num_patients)
+        if not balance_labels:
+            idx = np.random.randint(num_patients)
+        else:
+            # If balance_labels, make sure 50% of samples are label 0 and 50% are label 1
+            if i % 2 == 0:
+                idx = np.random.randint(len(idx_zeros))
+                idx = idx_zeros[idx]
+            else:
+                idx = np.random.randint(len(idx_ones))
+                idx = idx_ones[idx]
         # Save patient and label
         samples_p.append(patients[idx])
         samples_y.append(labels[idx])
@@ -291,7 +304,10 @@ def parse_arguments():
 
 
 if __name__ == "__main__":
-    args = parse_arguments()
+    print("This main does nothing, sorry!")
+
+    # args = parse_arguments()
+    #
     # Load dataset
     # volumes, labels, masks, patients = read_dataset(args.dataset, args.size, args.plot_slices,
     #                                                 args.plot)
