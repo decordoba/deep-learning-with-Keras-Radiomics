@@ -269,8 +269,18 @@ def plot_line(y_pts, x_pts=None, y_label=None, x_label=None, title=None, axis=No
             ax.plot(y_pts, marker=marker, linestyle=linestyle, color=color, linewidth=linewidth,
                     label=label)
         else:
-            ax.plot(y_pts, style, marker=marker, linestyle=linestyle, color=color,
-                    linewidth=linewidth, label=label)
+            if marker is None and linestyle is None:
+                ax.plot(y_pts, style, color=color, linewidth=linewidth, label=label)
+            elif marker is None:
+                ax.plot(y_pts, style, linestyle=linestyle, color=color, linewidth=linewidth,
+                        label=label)
+            elif linestyle is None:
+                ax.plot(y_pts, style, marker=marker, color=color, linewidth=linewidth, label=label)
+            else:
+                # Assuming style only contains info about marker and linestyle, it has no effect
+                # if we are choosing a marker and a linestyle directly
+                ax.plot(y_pts, marker=marker, linestyle=linestyle, color=color,
+                        linewidth=linewidth, label=label)
     else:
         if isinstance(y_pts, list) and isinstance(y_pts[0], list):
             (y_pts, x_pts) = transform_curves_to_plot(y_pts, x_pts)
@@ -278,8 +288,19 @@ def plot_line(y_pts, x_pts=None, y_label=None, x_label=None, title=None, axis=No
             ax.plot(x_pts, y_pts, marker=marker, linestyle=linestyle, color=color,
                     linewidth=linewidth, label=label)
         else:
-            ax.plot(x_pts, y_pts, style, marker=marker, linestyle=linestyle, color=color,
-                    linewidth=linewidth, label=label)
+            if marker is None and linestyle is None:
+                ax.plot(x_pts, y_pts, style, color=color, linewidth=linewidth, label=label)
+            elif marker is None:
+                ax.plot(x_pts, y_pts, style, linestyle=linestyle, color=color, linewidth=linewidth,
+                        label=label)
+            elif linestyle is None:
+                ax.plot(x_pts, y_pts, style, marker=marker, color=color, linewidth=linewidth,
+                        label=label)
+            else:
+                # Assuming style only contains info about marker and linestyle, it has no effect
+                # if we are choosing a marker and a linestyle directly
+                ax.plot(x_pts, y_pts, marker=marker, linestyle=linestyle, color=color,
+                        linewidth=linewidth, label=label)
     if y_label is not None:
         ax.set_ylabel(y_label)
     if x_label is not None:
