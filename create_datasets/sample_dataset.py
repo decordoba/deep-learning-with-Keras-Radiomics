@@ -222,8 +222,8 @@ def bootstrap_augment_dataset(volumes, labels, masks, patients, num_samples, max
     min_radius_diff = ((1 - max_scale_difference) ** (1 / 3))
     # Create structures to balance dataset later if necessary
     if balance_labels:
-        idx_ones = np.argwhere(labels == 1)
-        idx_zeros = np.argwhere(labels == 0)
+        idx_ones = np.argwhere(np.array(labels) == 1)
+        idx_zeros = np.argwhere(np.array(labels) == 0)
     # Bootstrap augmentation
     if max_distance is not None:
         current_max_distance = max_distance
@@ -241,10 +241,10 @@ def bootstrap_augment_dataset(volumes, labels, masks, patients, num_samples, max
             # If balance_labels, make sure 50% of samples are label 0 and 50% are label 1
             if i % 2 == 0:
                 idx = np.random.randint(len(idx_zeros))
-                idx = idx_zeros[idx]
+                idx = idx_zeros[idx][0]
             else:
                 idx = np.random.randint(len(idx_ones))
-                idx = idx_ones[idx]
+                idx = idx_ones[idx][0]
         # Save patient and label
         samples_p.append(patients[idx])
         samples_y.append(labels[idx])
