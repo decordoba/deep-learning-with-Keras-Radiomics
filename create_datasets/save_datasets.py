@@ -12,6 +12,7 @@ from collections import Counter
 from parse_volumes_dataset import plot_pet_slice
 from generate_dataset import get_current_time
 from sample_dataset import convert_volumes_to_medians, augment_dataset, bootstrap_augment_dataset
+from parse_volumes_dataset import atenuate_image_from_mask, expand_mask
 
 
 """
@@ -764,6 +765,10 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
         dataset_name += "_exactly{}".format(exact_number_patients)
         if skip_patients is not None and skip_patients > 0:
             dataset_name += "-{}".format(skip_patients)
+    if args.zero_non_mask_pixels:
+        dataset_name += "_zeroed"
+        if args.leave_margin_when_zeroing:
+            dataset_name += "-margin"
     if augment_bootstrap is not None:
         dataset_name += "_augmented-b{}".format(augment_bootstrap)
         if balanced_augmentation:
@@ -881,6 +886,14 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
                               initial_figure=30, suffix="_normalized",
                               title_suffix="(Normalized)", dataset_name=dataset_name)
         num_patients_by_label, medians_by_label, results = params
+
+    if args.zero_non_mask_pixels:
+        for i, (x, m) in enumerate(zip(x_set, masks)):
+            if args.leave_margin_when_zeroing:
+                zeroing_mask = expand_mask(m)
+            else:
+                zeroing_mask = m
+            x_set[i] = atenuate_image_from_mask(x, zeroing_mask)
 
     # Resampling used to be here, but then samples get mixed between training and test set
     """
@@ -1077,7 +1090,7 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
     # Data augmentation
     if augment_bootstrap is not None:
         print("\nAugmenting data boostraping (number samples: {}, balanced: {})..."
-                "".format(augment_bootstrap, balanced_augmentation))
+              "".format(augment_bootstrap, balanced_augmentation))
         # Training set and test set done together (there may be same patient in training and test)
         train_test_split = (augment_bootstrap * len(train_set_y) /
                             (len(test_set_y) + len(train_set_y)))
@@ -1257,6 +1270,10 @@ def parse_arguments(suffix=""):
                         help="slice volumes thorough their medians to get 3 channels 2d images")
     parser.add_argument('-u', '--unnormalized', default=False, action="store_true",
                         help="do not normalize volumes")
+    parser.add_argument('-z', '--zero_non_mask_pixels', default=False, action="store_true",
+                        help="set to zero all pixels not in the mask")
+    parser.add_argument('-zm', '--leave_margin_when_zeroing', default=False, action="store_true",
+                        help="leave a margin of 3 pixels when zeroing non mask pixels")
     parser.add_argument('-y', '--yes', default=False, action="store_true",
                         help="skip confirmation dialogs, this will overwrite data without asking")
     parser.add_argument('-l', '--lumpy', default=False, action="store_true",
