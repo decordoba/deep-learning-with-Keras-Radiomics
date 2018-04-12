@@ -865,12 +865,16 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
 
     if data_interpolation is not None:
         # Adjust slices so that all pixels are the same width, length and height
-        x_set, masks = interpolate_data(x_set, masks, data_interpolation)
-        # for i in range(len(x_set)):
-        #     if x_set[i].shape[2] == 48:
-        #         x_set[i] = x_set[i][:, :, 4:44]
-        #     if masks[i].shape[2] == 48:
-        #         masks[i] = masks[i][:, :, 4:44]
+        hash_num = hash([x_set, masks])
+        hash_filename = "interpolation_{}.pkl".format(hash_num)
+        # This step is really slow, so save data with hash to avoid repeating it
+        try:
+            with open(hash_filename, 'rb') as f:
+                x_set, masks = pickle.load(f)
+        except TypeError:
+            x_set, masks = interpolate_data(x_set, masks, data_interpolation)
+            with open(hash_filename, 'wb') as f:
+                pickle.dump([x_set, masks], f)
         print("\nAnalyzing data...")
         params = analyze_data(x_set, y_set, patients, masks, plot_data=plot_data,
                               initial_figure=24, suffix="_interpolated_slices",
