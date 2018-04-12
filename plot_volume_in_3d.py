@@ -198,7 +198,8 @@ if __name__ == "__main__":
         print("{}/{}. Patient: {}, Label: {}".format(i + 1, len(patients), p, y))
         gif_name = "{}/patient_{}_label_{}".format(folder, p, y)
         gif_name = None if args.plot else gif_name  # Don't save if args.plot
-        frame = None if args.white_background is False else (0.5, 0.5)
+        frame = None if args.axis_labels is True else (0.7, 0.7)
+        frame = frame if args.white_background is False else (0.5, 0.5)
         plot_volume_in_3D(x, mask=m, split_volume=args.split_volume, show=args.plot,
                           white_background=args.white_background, frame=frame,
                           axis_labels_off=not args.axis_labels, save_location=gif_name)
