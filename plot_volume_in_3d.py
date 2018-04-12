@@ -150,6 +150,9 @@ def plot_volume_in_3D(volume, threshold=0.5, mask=None, fig_num=0, normalize_vol
         input("Press ENTER to continue...")
         plt.close("all")
 
+    if save_location is not None:
+        return images
+
 
 def parse_arguments():
     """Parse arguments in code."""
@@ -169,6 +172,8 @@ def parse_arguments():
                         help="show numbers in axis")
     parser.add_argument('-p', '--plot', default=False, action="store_true",
                         help="plot figures, don't save them")
+    parser.add_argument('-saio', '--save_all_in_one', default=False, action="store_true",
+                        help="create gif with all gifs for every label")
     return parser.parse_args()
 
 
@@ -182,6 +187,8 @@ if __name__ == "__main__":
         os.mkdir(folder)
     except FileExistsError:
         pass
+    gifs = [[], []]
+    smallest_image_shape = None
     for i, (x, y, m, p) in enumerate(zip(images, labels, masks, patients)):
         # Skip patients if required
         if i < args.skip_patients:
@@ -200,9 +207,45 @@ if __name__ == "__main__":
         gif_name = None if args.plot else gif_name  # Don't save if args.plot
         frame = None if args.axis_labels is True else (0.7, 0.7)
         frame = frame if args.white_background is False else (0.5, 0.5)
-        plot_volume_in_3D(x, mask=m, split_volume=args.split_volume, show=args.plot,
-                          white_background=args.white_background, frame=frame,
-                          axis_labels_off=not args.axis_labels, save_location=gif_name)
+        gif = plot_volume_in_3D(x, mask=m, split_volume=args.split_volume, show=args.plot,
+                                white_background=args.white_background, frame=frame,
+                                axis_labels_off=not args.axis_labels, save_location=gif_name)
+        gifs[y].append(gif)
+        if gifs[y][-1] is not None:
+            image_shape = gifs[y][-1][0].shape[0:2]
+            try:
+                smallest_image_shape = np.min((image_shape, smallest_image_shape), axis=0)
+            except TypeError:
+                smallest_image_shape = image_shape
+
+    if not args.plot and args.save_all_in_one and smallest_image_shape is not None:
+        # Hardcoded, sorry
+        for i in range(len(gifs)):
+            if len(gifs[i]) == 45:
+                w = 9
+                h = 5
+            elif len(gifs[i]) == 15:
+                w = 3
+                h = 5
+            else:
+                w = int(np.floor(len(gifs[i])))
+                h = int(np.ceil(len(gifs[i])))
+                w = w + 1 if w * h < len(gifs[i]) else w
+            big_image_shape = (len(gifs[i][0]), h * smallest_image_shape[0],
+                               w * smallest_image_shape[1], 4)
+            print(big_image_shape)
+            images = np.zeros(big_image_shape)
+            for j, gif in enumerate(gifs[i]):
+                gif = np.array(gif)
+                x0, y0 = (j % w) * smallest_image_shape[0], (j // w) * smallest_image_shape[1]
+                x1, y1 = x0 + smallest_image_shape[0], y0 + smallest_image_shape[1]
+                xg0 = int((gif.shape[1] - smallest_image_shape[0]) / 2)
+                yg0 = int((gif.shape[2] - smallest_image_shape[1]) / 2)
+                xg1, yg1 = xg0 + smallest_image_shape[0], yg0 + smallest_image_shape[1]
+                images[:, x0:x1, y0:y1, :] = gif[:, xg0:xg1, yg0:yg1, :]
+            formatted_images = []
+            imageio.mimsave("label{}.gif".format(i), images)
+
 
     # Example of use (no need to open):
     # d = 8
