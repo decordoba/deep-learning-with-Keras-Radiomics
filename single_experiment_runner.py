@@ -177,6 +177,36 @@ def plot_multiple_roc_curves(rocs, title=None, fig_num=0, filename=None, show=Tr
         fig.clear()
 
 
+def plot_roc_curve(fpr, tpr, roc_auc, title=None, fig_num=0, filename=None, show=True):
+    """Plot roc curve for label 0 and 1."""
+    if filename is None and show:
+        plt.ion()
+    fig = plt.figure(fig_num)
+    subfig = fig.add_subplot(111)
+    # Plot ROC curves
+    for i in range(2):
+        subfig.plot(fpr[i], tpr[i], lw=2, label='label {} (area: {:0.2f})'.format(i, roc_auc[i]))
+    # Plot diagonal
+    subfig.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    subfig.set_xlabel('False Positive Rate')
+    subfig.set_ylabel('True Positive Rate')
+    if title is None:
+        title = "ROC Curve"
+    subfig.set_title(title)
+    fig.canvas.set_window_title("Figure {} - {}".format(fig_num, title))
+    subfig.set_xlabel("Epoch")
+    plt.legend()
+    if filename is None:
+        if show:
+            plt.show()
+            plt.ioff()
+    else:
+        fig.savefig(filename, bbox_inches="tight")
+        fig.clear()
+
+
 def save_plt_figures_to_pdf(filename, figs=None, dpi=200):
     """Save all matplotlib figures in a single PDF file."""
     dirname = os.path.dirname(filename)
@@ -982,6 +1012,23 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
     f = 11
     plot_multiple_roc_curves(rocs, title="ROC Curve for Cross Validation", fig_num=f,
                              show=show_plots)
+    # Fig 12
+    f = 12
+    mean_fpr, mean_tpr, mean_auc = None, None, None
+    for fpr, tpr, roc_auc in rocs:
+        print(fpr.shape, tpr.shape, roc_auc.shape)
+        input("...")
+        if mean_fpr is None:
+            mean_fpr, mean_tpr, mean_auc = fpr, tpr, roc_auc
+        else:
+            mean_fpr += fpr
+            mean_tpr += tpr
+            mean_auc += roc_auc
+    mean_fpr /= len(rocs)
+    mean_tpr /= len(rocs)
+    mean_auc /= len(rocs)
+    plot_roc_curve(mean_fpr, mean_tpr, mean_auc, title="Model Mean ROC Curve", fig_num=f,
+                   show=show_plots)
 
     # Save all figures to a PDF called figures.pdf
     save_plt_figures_to_pdf(location + "/" + pdf_name)
@@ -1329,6 +1376,23 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
     f = 11
     plot_multiple_roc_curves(rocs, title="ROC Curves  vs.  Dataset Size", fig_num=f,
                              show=show_plots, labels=title_train)
+    # Fig 12
+    f = 12
+    mean_fpr, mean_tpr, mean_auc = None, None, None
+    for fpr, tpr, roc_auc in rocs:
+        print(fpr.shape, tpr.shape, roc_auc.shape)
+        input("...")
+        if mean_fpr is None:
+            mean_fpr, mean_tpr, mean_auc = fpr, tpr, roc_auc
+        else:
+            mean_fpr += fpr
+            mean_tpr += tpr
+            mean_auc += roc_auc
+    mean_fpr /= len(rocs)
+    mean_tpr /= len(rocs)
+    mean_auc /= len(rocs)
+    plot_roc_curve(mean_fpr, mean_tpr, mean_auc, title="Model Mean ROC Curve", fig_num=f,
+                   show=show_plots)
 
     # Save all figures to a PDF called figures.pdf
     save_plt_figures_to_pdf(location + "/" + pdf_name)
@@ -1698,6 +1762,23 @@ def correct_old_runs(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
     f = 11
     plot_multiple_roc_curves(rocs, title="ROC Curves  vs.  Dataset Size", fig_num=f,
                              show=show_plots, labels=title_train)
+    # Fig 12
+    f = 12
+    mean_fpr, mean_tpr, mean_auc = None, None, None
+    for fpr, tpr, roc_auc in rocs:
+        print(fpr.shape, tpr.shape, roc_auc.shape)
+        input("...")
+        if mean_fpr is None:
+            mean_fpr, mean_tpr, mean_auc = fpr, tpr, roc_auc
+        else:
+            mean_fpr += fpr
+            mean_tpr += tpr
+            mean_auc += roc_auc
+    mean_fpr /= len(rocs)
+    mean_tpr /= len(rocs)
+    mean_auc /= len(rocs)
+    plot_roc_curve(mean_fpr, mean_tpr, mean_auc, title="Model Mean ROC Curve", fig_num=f,
+                   show=show_plots)
 
     # Save all figures to a PDF called figures.pdf
     save_plt_figures_to_pdf(location + "/" + pdf_name)
