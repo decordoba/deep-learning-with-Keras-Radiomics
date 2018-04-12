@@ -7,6 +7,7 @@ __pycache__/
 *.bak
 *.pdf
 *.png
+*.gif
 *.csv
 *.txt
 nn*
