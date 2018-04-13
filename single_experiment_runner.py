@@ -384,7 +384,7 @@ def plot_binary_background(y_pts, first_x=0, y_label=None, x_label=None, title=N
     """Plot binary data as background colors: 0 as color0, and 1 as color1.
 
     :param y_pts: y coordinates (only 0s or 1s, please)
-    :param first_x: first x coordinate (every number in y will add 1 to the x axis)
+    :param first_x: first x coordinate (every number in y will add first_x to the x axis)
     :param y_label: label for y axis
     :param x_label: label for x axis
     :param title: the title of the figure
@@ -967,22 +967,38 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
     plot_binary_background(pat_all_data_log["true_percentages"], fig_num=f, show=show_plots,
                            x_label="Patient Number", title="Label Conviction per Patient")
     split = 0
-    for i in range(1, len(pat_all_data_log["true_percentages"])):
-        if i not in patient_splits[:-1]:
-            plot_line([0, 1], [i, i], fig_num=f, color=(0.5, 0.5, 0.5, 0.5),  # color="#555555",
-                      style=":", show=show_plots)
-    plot_line([0.5, 0.5], [0, num_patients], fig_num=f, show=show_plots, color="black")
+    splits = []
     for i, n_patients in enumerate(patient_splits[:-1]):
         split += n_patients
+        splits.append(split)
         split_label = None
         if i == 0:
             split_label = "Cross validation split"
         plot_line([0, 1], [split, split], fig_num=f, label=split_label, color="#ffff00",
                   style="--", show=show_plots)
+    for i in range(1, len(pat_all_data_log["true_percentages"])):
+        if i not in splits:
+            plot_line([0, 1], [i, i], fig_num=f, color=(0.5, 0.5, 0.5, 0.5),  # color="#555555",
+                      style=":", show=show_plots)
+    plot_line([0.5, 0.5], [0, num_patients], fig_num=f, show=show_plots, color="black")
     plot_line(pat_all_data_log["pred_percentages"],
               np.array(range(len(pat_all_data_log["pred_percentages"]))) + 0.5,
               label="Label conviction", color="#00ff00", fig_num=f, show=show_plots,
               axis=(None, None, -0.005, 1.005), style=".-")
+    # Fig 13
+    f = 13
+    order = np.argsort(pat_all_data_log["pred_percentages"])
+    plot_binary_background(pat_all_data_log["true_percentages"][order], fig_num=f, show=show_plots,
+                           x_label="Patient Number", title="Label Conviction per Patient")
+    for i in range(1, len(pat_all_data_log["true_percentages"])):
+        plot_line([0, 1], [i, i], fig_num=f, color=(0.5, 0.5, 0.5, 0.5),  # color="#555555",
+                  style=":", show=show_plots)
+    plot_line([0.5, 0.5], [0, num_patients], fig_num=f, show=show_plots, color="black")
+    plot_line(pat_all_data_log["pred_percentages"][order],
+              np.array(range(len(pat_all_data_log["pred_percentages"]))) + 0.5,
+              label="Label conviction", color="#00ff00", fig_num=f, show=show_plots,
+              axis=(None, None, -0.005, 1.005), style=".-")
+    print("Patient order in figure 13: \n{}".format(patients_whole[order]))
     # Fig 0
     f = 0
     plot_image(location + "/model0.png", fig_num=f, title="Model used", show=show_plots)
