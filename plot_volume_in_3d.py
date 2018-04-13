@@ -1,6 +1,7 @@
 #!/usr/bin/env python3.5
 import argparse
 import os
+import pickle
 import numpy as np
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -174,52 +175,62 @@ def parse_arguments():
                         help="plot figures, don't save them")
     parser.add_argument('-saio', '--save_all_in_one', default=False, action="store_true",
                         help="create gif with all gifs for every label")
+    parser.add_argument('-usd', '--use_saved_data', default=False, action="store_true",
+                        help="get gifs from old 'volume_gifs.pkl' file")
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_arguments()
 
-    images, labels, masks, patients = read_dataset(args.dataset, num_patients_per_label=None)
+    if not args.use_saved_data:
+        images, labels, masks, patients = read_dataset(args.dataset, num_patients_per_label=None)
 
-    folder = "gifs"
-    try:
-        os.mkdir(folder)
-    except FileExistsError:
-        pass
-    gifs = [[], []]
-    smallest_image_shape = None
-    for i, (x, y, m, p) in enumerate(zip(images, labels, masks, patients)):
-        # Skip patients if required
-        if i < args.skip_patients:
-            continue
-        if args.size is not None and i >= args.skip_patients + args.size:
-            break
-        # Format label
+        folder = "gifs"
         try:
-            y = y[1]
-        except TypeError:
+            os.mkdir(folder)
+        except FileExistsError:
             pass
-        y = int(y)
-        # Save or plot 3D volume
-        print("{}/{}. Patient: {}, Label: {}".format(i + 1, len(patients), p, y))
-        gif_name = "{}/patient_{}_label_{}".format(folder, p, y)
-        gif_name = None if args.plot else gif_name  # Don't save if args.plot
-        frame = None if args.axis_labels is True else (0.7, 0.7)
-        frame = frame if args.white_background is False else (0.5, 0.5)
-        gif = plot_volume_in_3D(x, mask=m, split_volume=args.split_volume, show=args.plot,
-                                white_background=args.white_background, frame=frame,
-                                axis_labels_off=not args.axis_labels, save_location=gif_name)
-        gifs[y].append(gif)
-        if gifs[y][-1] is not None:
-            image_shape = gifs[y][-1][0].shape[0:2]
+        gifs = [[], []]
+        smallest_image_shape = None
+        for i, (x, y, m, p) in enumerate(zip(images, labels, masks, patients)):
+            # Skip patients if required
+            if i < args.skip_patients:
+                continue
+            if args.size is not None and i >= args.skip_patients + args.size:
+                break
+            # Format label
             try:
-                smallest_image_shape = np.min((image_shape, smallest_image_shape), axis=0)
+                y = y[1]
             except TypeError:
-                smallest_image_shape = image_shape
+                pass
+            y = int(y)
+            # Save or plot 3D volume
+            print("{}/{}. Patient: {}, Label: {}".format(i + 1, len(patients), p, y))
+            gif_name = "{}/patient_{}_label_{}".format(folder, p, y)
+            gif_name = None if args.plot else gif_name  # Don't save if args.plot
+            frame = None if args.axis_labels is True else (0.7, 0.7)
+            frame = frame if args.white_background is False else (0.5, 0.5)
+            gif = plot_volume_in_3D(x, mask=m, split_volume=args.split_volume, show=args.plot,
+                                    white_background=args.white_background, frame=frame,
+                                    axis_labels_off=not args.axis_labels, save_location=gif_name)
+            # Calculate metrics that will be used if args.save_all_in_one is enabled
+            gifs[y].append(gif)
+            if gifs[y][-1] is not None:
+                image_shape = gifs[y][-1][0].shape[0:2]
+                try:
+                    smallest_image_shape = np.min((image_shape, smallest_image_shape), axis=0)
+                except TypeError:
+                    smallest_image_shape = image_shape
 
+        with open('volume_gifs.pkl', 'wb') as f:
+            pickle.dump([gifs, smallest_image_shape], f)
+    else:
+        with open('volume_gifs.pkl', 'rb') as f:
+            gifs, smallest_image_shape = pickle.load(f)
+
+    # Create gif with all gifs with the same label
     if not args.plot and args.save_all_in_one and smallest_image_shape is not None:
-        # Hardcoded, sorry
         for i in range(len(gifs)):
             if len(gifs[i]) == 45:
                 w = 9
@@ -228,23 +239,24 @@ if __name__ == "__main__":
                 w = 3
                 h = 5
             else:
-                w = int(np.floor(len(gifs[i])))
-                h = int(np.ceil(len(gifs[i])))
+                w = int(np.floor(np.sqrt(len(gifs[i]))))
+                h = int(np.ceil(np.sqrt(len(gifs[i]))))
                 w = w + 1 if w * h < len(gifs[i]) else w
             big_image_shape = (len(gifs[i][0]), h * smallest_image_shape[0],
                                w * smallest_image_shape[1], 4)
-            print(big_image_shape)
             images = np.zeros(big_image_shape)
             for j, gif in enumerate(gifs[i]):
                 gif = np.array(gif)
-                x0, y0 = (j % w) * smallest_image_shape[0], (j // w) * smallest_image_shape[1]
+                x0, y0 = (j % h) * smallest_image_shape[0], (j // h) * smallest_image_shape[1]
                 x1, y1 = x0 + smallest_image_shape[0], y0 + smallest_image_shape[1]
                 xg0 = int((gif.shape[1] - smallest_image_shape[0]) / 2)
                 yg0 = int((gif.shape[2] - smallest_image_shape[1]) / 2)
                 xg1, yg1 = xg0 + smallest_image_shape[0], yg0 + smallest_image_shape[1]
                 images[:, x0:x1, y0:y1, :] = gif[:, xg0:xg1, yg0:yg1, :]
-            formatted_images = []
-            imageio.mimsave("label{}.gif".format(i), images)
+            images = images.astype("uint8")
+            gif_filename = "label{}.gif".format(i)
+            imageio.mimsave(gif_filename, images)
+            print("Saved gif '{}'".format(gif_filename))
 
 
     # Example of use (no need to open):

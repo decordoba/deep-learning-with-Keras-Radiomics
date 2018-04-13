@@ -1,6 +1,7 @@
 #!/usr/bin/env python3.5
 import matplotlib_handle_display  # Must be imported before anything matplotlib related
 import argparse
+import hashlib
 import numpy as np
 import os
 import pickle
@@ -756,7 +757,7 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
                        convert_to_2d=True, resampling=None, skip_dialog=False, plot_slices=False,
                        medians=False, augment_rotate=None, augment_scale=None, skip_patients=None,
                        augment_translate=None, exact_number_patients=None, augment_bootstrap=None,
-                       balanced_augmentation=False):
+                       balanced_augmentation=False, hash_num=""):
     """Save dataset so labels & slices medians are equally distributed in training and test set."""
     # Add suffixes ta dataset name, so it is easy to know how every dataset was generated
     if not convert_to_2d and not medians:
@@ -865,16 +866,19 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
 
     if data_interpolation is not None:
         # Adjust slices so that all pixels are the same width, length and height
-        hash_num = hash([x_set, masks])
-        hash_filename = "interpolation_{}.pkl".format(hash_num)
+        hash_filename = "interpolation{}.pkl".format(hash_num)
         # This step is really slow, so save data with hash to avoid repeating it
+        print("\nLoading old interpolation data...")
         try:
             with open(hash_filename, 'rb') as f:
                 x_set, masks = pickle.load(f)
-        except TypeError:
+            print("Using saved interpolation data from '{}'".format(hash_filename))
+        except FileNotFoundError:
+            print("File '{}' not found.".format(hash_filename))
             x_set, masks = interpolate_data(x_set, masks, data_interpolation)
             with open(hash_filename, 'wb') as f:
                 pickle.dump([x_set, masks], f)
+            print("Saved interpolation data to '{}'".format(hash_filename))
         print("\nAnalyzing data...")
         params = analyze_data(x_set, y_set, patients, masks, plot_data=plot_data,
                               initial_figure=24, suffix="_interpolated_slices",
@@ -1373,6 +1377,10 @@ if __name__ == "__main__":
             # will also automatically balance labels 0 and 1. Set None to a number to select the
             # number of samples that will be created, sampling randomly.
             resampling = (5, None)
+        relevant_data = (args.dataset_name, args.interpolate, data_interpolation,
+                         args.trim, args.unnormalized, dataset_name,
+                         args.exact_number_patients, args.skip_patients)
+        hash_num = hashlib.sha224(str(relevant_data).encode("utf-8")).hexdigest()
         improved_save_data(x, y, patients, masks, dataset_name=dataset_name, plot_data=args.plot,
                            trim_data=args.trim, data_interpolation=data_interpolation,
                            convert_to_2d=not args.in_3d, resampling=resampling,
@@ -1383,4 +1391,4 @@ if __name__ == "__main__":
                            augment_bootstrap=args.augment_bootstrap,
                            balanced_augmentation=args.balanced_augmentation,
                            exact_number_patients=args.exact_number_patients,
-                           skip_patients=args.skip_patients)
+                           skip_patients=args.skip_patients, hash_num=hash_num)
