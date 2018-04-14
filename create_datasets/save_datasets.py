@@ -29,6 +29,58 @@ or separate the 3D volumes in 3 channels 2D slices.
 np.random.seed(123)  # for reproducibility
 
 
+def load_organized_mask_dataset(path):
+    """Load organized masks from dataset."""
+    try:
+        f = np.load(path + "/training_set.npz")
+        try:
+            y_train = f["y"]
+        except KeyError:
+            y_train = f["arr_1"]
+        f.close()
+    except (FileNotFoundError, OSError, KeyError):
+        with open(path + "/training_set.pkl", 'rb') as f:
+            _, y_train = pickle.load(f)
+    try:
+        f = np.load(path + "/test_set.npz")
+        try:
+            y_test = f["y"]
+        except KeyError:
+            y_test = f["arr_1"]
+        f.close()
+    except (FileNotFoundError, OSError, KeyError):
+        with open(path + "/test_set.pkl", 'rb') as f:
+            _, y_test = pickle.load(f)
+    with open(path + "/training_set_patients.pkl", 'rb') as f:
+        patients_train = pickle.load(f)
+    with open(path + "/test_set_patients.pkl", 'rb') as f:
+        patients_test = pickle.load(f)
+    try:
+        f = np.load(path + "/training_set_masks.npz")
+        try:
+            mask_train = f["masks"]
+        except KeyError:
+            mask_train = f["arr_0"]
+        f.close()
+    except (FileNotFoundError, OSError):
+        with open(path + "/training_set_masks.pkl", 'rb') as f:
+            mask_train = pickle.load(f)
+    try:
+        f = np.load(path + "/test_set_masks.npz")
+        try:
+            mask_test = f["masks"]
+        except KeyError:
+            mask_test = f["arr_0"]
+        f.close()
+    except (FileNotFoundError, OSError):
+        with open(path + "/test_set_masks.pkl", 'rb') as f:
+            mask_test = pickle.load(f)
+    mask_labels = np.append(y_train, y_test, axis=0)
+    mask_masks = np.append(mask_train, mask_test, axis=0)
+    mask_patients = np.append(patients_train, patients_test, axis=0)
+    return mask_masks, mask_labels, mask_patients
+
+
 def save_plt_figures_to_pdf(filename, figs=None, dpi=200, verbose=False):
     """Save all matplotlib figures in a single PDF file."""
     dirname = os.path.dirname(filename)
@@ -229,6 +281,19 @@ def plot_boxplot(data, title=None, figure=0, subfigure=None, ylim=None, hide_axi
     ax.tick_params(labelbottom='off')
     if show:
         plt.show()
+
+
+def substitute_masks(x_set, y_set, patients, aux_masks):
+    """Extract mask info from aux_mask and match masks with patients in dataset."""
+    new_masks, aux_labels, aux_patients = aux_masks
+    labels1, num_labels1 = np.unique(y_set, return_counts=True)
+    labels2, num_labels2 = np.unique(aux_labels, return_counts=True)
+    print(num_labels2, num_labels1)
+    num_labels = np.max((num_labels1, num_labels2), axis=0)
+    print(num_labels)
+    print(labels1, labels2)
+    input("...")
+    return x_set, y_set, patients, masks
 
 
 def trim_edges(array_sort, sort_method, x_set, y_set, patients, masks, trim_pos=(0.1, 0.9)):
@@ -757,7 +822,7 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
                        convert_to_2d=True, resampling=None, skip_dialog=False, plot_slices=False,
                        medians=False, augment_rotate=None, augment_scale=None, skip_patients=None,
                        augment_translate=None, exact_number_patients=None, augment_bootstrap=None,
-                       balanced_augmentation=False, hash_num=""):
+                       balanced_augmentation=False, hash_num="", aux_masks=None):
     """Save dataset so labels & slices medians are equally distributed in training and test set."""
     # Add suffixes ta dataset name, so it is easy to know how every dataset was generated
     if not convert_to_2d and not medians:
@@ -894,6 +959,9 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
                               initial_figure=30, suffix="_normalized",
                               title_suffix="(Normalized)", dataset_name=dataset_name)
         num_patients_by_label, medians_by_label, results = params
+
+    if aux_masks is not None:
+        x_set, y_set, patients, masks = substitute_masks(x_set, y_set, patients, aux_masks)
 
     if args.zero_non_mask_pixels:
         for i, (x, m) in enumerate(zip(x_set, masks)):
@@ -1295,6 +1363,10 @@ def parse_arguments(suffix=""):
     parser.add_argument('-dn', '--dataset_name', default=None, help="instead of "
                         "dataset{0}_images.pkl, etc. it uses whatever name is chosen (-l and -m "
                         "modifiers are ignored)".format(suffix))
+    parser.add_argument('-dm', '--dataset_mask', default=None, help="use another dataset's mask"
+                        "as the mask in the chosen dataset (matches labels in images and masks);"
+                        " this dataset must have been generated with save_datasets")
+
     return parser.parse_args()
 
 
@@ -1358,6 +1430,18 @@ if __name__ == "__main__":
             with open('{}_masks.pkl'.format(new_prefix), 'rb') as f:
                 masks = pickle.load(f)
         dataset_name = "custom_{}".format(new_prefix)
+
+    # Load mask data if necessary
+    if args.dataset_mask is not None:
+        # Note this dataset is loaded differently than the general dataset, as this is a dataset
+        # generated with save_dataset.py while the other comes from parse_volumes_dataset.py
+        if args.dataset_mask[-1] == "/":
+            args.dataset_mask = args.dataset_mask[:-1]
+        aux_masks = load_organized_mask_dataset(args.dataset_mask)
+        dataset_name += "_masked_with_{}".format(args.dataset_mask.split("/")[-1])
+    else:
+        aux_masks = None
+
     # Make sure x and y are the same length
     assert(len(x) == len(y))
     assert(len(x) == len(patients))
@@ -1391,4 +1475,5 @@ if __name__ == "__main__":
                            augment_bootstrap=args.augment_bootstrap,
                            balanced_augmentation=args.balanced_augmentation,
                            exact_number_patients=args.exact_number_patients,
-                           skip_patients=args.skip_patients, hash_num=hash_num)
+                           skip_patients=args.skip_patients, hash_num=hash_num,
+                           aux_masks=aux_masks)
