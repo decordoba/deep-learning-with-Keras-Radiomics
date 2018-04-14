@@ -1,11 +1,14 @@
 #!/usr/bin/env python3.5
 import matplotlib_handle_display  # Must be imported before anything matplotlib related
 import numpy as np
+import os
 import pickle
 from prettytable import PrettyTable
 from cycler import cycler
 from matplotlib import pyplot as plt
-from single_experiment_runner import plot_line, save_plt_figures_to_pdf
+from single_experiment_runner import plot_line, save_plt_figures_to_pdf, plot_accuracy_curve
+from single_experiment_runner import plot_multiple_accuracy_curves
+from single_experiment_runner import plot_multiple_roc_curves, plot_roc_curve
 
 
 # Cycle colors from normal line to dotted line (allows to tell 20 plots apart)
@@ -25,16 +28,28 @@ def main():
     # Load all saved files
     filename1 = ("nn_models1_corrected/results_create_datasets-data-custom_lumpy_dataset_v3_0-8192"
                  "_mos_trimmed2-filters-units-dropout2.pkl")
+    # filename1 = ("nn_models4/results_create_datasets-data-custom_lumpy_dataset_v3_0-8192"
+    #              "_exactly60_augmented-b1024_mos_trimmed2.pkl")
     with open(filename1, 'rb') as f:
         all_data1 = pickle.load(f)
     filename2 = ("nn_models2_corrected/results_create_datasets-data-custom_lumpy_dataset_v3_0-8192"
                  "_mos_trimmed2-filters-units-dropout2.pkl")
+    # filename2 = ("nn_models5/results_create_datasets-data-custom_lumpy_dataset_v3_0-8192"
+    #              "_exactly60_augmented-b1024_mos_trimmed2.pkl")
     with open(filename2, 'rb') as f:
         all_data2 = pickle.load(f)
     filename3 = ("nn_models3_corrected/results_create_datasets-data-custom_lumpy_dataset_v3_0-8192"
                  "_mos_trimmed2-filters-units-dropout2.pkl")
+    # filename3 = ("nn_models6/results_create_datasets-data-custom_lumpy_dataset_v3_0-8192"
+    #              "_exactly60_augmented-b1024_mos_trimmed2.pkl")
     with open(filename3, 'rb') as f:
         all_data3 = pickle.load(f)
+
+    destination_folder = "medians123_corrected"
+    try:
+        os.mkdir(destination_folder)
+    except FileExistsError:
+        pass
 
     # Plot summary of results
     print("\nGenerating global figures...")
@@ -58,6 +73,162 @@ def main():
         comb = comb1
         combs.append(comb)
 
+        historic_acc = (history1[0] + history2[0] + history3[0]) / 3
+        historic_val_acc = (history1[1] + history2[1] + history3[1]) / 3
+
+        all_data_log = {}
+        all_data_log["history_acc"] = (np.zeros((len(x_axis), len(historic_acc))) + all_cv1["history_acc"] + all_cv2["history_acc"] + all_cv3["history_acc"]) / 3
+        all_data_log["history_val_acc"] = (np.zeros((len(x_axis), len(historic_acc))) + all_cv1["history_val_acc"] + all_cv2["history_val_acc"] + all_cv3["history_val_acc"]) / 3
+        all_data_log["accuracy"] = (np.zeros(len(x_axis)) + all_cv1["accuracy"] + all_cv2["accuracy"] + all_cv3["accuracy"]) / 3
+        all_data_log["recall0"] = (np.zeros(len(x_axis)) + all_cv1["recall0"] + all_cv2["recall0"] + all_cv3["recall0"]) / 3
+        all_data_log["precision0"] = (np.zeros(len(x_axis)) + all_cv1["precision0"] + all_cv2["precision0"] + all_cv3["precision0"]) / 3
+        all_data_log["recall1"] = (np.zeros(len(x_axis)) + all_cv1["recall1"] + all_cv2["recall1"] + all_cv3["recall1"]) / 3
+        all_data_log["precision1"] = (np.zeros(len(x_axis)) + all_cv1["precision1"] + all_cv2["precision1"] + all_cv3["precision1"]) / 3
+        all_data_log["num_label0"] = (np.zeros(len(x_axis)) + all_cv1["num_label0"] + all_cv2["num_label0"] + all_cv3["num_label0"]) / 3
+        all_data_log["num_label1"] = (np.zeros(len(x_axis)) + all_cv1["num_label1"] + all_cv2["num_label1"] + all_cv3["num_label1"]) / 3
+        all_data_log["num_labels"] = (np.zeros(len(x_axis)) + all_cv1["num_labels"] + all_cv2["num_labels"] + all_cv3["num_labels"]) / 3
+        all_data_log["true_cv"] = (np.array(all_cv1["true_cv"]) + all_cv2["true_cv"] + all_cv3["true_cv"]) / 3
+        all_data_log["pred_cv"] = (np.array(all_cv1["pred_cv"]) + all_cv2["pred_cv"] + all_cv3["pred_cv"]) / 3
+
+        tr_all_data_log = {}
+        tr_all_data_log["accuracy"] = (np.zeros(len(x_axis)) + all_train1["accuracy"] + all_train2["accuracy"] + all_train3["accuracy"]) / 3
+        tr_all_data_log["recall0"] = (np.zeros(len(x_axis)) + all_train1["recall0"] + all_train2["recall0"] + all_train3["recall0"]) / 3
+        tr_all_data_log["precision0"] = (np.zeros(len(x_axis)) + all_train1["precision0"] + all_train2["precision0"] + all_train3["precision0"]) / 3
+        tr_all_data_log["recall1"] = (np.zeros(len(x_axis)) + all_train1["recall1"] + all_train2["recall1"] + all_train3["recall1"]) / 3
+        tr_all_data_log["precision1"] = (np.zeros(len(x_axis)) + all_train1["precision1"] + all_train2["precision1"] + all_train3["precision1"]) / 3
+        tr_all_data_log["num_label0"] = (np.zeros(len(x_axis)) + all_train1["num_label0"] + all_train2["num_label0"] + all_train3["num_label0"]) / 3
+        tr_all_data_log["num_label1"] = (np.zeros(len(x_axis)) + all_train1["num_label1"] + all_train2["num_label1"] + all_train3["num_label1"]) / 3
+        tr_all_data_log["num_labels"] = (np.zeros(len(x_axis)) + all_train1["num_labels"] + all_train2["num_labels"] + all_train3["num_labels"]) / 3
+        tr_all_data_log["true_cv"] = (np.array(all_train1["true_cv"]) + all_train2["true_cv"] + all_train3["true_cv"]) / 3
+        tr_all_data_log["pred_cv"] = (np.array(all_train1["pred_cv"]) + all_train2["pred_cv"] + all_train3["pred_cv"]) / 3
+
+        pat_all_data_log = {}
+        pat_all_data_log["accuracy"] = (np.zeros(len(x_axis)) + all_pat1["accuracy"] + all_pat2["accuracy"] + all_pat3["accuracy"]) / 3
+        pat_all_data_log["recall0"] = (np.zeros(len(x_axis)) + all_pat1["recall0"] + all_pat2["recall0"] + all_pat3["recall0"]) / 3
+        pat_all_data_log["precision0"] = (np.zeros(len(x_axis)) + all_pat1["precision0"] + all_pat2["precision0"] + all_pat3["precision0"]) / 3
+        pat_all_data_log["recall1"] = (np.zeros(len(x_axis)) + all_pat1["recall1"] + all_pat2["recall1"] + all_pat3["recall1"]) / 3
+        pat_all_data_log["precision1"] = (np.zeros(len(x_axis)) + all_pat1["precision1"] + all_pat2["precision1"] + all_pat3["precision1"]) / 3
+        pat_all_data_log["num_label0"] = (np.zeros(len(x_axis)) + all_pat1["num_label0"] + all_pat2["num_label0"] + all_pat3["num_label0"]) / 3
+        pat_all_data_log["num_label1"] = (np.zeros(len(x_axis)) + all_pat1["num_label1"] + all_pat2["num_label1"] + all_pat3["num_label1"]) / 3
+        pat_all_data_log["num_labels"] = (np.zeros(len(x_axis)) + all_pat1["num_labels"] + all_pat2["num_labels"] + all_pat3["num_labels"]) / 3
+        pat_all_data_log["true_cv"] = (np.array(all_pat1["true_cv"]) + all_pat2["true_cv"] + all_pat3["true_cv"]) / 3
+        pat_all_data_log["pred_cv"] = (np.array(all_pat1["pred_cv"]) + all_pat2["pred_cv"] + all_pat3["pred_cv"]) / 3
+        pat_all_data_log["true_percentages"] = (np.array(all_pat1["true_percentages"]) + all_pat2["true_percentages"] + all_pat3["true_percentages"]) / 3
+        pat_all_data_log["pred_percentages"] = (np.array(all_pat1["pred_percentages"]) + all_pat2["pred_percentages"] + all_pat3["pred_percentages"]) / 3
+
+        # Plot stuff
+        plt.close("all")
+        # Fig 2
+        f = 2
+        plot_accuracy_curve(historic_acc, historic_val_acc, title="Model Mean Accuracy", fig_num=f,
+                            show=show_plots)
+        # Fig 1
+        f = 1
+        title_train = ["Training: {} patients".format(x) for x in x_axis]
+        plot_multiple_accuracy_curves(all_data_log["history_acc"], all_data_log["history_val_acc"],
+                                      title="Accuracy History  vs.  Dataset Size", fig_num=f,
+                                      show=show_plots, labels=title_train)
+        # Fig 3
+        f = 3
+        plot_line(all_data_log["accuracy"], x_axis, label="Accuracy", fig_num=f,
+                  show=show_plots, style=".-", x_scale="log")
+        plot_line(all_data_log["recall0"], x_axis, label="Recall 0", fig_num=f, x_scale="log",
+                  show=show_plots, style=".-")
+        plot_line(all_data_log["recall1"], x_axis, label="Recall 1", fig_num=f, x_scale="log",
+                  show=show_plots, style=".-")
+        plot_line(all_data_log["precision0"], x_axis, label="Precision 0", x_scale="log",
+                  fig_num=f, show=show_plots, style=".-")
+        plot_line(all_data_log["precision1"], x_axis, label="Precision 1", x_scale="log",
+                  fig_num=f, title="Test Accuracy, Recall and Precision",
+                  show=show_plots, style=".-", x_label="Number of Patients in Training Set")
+        # Fig 4
+        f = 4
+        plot_line(all_data_log["num_label1"], x_axis, label="Number 1s", fig_num=f,
+                  show=show_plots, style=".-", x_scale="log")
+        plot_line(all_data_log["num_labels"], x_axis, label="Number 0s and 1s",
+                  fig_num=f, title="Test Set Size", axis=[None, None, 0, None], style=".-",
+                  x_label="Number of Patients in Training Set", show=show_plots,  x_scale="log")
+        # Fig 5
+        f = 5
+        plot_line(tr_all_data_log["accuracy"], x_axis, label="Accuracy", fig_num=f,
+                  show=show_plots, style=".-", x_scale="log")
+        plot_line(tr_all_data_log["recall0"], x_axis, label="Recall 0", fig_num=f,
+                  show=show_plots, style=".-", x_scale="log")
+        plot_line(tr_all_data_log["recall1"], x_axis, label="Recall 1", fig_num=f,
+                  show=show_plots, style=".-", x_scale="log")
+        plot_line(tr_all_data_log["precision0"], x_axis, label="Precision 0",
+                  fig_num=f, show=show_plots, style=".-", x_scale="log")
+        plot_line(tr_all_data_log["precision1"], x_axis, label="Precision 1",
+                  fig_num=f, title="Training Accuracy, Recall and Precision", show=show_plots,
+                  x_label="Number of Patients in Training Set", style=".-", x_scale="log")
+        # Fig 6
+        f = 6
+        plot_line(tr_all_data_log["num_label1"], x_axis, label="Number 1s", fig_num=f,
+                  show=show_plots, style=".-", x_scale="log")
+        plot_line(tr_all_data_log["num_labels"], x_axis, label="Number 0s and 1s", show=show_plots,
+                  fig_num=f, title="Training Set Size", axis=[None, None, 0, None],
+                  x_label="Number of Patients in Training Set", style=".-", x_scale="log")
+        # Fig 7
+        f = 7
+        plot_line(pat_all_data_log["accuracy"], x_axis, label="Accuracy", fig_num=f,
+                  show=show_plots, style=".-", x_scale="log")
+        plot_line(pat_all_data_log["recall0"], x_axis, label="Recall 0", fig_num=f,
+                  show=show_plots, style=".-", x_scale="log")
+        plot_line(pat_all_data_log["recall1"], x_axis, label="Recall 1", fig_num=f,
+                  show=show_plots, style=".-", x_scale="log")
+        plot_line(pat_all_data_log["precision0"], x_axis, label="Precision 0",
+                  fig_num=f, show=show_plots, style=".-", x_scale="log")
+        plot_line(pat_all_data_log["precision1"], x_axis, label="Precision 1",
+                  fig_num=f, title="Test Patient Accuracy, Recall and Precision", x_scale="log",
+                  show=show_plots, x_label="Number of Patients in Training Set", style=".-")
+        # Fig 8
+        f = 8
+        plot_line(pat_all_data_log["num_label1"], x_axis, label="Number 1s",
+                  fig_num=f, show=show_plots, style=".-", x_scale="log")
+        plot_line(pat_all_data_log["num_labels"], x_axis, label="Number 0s and 1s",
+                  fig_num=f, title="Test Patient Set Size", axis=[None, None, 0, None], style=".-",
+                  show=show_plots, x_label="Number of Patients in Training Set", x_scale="log")
+        # Fig 9
+        f = 9
+        plot_multiple_roc_curves(rocs1, title="ROC Curves  vs.  Dataset Size", fig_num=f,
+                                 show=show_plots, labels=title_train)
+        # Fig 10
+        f = 10
+        plot_multiple_roc_curves(rocs2, title="ROC Curves  vs.  Dataset Size", fig_num=f,
+                                 show=show_plots, labels=title_train)
+        # Fig 11
+        f = 11
+        plot_multiple_roc_curves(rocs3, title="ROC Curves  vs.  Dataset Size", fig_num=f,
+                                 show=show_plots, labels=title_train)
+        # # Fig 12
+        # f = 12
+        # mean_fpr, mean_tpr, mean_auc = None, None, None
+        # for fpr, tpr, roc_auc in rocs1:
+        #     print(fpr.shape, tpr.shape, roc_auc.shape)
+        #     input("...")
+        #     if mean_fpr is None:
+        #         mean_fpr, mean_tpr, mean_auc = fpr, tpr, roc_auc
+        #     else:
+        #         mean_fpr += fpr
+        #         mean_tpr += tpr
+        #         mean_auc += roc_auc
+        # mean_fpr /= len(rocs1)
+        # mean_tpr /= len(rocs1)
+        # mean_auc /= len(rocs1)
+        # plot_roc_curve(mean_fpr, mean_tpr, mean_auc, title="Model Mean ROC Curve", fig_num=f,
+        #                show=show_plots)
+
+        # Save all figures to a PDF called figures.pdf
+        save_plt_figures_to_pdf(destination_folder + "/" + "-".join([str(x) for x in comb]) + "figures.pdf")
+
+    for i, (params1, params2, params3) in enumerate(zip(all_data1, all_data2, all_data3)):
+        comb1, all_cv1, all_train1, all_pat1, history1, rocs1 = params1
+        comb2, all_cv2, all_train2, all_pat2, history2, rocs2 = params2
+        comb3, all_cv3, all_train3, all_pat3, history3, rocs3 = params3
+        comb = comb1
+        combs.append(comb)
+
+        # Calculate average global results
         figsize = wider_figsize if i == 0 else None
 
         plot_line((np.array(all_cv1["accuracy"]) + all_cv2["accuracy"] + all_cv3["accuracy"]) / 3, x_axis,
@@ -155,7 +326,7 @@ def main():
             print("     Model:    {}".format(combs[j]))
 
     # Save PDF results
-    save_plt_figures_to_pdf("figures_median.pdf")
+    save_plt_figures_to_pdf("{}/figures_median.pdf".format(destination_folder))
 
     # Print mean results
     print("Raw Data:")
