@@ -248,9 +248,13 @@ def main():
     dataset_x = []
     dataset_y = []
     dataset_info = ""
+    biased_data = False
     for i, (x, y, m, p) in enumerate(zip(x_whole, y_whole, mask_whole, patients_whole)):
-        if p in patients:
+        if p in patients and not biased_data:
             input("Repeated patient '{}'. This should never happen.".format(p))
+            input("This message won't be displayed again, but know that the data may be biased"
+                  " towards some specific patients.")
+            biased_data = True
         if args.factor:
             x = x * 255
         patients.add(p)
