@@ -953,7 +953,8 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
     if exact_number_patients is not None:
         if skip_patients is None or skip_patients < 0:
             skip_patients = 0
-        print("\nRemoving all but {} patients exactly...".format(exact_number_patients))
+        print("\nRemoving all but {} patients exactly (patients skipped: {})..."
+                "".format(exact_number_patients, skip_patients))
         y_set = y_set[skip_patients:exact_number_patients + skip_patients]
         x_set = x_set[skip_patients:exact_number_patients + skip_patients]
         patients = patients[skip_patients:exact_number_patients + skip_patients]
@@ -991,6 +992,7 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
         num_patients_by_label, medians_by_label, results = params
 
     if aux_masks is not None:
+        print("\nExchanging original masks by external masks...")
         x_set, y_set, patients, masks = substitute_masks(x_set, y_set, patients, aux_masks)
         # plt.ion()
         # for i, (x, y, p, m) in enumerate(zip(x_set, y_set, patients, masks)):
@@ -1000,9 +1002,12 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
         # plt.close("all")
 
     if args.zero_non_mask_pixels:
+        print("\nErasing (zeroing) pixels outside the mask (leave margin: {})..."
+                "".format(args.leave_margin_when_zeroing))
         for i, (x, m) in enumerate(zip(x_set, masks)):
             if args.leave_margin_when_zeroing:
                 zeroing_mask = expand_mask(m)
+                print("{}/{} masks expanded".format(i + 1, len(x_set)))
             else:
                 zeroing_mask = m
             x_set[i] = atenuate_image_from_mask(x, zeroing_mask)
