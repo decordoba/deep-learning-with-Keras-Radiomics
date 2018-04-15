@@ -283,16 +283,46 @@ def plot_boxplot(data, title=None, figure=0, subfigure=None, ylim=None, hide_axi
         plt.show()
 
 
-def substitute_masks(x_set, y_set, patients, aux_masks):
+def substitute_masks(x_set, y_set, patients, aux_masks, skip_patients=None):
     """Extract mask info from aux_mask and match masks with patients in dataset."""
+    if skip_patients is None or skip_patients < 0:
+        skip_patients = 0
     new_masks, aux_labels, aux_patients = aux_masks
     labels1, num_labels1 = np.unique(y_set, return_counts=True)
     labels2, num_labels2 = np.unique(aux_labels, return_counts=True)
-    print(num_labels2, num_labels1)
-    num_labels = np.max((num_labels1, num_labels2), axis=0)
-    print(num_labels)
-    print(labels1, labels2)
-    input("...")
+    assert(np.all(labels2 == labels1))
+    assert(np.all(labels1 == [0, 1]))
+    num_labels = np.min((num_labels1, num_labels2), axis=0)
+    original_patients = [[] for i in labels1]
+    original_x = [[] for i in labels1]
+    saved_patients = 0
+    patients_to_save = sum(num_labels)
+    for i, (x, y, p) in enumerate(zip(x_set, y_set, patients)):
+        if i < skip_patients:
+            continue
+        if len(original_patients[y]) >= num_labels[y]:
+            continue
+        original_patients[y].append(p)
+        original_x[y].append(x)
+        saved_patients += 1
+        if saved_patients >= patients_to_save:
+            break
+    x_set = []
+    y_set = []
+    patients = []
+    masks = []
+    c = [0 for i in labels1]
+    saved_patients = 0
+    saved_by_label = [0 for i in labels1]
+    for i, (m, y, p) in enumerate(zip(new_masks, aux_labels, aux_patients)):
+        if saved_by_label[y] >= num_labels[y]:
+            continue
+        x_set.append(original_x[y][c[y]])
+        patients.append(original_patients[y][c[y]])
+        y_set.append(y)
+        masks.append(m)
+        c[y] += 1
+        saved_by_label[y] += 1
     return x_set, y_set, patients, masks
 
 
@@ -962,6 +992,12 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
 
     if aux_masks is not None:
         x_set, y_set, patients, masks = substitute_masks(x_set, y_set, patients, aux_masks)
+        # plt.ion()
+        # for i, (x, y, p, m) in enumerate(zip(x_set, y_set, patients, masks)):
+        #     plot_pet_slice(x, center=int(x.shape[2] / 2), mask=m, figure=99,
+        #                    label="patient {} - label {}".format(p, y))
+        # plt.ioff()
+        # plt.close("all")
 
     if args.zero_non_mask_pixels:
         for i, (x, m) in enumerate(zip(x_set, masks)):
