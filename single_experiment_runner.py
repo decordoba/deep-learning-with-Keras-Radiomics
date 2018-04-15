@@ -845,8 +845,8 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
         tr_all_data_log["num_label0"].append(num_labels[0])
         tr_all_data_log["num_label1"].append(num_labels[1])
         tr_all_data_log["num_labels"].append(num_labels[1] + num_labels[0])
-        tr_all_data_log["true_cv"].append(true_cv)
-        tr_all_data_log["pred_cv"].append(pred_cv)
+        tr_all_data_log["true_cv"].append(true_tr)
+        tr_all_data_log["pred_cv"].append(pred_tr)
 
         # Save patient level data from cross valiation set
         print("Patient Level Statistics")
@@ -988,17 +988,18 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
     # Fig 13
     f = 13
     order = np.argsort(pat_all_data_log["pred_percentages"])
-    plot_binary_background(pat_all_data_log["true_percentages"][order], fig_num=f, show=show_plots,
-                           x_label="Patient Number", title="Label Conviction per Patient")
+    plot_binary_background(np.array(pat_all_data_log["true_percentages"])[order], fig_num=f,
+                           show=show_plots, x_label="Patient Number",
+                           title="Label Conviction per Patient")
     for i in range(1, len(pat_all_data_log["true_percentages"])):
         plot_line([0, 1], [i, i], fig_num=f, color=(0.5, 0.5, 0.5, 0.5),  # color="#555555",
                   style=":", show=show_plots)
     plot_line([0.5, 0.5], [0, num_patients], fig_num=f, show=show_plots, color="black")
-    plot_line(pat_all_data_log["pred_percentages"][order],
+    plot_line(np.array(pat_all_data_log["pred_percentages"])[order],
               np.array(range(len(pat_all_data_log["pred_percentages"]))) + 0.5,
               label="Label conviction", color="#00ff00", fig_num=f, show=show_plots,
               axis=(None, None, -0.005, 1.005), style=".-")
-    print("Patient order in figure 13: \n{}".format(patients_whole[order]))
+    print("Patient order in figure 13: \n{}".format(np.array(patients_whole)[order]))
     # Fig 0
     f = 0
     plot_image(location + "/model0.png", fig_num=f, title="Model used", show=show_plots)
@@ -1030,20 +1031,27 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
                              show=show_plots)
     # Fig 12
     f = 12
-    mean_fpr, mean_tpr, mean_auc = None, None, None
-    for fpr, tpr, roc_auc in rocs:
-        print(fpr.shape, tpr.shape, roc_auc.shape)
-        input("...")
-        if mean_fpr is None:
-            mean_fpr, mean_tpr, mean_auc = fpr, tpr, roc_auc
+    # Put all true_cv and pred_cv in one vector
+    true_c, pred_c = None, None
+    for tc, pc in zip(all_data_log["true_cv"], all_data_log["pred_cv"]):
+        if true_c is None:
+            true_c = np.array(tc)
+            pred_c = np.array(pc)
         else:
-            mean_fpr += fpr
-            mean_tpr += tpr
-            mean_auc += roc_auc
-    mean_fpr /= len(rocs)
-    mean_tpr /= len(rocs)
-    mean_auc /= len(rocs)
-    plot_roc_curve(mean_fpr, mean_tpr, mean_auc, title="Model Mean ROC Curve", fig_num=f,
+            true_c = np.concatenate([true_c, tc])
+            pred_c = np.concatenate([pred_c, pc])
+    # Compute ROC curve and ROC area for each class
+    mean_fpr = dict()
+    mean_tpr = dict()
+    mean_roc_auc = dict()
+    for i in range(2):  # Only 2 classes
+        mean_fpr[i], mean_tpr[i], _ = roc_curve(true_c[:, i], pred_c[:, i])
+        mean_roc_auc[i] = auc(mean_fpr[i], mean_tpr[i])
+    # Compute micro-average ROC curve and ROC area
+    mean_fpr["micro"], mean_tpr["micro"], _ = roc_curve(true_c.ravel(), pred_c.ravel())
+    mean_roc_auc["micro"] = auc(mean_fpr["micro"], mean_tpr["micro"])
+    # Plot average ROC curve
+    plot_roc_curve(mean_fpr, mean_tpr, mean_roc_auc, title="Model Mean ROC Curve", fig_num=f,
                    show=show_plots)
 
     # Save all figures to a PDF called figures.pdf
@@ -1394,19 +1402,19 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
                              show=show_plots, labels=title_train)
     # Fig 12
     f = 12
-    mean_fpr, mean_tpr, mean_auc = None, None, None
+    mean_fpr, mean_tpr, mean_auc = {}, {}, {}
     for fpr, tpr, roc_auc in rocs:
-        print(fpr.shape, tpr.shape, roc_auc.shape)
-        input("...")
-        if mean_fpr is None:
-            mean_fpr, mean_tpr, mean_auc = fpr, tpr, roc_auc
-        else:
-            mean_fpr += fpr
-            mean_tpr += tpr
-            mean_auc += roc_auc
-    mean_fpr /= len(rocs)
-    mean_tpr /= len(rocs)
-    mean_auc /= len(rocs)
+        for ii in range(2):
+            if ii not in mean_fpr:
+                mean_fpr[ii], mean_tpr[ii], mean_auc[ii] = fpr[ii], tpr[ii], roc_auc[ii]
+            else:
+                mean_fpr[ii] += fpr[ii]
+                mean_tpr[ii] += tpr[ii]
+                mean_auc[ii] += roc_auc[ii]
+    for ii in range(2):
+        mean_fpr[ii] /= len(rocs)
+        mean_tpr[ii] /= len(rocs)
+        mean_auc[ii] /= len(rocs)
     plot_roc_curve(mean_fpr, mean_tpr, mean_auc, title="Model Mean ROC Curve", fig_num=f,
                    show=show_plots)
 
@@ -1780,19 +1788,19 @@ def correct_old_runs(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
                              show=show_plots, labels=title_train)
     # Fig 12
     f = 12
-    mean_fpr, mean_tpr, mean_auc = None, None, None
+    mean_fpr, mean_tpr, mean_auc = {}, {}, {}
     for fpr, tpr, roc_auc in rocs:
-        print(fpr.shape, tpr.shape, roc_auc.shape)
-        input("...")
-        if mean_fpr is None:
-            mean_fpr, mean_tpr, mean_auc = fpr, tpr, roc_auc
-        else:
-            mean_fpr += fpr
-            mean_tpr += tpr
-            mean_auc += roc_auc
-    mean_fpr /= len(rocs)
-    mean_tpr /= len(rocs)
-    mean_auc /= len(rocs)
+        for ii in range(2):
+            if ii not in mean_fpr:
+                mean_fpr[ii], mean_tpr[ii], mean_auc[ii] = fpr[ii], tpr[ii], roc_auc[ii]
+            else:
+                mean_fpr[ii] += fpr[ii]
+                mean_tpr[ii] += tpr[ii]
+                mean_auc[ii] += roc_auc[ii]
+    for ii in range(2):
+        mean_fpr[ii] /= len(rocs)
+        mean_tpr[ii] /= len(rocs)
+        mean_auc[ii] /= len(rocs)
     plot_roc_curve(mean_fpr, mean_tpr, mean_auc, title="Model Mean ROC Curve", fig_num=f,
                    show=show_plots)
 
