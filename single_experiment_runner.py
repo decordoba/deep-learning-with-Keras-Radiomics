@@ -6,6 +6,7 @@ import os
 import pickle
 import sys
 from datetime import datetime
+from time import clock
 from cycler import cycler
 from matplotlib import pyplot as plt
 import matplotlib.image as mpimg
@@ -1402,20 +1403,27 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
                              show=show_plots, labels=title_train)
     # Fig 12
     f = 12
-    mean_fpr, mean_tpr, mean_auc = {}, {}, {}
-    for fpr, tpr, roc_auc in rocs:
-        for ii in range(2):
-            if ii not in mean_fpr:
-                mean_fpr[ii], mean_tpr[ii], mean_auc[ii] = fpr[ii], tpr[ii], roc_auc[ii]
-            else:
-                mean_fpr[ii] += fpr[ii]
-                mean_tpr[ii] += tpr[ii]
-                mean_auc[ii] += roc_auc[ii]
-    for ii in range(2):
-        mean_fpr[ii] /= len(rocs)
-        mean_tpr[ii] /= len(rocs)
-        mean_auc[ii] /= len(rocs)
-    plot_roc_curve(mean_fpr, mean_tpr, mean_auc, title="Model Mean ROC Curve", fig_num=f,
+    # Put all true_cv and pred_cv in one vector
+    true_c, pred_c = None, None
+    for tc, pc in zip(all_data_log["true_cv"], all_data_log["pred_cv"]):
+        if true_c is None:
+            true_c = np.array(tc)
+            pred_c = np.array(pc)
+        else:
+            true_c = np.concatenate([true_c, tc])
+            pred_c = np.concatenate([pred_c, pc])
+    # Compute ROC curve and ROC area for each class
+    mean_fpr = dict()
+    mean_tpr = dict()
+    mean_roc_auc = dict()
+    for i in range(2):  # Only 2 classes
+        mean_fpr[i], mean_tpr[i], _ = roc_curve(true_c[:, i], pred_c[:, i])
+        mean_roc_auc[i] = auc(mean_fpr[i], mean_tpr[i])
+    # Compute micro-average ROC curve and ROC area
+    mean_fpr["micro"], mean_tpr["micro"], _ = roc_curve(true_c.ravel(), pred_c.ravel())
+    mean_roc_auc["micro"] = auc(mean_fpr["micro"], mean_tpr["micro"])
+    # Plot average ROC curve
+    plot_roc_curve(mean_fpr, mean_tpr, mean_roc_auc, title="Model Mean ROC Curve", fig_num=f,
                    show=show_plots)
 
     # Save all figures to a PDF called figures.pdf
@@ -1788,20 +1796,27 @@ def correct_old_runs(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
                              show=show_plots, labels=title_train)
     # Fig 12
     f = 12
-    mean_fpr, mean_tpr, mean_auc = {}, {}, {}
-    for fpr, tpr, roc_auc in rocs:
-        for ii in range(2):
-            if ii not in mean_fpr:
-                mean_fpr[ii], mean_tpr[ii], mean_auc[ii] = fpr[ii], tpr[ii], roc_auc[ii]
-            else:
-                mean_fpr[ii] += fpr[ii]
-                mean_tpr[ii] += tpr[ii]
-                mean_auc[ii] += roc_auc[ii]
-    for ii in range(2):
-        mean_fpr[ii] /= len(rocs)
-        mean_tpr[ii] /= len(rocs)
-        mean_auc[ii] /= len(rocs)
-    plot_roc_curve(mean_fpr, mean_tpr, mean_auc, title="Model Mean ROC Curve", fig_num=f,
+    # Put all true_cv and pred_cv in one vector
+    true_c, pred_c = None, None
+    for tc, pc in zip(all_data_log["true_cv"], all_data_log["pred_cv"]):
+        if true_c is None:
+            true_c = np.array(tc)
+            pred_c = np.array(pc)
+        else:
+            true_c = np.concatenate([true_c, tc])
+            pred_c = np.concatenate([pred_c, pc])
+    # Compute ROC curve and ROC area for each class
+    mean_fpr = dict()
+    mean_tpr = dict()
+    mean_roc_auc = dict()
+    for i in range(2):  # Only 2 classes
+        mean_fpr[i], mean_tpr[i], _ = roc_curve(true_c[:, i], pred_c[:, i])
+        mean_roc_auc[i] = auc(mean_fpr[i], mean_tpr[i])
+    # Compute micro-average ROC curve and ROC area
+    mean_fpr["micro"], mean_tpr["micro"], _ = roc_curve(true_c.ravel(), pred_c.ravel())
+    mean_roc_auc["micro"] = auc(mean_fpr["micro"], mean_tpr["micro"])
+    # Plot average ROC curve
+    plot_roc_curve(mean_fpr, mean_tpr, mean_roc_auc, title="Model Mean ROC Curve", fig_num=f,
                    show=show_plots)
 
     # Save all figures to a PDF called figures.pdf
@@ -2069,7 +2084,9 @@ def main(correction):
     all_data = []
     num_comb = len(filters) * len(units) * len(num_convolutions) * len(dropout1) * len(dropout2)
     i = 0
+    times_taken = []
     for comb in itertools.product(filters, units, num_convolutions, dropout1, dropout2):
+        t = clock()
         # Create layers list that will define model
         f, u, c, d1, d2 = comb
         if args.simplified_model:
@@ -2140,6 +2157,11 @@ def main(correction):
                       "".format(sublocation + "/" + results_name, comb))
         if all_data_comb is not None:
             all_data.append(all_data_comb)
+        times_taken.append(clock() - t)
+        print("\nFinished combination: {}".format(comb))
+        print("  Time taken:         {} s".format(times_taken[-1]))
+        print("  Mean time taken:    {} s".format(np.median(times_taken)))
+        print("  Expected time left: {} s".format((num_comb - i) * np.median(times_taken)))
 
     # Plot summary of results
     print("\nGenerating global figures...")
