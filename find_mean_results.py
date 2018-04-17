@@ -9,6 +9,7 @@ from matplotlib import pyplot as plt
 from single_experiment_runner import plot_line, save_plt_figures_to_pdf, plot_accuracy_curve
 from single_experiment_runner import plot_multiple_accuracy_curves
 from single_experiment_runner import plot_multiple_roc_curves, plot_roc_curve
+from sklearn.metrics import roc_curve, auc
 
 
 # Cycle colors from normal line to dotted line (allows to tell 20 plots apart)
@@ -190,37 +191,64 @@ def main():
                   show=show_plots, x_label="Number of Patients in Training Set", x_scale="log")
         # Fig 9
         f = 9
-        plot_multiple_roc_curves(rocs1, title="ROC Curves  vs.  Dataset Size", fig_num=f,
+        plot_multiple_roc_curves(rocs1, title="ROC Curves 1  vs.  Dataset Size", fig_num=f,
                                  show=show_plots, labels=title_train)
         # Fig 10
         f = 10
-        plot_multiple_roc_curves(rocs2, title="ROC Curves  vs.  Dataset Size", fig_num=f,
+        plot_multiple_roc_curves(rocs2, title="ROC Curves 2  vs.  Dataset Size", fig_num=f,
                                  show=show_plots, labels=title_train)
         # Fig 11
         f = 11
-        plot_multiple_roc_curves(rocs3, title="ROC Curves  vs.  Dataset Size", fig_num=f,
+        plot_multiple_roc_curves(rocs3, title="ROC Curves 3  vs.  Dataset Size", fig_num=f,
                                  show=show_plots, labels=title_train)
-        # # Fig 12
-        # f = 12
-        # mean_fpr, mean_tpr, mean_auc = None, None, None
-        # for fpr, tpr, roc_auc in rocs1:
-        #     print(fpr.shape, tpr.shape, roc_auc.shape)
-        #     input("...")
-        #     if mean_fpr is None:
-        #         mean_fpr, mean_tpr, mean_auc = fpr, tpr, roc_auc
-        #     else:
-        #         mean_fpr += fpr
-        #         mean_tpr += tpr
-        #         mean_auc += roc_auc
-        # mean_fpr /= len(rocs1)
-        # mean_tpr /= len(rocs1)
-        # mean_auc /= len(rocs1)
-        # plot_roc_curve(mean_fpr, mean_tpr, mean_auc, title="Model Mean ROC Curve", fig_num=f,
-        #                show=show_plots)
+        # Fig 12
+        f = 12
+        # Put all true_cv and pred_cv in one vector
+        true_c, pred_c = None, None
+        for tc, pc in zip(all_data_log["true_cv"], all_data_log["pred_cv"]):
+            if true_c is None:
+                true_c = np.array(tc)
+                pred_c = np.array(pc)
+            else:
+                true_c = np.concatenate([true_c, tc])
+                pred_c = np.concatenate([pred_c, pc])
+        # Compute ROC curve and ROC area for each class
+        mean_fpr = dict()
+        mean_tpr = dict()
+        mean_roc_auc = dict()
+        for i in range(2):  # Only 2 classes
+            mean_fpr[i], mean_tpr[i], _ = roc_curve(true_c[:, i], pred_c[:, i])
+            mean_roc_auc[i] = auc(mean_fpr[i], mean_tpr[i])
+        # Compute micro-average ROC curve and ROC area
+        mean_fpr["micro"], mean_tpr["micro"], _ = roc_curve(true_c.ravel(), pred_c.ravel())
+        mean_roc_auc["micro"] = auc(mean_fpr["micro"], mean_tpr["micro"])
+        # Plot average ROC curve
+        plot_roc_curve(mean_fpr, mean_tpr, mean_roc_auc, title="Model Mean ROC Curve", fig_num=f,
+                       show=show_plots)
+        # Fig 13
+        f = 13
+        rocs = []
+        for ii in range(len(all_data_log["true_cv"])):
+            # Compute ROC curve and ROC area for each class
+            fpr = dict()
+            tpr = dict()
+            roc_auc = dict()
+            for i in range(2):  # Only 2 classes
+                fpr[i], tpr[i], _ = roc_curve(all_data_log["true_cv"][ii][:, i],
+                                              all_data_log["pred_cv"][ii][:, i])
+                roc_auc[i] = auc(fpr[i], tpr[i])
+            # Compute micro-average ROC curve and ROC area
+            fpr["micro"], tpr["micro"], _ = roc_curve(all_data_log["true_cv"][ii].ravel(),
+                                                      all_data_log["pred_cv"][ii].ravel())
+            roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
+            rocs.append((fpr, tpr, roc_auc))
+        plot_multiple_roc_curves(rocs, title="ROC Curves  vs.  Dataset Size", fig_num=f,
+                                 show=show_plots, labels=title_train)
 
         # Save all figures to a PDF called figures.pdf
-        save_plt_figures_to_pdf(destination_folder + "/" + "-".join([str(x) for x in comb]) + "figures.pdf")
+        save_plt_figures_to_pdf(destination_folder + "/" + "-".join([str(x) for x in comb]) + "_figures.pdf")
 
+    plt.close("all")
     for i, (params1, params2, params3) in enumerate(zip(all_data1, all_data2, all_data3)):
         comb1, all_cv1, all_train1, all_pat1, history1, rocs1 = params1
         comb2, all_cv2, all_train2, all_pat2, history2, rocs2 = params2
