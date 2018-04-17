@@ -714,6 +714,30 @@ def calculate_samples_per_label(x_set_train, y_set_train, masks_train, patients_
     return min_num_samples, center_samples_train, center_samples_test
 
 
+def get_imbalanced_dataset(x_set, y_set, p_set, m_set, num_label0, num_label1, skip_patients):
+    """Cut dataset have num_label0 patients with label 0 and num_label1 with label 1."""
+    new_x, new_y, new_p, new_m = [], [], [], []
+    num_labels = [0, 0]
+    max_labels = [num_label0, num_label1]
+    if len(np.unique(p_set)) != len(p_set):
+        raise Exception("Imbalancing has not been designed for when patients are not unique.")
+    for i, (x, y, m, p) in enumerate(zip(x_set, y_set, m_set, p_set)):
+        if i < skip_patients:
+            continue
+        if num_labels[y] < max_labels[y]:
+            num_labels[y] += 1
+            new_x.append(x)
+            new_y.append(y)
+            new_m.append(m)
+            new_p.append(p)
+        else:
+            if num_labels[0] >= max_labels[0] and num_labels[1] >= max_labels[1]:
+                break
+    if num_labels[0] != max_labels[0] or num_labels[1] != max_labels[1]:
+        raise Exception("Error when imbalancing data. Not enough patients from every label.")
+    return new_x, new_y, new_p, new_m
+
+
 def resample_volumes(x_set, y_set, patients, masks, num_samples, size_box, center_samples,
                      min_num_samples, results):
     """Resample volumes to make boxes of constant size size_box."""
@@ -852,7 +876,8 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
                        convert_to_2d=True, resampling=None, skip_dialog=False, plot_slices=False,
                        medians=False, augment_rotate=None, augment_scale=None, skip_patients=None,
                        augment_translate=None, exact_number_patients=None, augment_bootstrap=None,
-                       balanced_augmentation=False, hash_num="", aux_masks=None):
+                       balanced_augmentation=False, hash_num="", aux_masks=None,
+                       imbalance_labels=None):
     """Save dataset so labels & slices medians are equally distributed in training and test set."""
     # Add suffixes ta dataset name, so it is easy to know how every dataset was generated
     if not convert_to_2d and not medians:
@@ -861,6 +886,9 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
         dataset_name += "_exactly{}".format(exact_number_patients)
         if skip_patients is not None and skip_patients > 0:
             dataset_name += "-{}".format(skip_patients)
+        if imbalance_labels is not None:
+            dataset_name += "-imbalanced{}-{}".format(imbalance_labels,
+                                                      exact_number_patients - imbalance_labels)
     if args.zero_non_mask_pixels:
         dataset_name += "_zeroed"
         if args.leave_margin_when_zeroing:
@@ -954,11 +982,21 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
         if skip_patients is None or skip_patients < 0:
             skip_patients = 0
         print("\nRemoving all but {} patients exactly (patients skipped: {})..."
-                "".format(exact_number_patients, skip_patients))
-        y_set = y_set[skip_patients:exact_number_patients + skip_patients]
-        x_set = x_set[skip_patients:exact_number_patients + skip_patients]
-        patients = patients[skip_patients:exact_number_patients + skip_patients]
-        masks = masks[skip_patients:exact_number_patients + skip_patients]
+              "".format(exact_number_patients, skip_patients))
+        if imbalance_labels is None:
+            print("\nRemoving all but {} patients exactly...".format(exact_number_patients))
+            y_set = y_set[skip_patients:exact_number_patients + skip_patients]
+            x_set = x_set[skip_patients:exact_number_patients + skip_patients]
+            patients = patients[skip_patients:exact_number_patients + skip_patients]
+            masks = masks[skip_patients:exact_number_patients + skip_patients]
+        else:
+            num_label0 = imbalance_labels
+            num_label1 = exact_number_patients - num_label0
+            print("\nImbalancing labels: {} labels 0 and {} labels 1 exactly..."
+                  "".format(num_label0, num_label1))
+            x_set, y_set, patients, masks = get_imbalanced_dataset(x_set, y_set, patients, masks,
+                                                                   num_label0, num_label1,
+                                                                   skip_patients)
 
     if data_interpolation is not None:
         # Adjust slices so that all pixels are the same width, length and height
@@ -1003,7 +1041,7 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
 
     if args.zero_non_mask_pixels:
         print("\nErasing (zeroing) pixels outside the mask (leave margin: {})..."
-                "".format(args.leave_margin_when_zeroing))
+              "".format(args.leave_margin_when_zeroing))
         for i, (x, m) in enumerate(zip(x_set, masks)):
             if args.leave_margin_when_zeroing:
                 zeroing_mask = expand_mask(m)
@@ -1381,6 +1419,8 @@ def parse_arguments(suffix=""):
                         help="exact number of patients to use (after trimming)", metavar="N")
     parser.add_argument('-sp', '--skip_patients', default=None, type=int,
                         help="skip this number of patients when using --enp", metavar="N")
+    parser.add_argument('-nl0', '--num_labels0', default=None, type=int,
+                        help="number of label 0 patients when using --enp", metavar="N")
     parser.add_argument('-3d', '--in_3d', default=False, action="store_true",
                         help="save 3d data instead of slicing it in 3 channels 2d images")
     parser.add_argument('-mos', '--median_orthogonal_slices', default=False, action="store_true",
@@ -1517,4 +1557,4 @@ if __name__ == "__main__":
                            balanced_augmentation=args.balanced_augmentation,
                            exact_number_patients=args.exact_number_patients,
                            skip_patients=args.skip_patients, hash_num=hash_num,
-                           aux_masks=aux_masks)
+                           aux_masks=aux_masks, imbalance_labels=args.num_labels0)
