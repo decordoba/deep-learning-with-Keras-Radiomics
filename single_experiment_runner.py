@@ -11,6 +11,7 @@ from cycler import cycler
 from matplotlib import pyplot as plt
 import matplotlib.image as mpimg
 from matplotlib.backends.backend_pdf import PdfPages
+from collections import Counter
 
 import numpy as np
 from keras import losses, optimizers
@@ -573,6 +574,84 @@ def limit_number_patients_per_label(x_whole, y_whole, mask_whole, patients_whole
     return np.array(new_x), np.array(new_y), np.array(new_mask), new_patients
 
 
+def reorder_maintaining_label_balance(x_set, y_set, m_set, p_set):
+    """Reorder patients so that the 0-1 label ratio is mantained.
+
+    Example: dataset [0,1,0,1,0,0,0,0] becomes [0,0,1,0,0,0,1,0]
+    If there are repeated patients, assumes they are adjacent.
+    """
+    # All patients are unique
+    unique_p = np.unique(p_set)
+    if len(unique_p) == len(p_set):
+        c = Counter(y_set)
+        c0 = c[0]
+        c1 = c[1]
+        assert(c0 + c1 == len(y_set))
+        c0 = c0 / len(y_set)
+        c1 = c1 / len(y_set)
+        idx_ones = np.argwhere(np.array(y_set) == 1).transpose()[0]
+        idx_zeros = np.argwhere(np.array(y_set) == 0).transpose()[0]
+        new_x_set, new_y_set, new_m_set, new_p_set = [], [], [], []
+        n0 = 0
+        n1 = 0
+        for i in range(len(y_set)):
+            # Fins if we should add a patient with label 0 or 1, and add it
+            if abs((n0 + 1) * c1 - n1 * c0) <= abs(n0 * c1 - (n1 + 1) * c0):
+                new_x_set.append(x_set[idx_zeros[n0]])
+                new_y_set.append(y_set[idx_zeros[n0]])
+                new_m_set.append(m_set[idx_zeros[n0]])
+                new_p_set.append(p_set[idx_zeros[n0]])
+                n0 += 1
+            else:
+                new_x_set.append(x_set[idx_ones[n1]])
+                new_y_set.append(y_set[idx_ones[n1]])
+                new_m_set.append(m_set[idx_ones[n1]])
+                new_p_set.append(p_set[idx_ones[n1]])
+                n1 += 1
+        return new_x_set, new_y_set, new_m_set, new_p_set
+    # Patients are not unique
+    else:
+        idxs_first_p = []
+        patients_labels = []
+        for up in unique_p:
+            # Get index first occurence of every patient
+            idxs_first_p.append(next(i for i, p in enumerate(p_set) if p == up))
+            patients_labels.append(y_set[idxs_first_p[-1]])
+        c = Counter(patients_labels)
+        c0 = c[0]
+        c1 = c[1]
+        assert(c0 + c1 == len(unique_p))
+        c0 = c0 / len(unique_p)
+        c1 = c1 / len(unique_p)
+        idx_ones = np.argwhere(np.array(patients_labels) == 1).transpose()[0]
+        idx_zeros = np.argwhere(np.array(patients_labels) == 0).transpose()[0]
+        new_x_set, new_y_set, new_m_set, new_p_set = [], [], [], []
+        n0 = 0
+        n1 = 0
+        for i in range(len(unique_p)):
+            # Fins if we should add a patient with label 0 or 1
+            if abs((n0 + 1) * c1 - n1 * c0) <= abs(n0 * c1 - (n1 + 1) * c0):
+                idx0 = idxs_first_p[idx_zeros[n0]]
+                p0 = unique_p[idx_zeros[n0]]
+                n0 += 1
+            else:
+                idx0 = idxs_first_p[idx_ones[n1]]
+                p0 = unique_p[idx_ones[n1]]
+                n1 += 1
+            # Find beginning and end of same patient
+            idx1 = idx0
+            while idx1 < len(p_set) and p_set[idx1] == p0:
+                idx1 += 1
+            # Add chosen patient
+            new_x_set.extend(x_set[idx0:idx1])
+            new_y_set.extend(y_set[idx0:idx1])
+            new_m_set.extend(m_set[idx0:idx1])
+            new_p_set.extend(p_set[idx0:idx1])
+        # If this fails, same patients were not adjacent
+        assert(len(new_y_set) == len(y_set))
+        return new_x_set, new_y_set, new_m_set, new_p_set
+
+
 def get_confusion_matrix(model, x_set, y_set, dummy=None):
     """Docstring for get_confusion_matrix."""
     if dummy is not None:
@@ -683,6 +762,8 @@ def parse_arguments():
                         help="min size when testing different training set sizes (default: 4)")
     parser.add_argument('-f', '--folds', default=10, type=int,
                         help="number of cross validation folds (default: 10)")
+    parser.add_argument('-op', '--organize_patients', default=False, action="store_true",
+                        help="reorder patients to maintain label ratio gradually through the set")
     parser.add_argument('-d', '--dataset', default="organized", type=str,
                         help="location of the dataset inside the ./data folder "
                         "(default: organized)")
@@ -1978,6 +2059,13 @@ def main(correction):
         test_data = x_t_whole, y_t_whole, patients_t_whole, mask_t_whole
     else:
         test_data = None
+
+    # Make sure that if labels are imbalanced, patients are reordered, so all splits have a
+    # good balance of all labels
+    if args.organize_patients:
+        print("\nOrganizing patients by label...")
+        params = reorder_maintaining_label_balance(x_whole, y_whole, mask_whole, patients_whole)
+        x_whole, y_whole, mask_whole, patients_whole = params
 
     if args.plot_slices:
         plt.close("all")
