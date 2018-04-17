@@ -2021,7 +2021,10 @@ def main(correction):
         os.makedirs(location)
     except OSError:
         pass
-    with open(location + "/args_{}".format("_".join(sys.argv[1:]).replace("/", "-")), 'w') as file:
+    args_filename = "args_{}".format("_".join(sys.argv[1:]).replace("/", "-"))
+    if len(args_filename) > 255:
+        args_filename = args_filename[:252] + "..."
+    with open(location + "/" + args_filename, 'w') as file:
         file.write(" ".join(sys.argv))
 
     # Define parameters we want to try in our experiments
