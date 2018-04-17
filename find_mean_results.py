@@ -21,36 +21,38 @@ plt.rc('axes', prop_cycle=(cycler('color', ['#1f77b4', '#ff7f0e', '#2ca02c', '#d
                            cycler('linestyle', ['-'] * 10 + ['--'] * 10)))
 
 
-def main():
+def main(filename1=None, filename2=None, filename3=None, destination_folder=None):
     """Load data from 3 files previoulsy saved with single_experiment_runner and save mean.
 
     This is an even dirtier copy of what single_experiment_runner does at the end.
     """
     # Load all saved files
-    filename1 = ("nn_models1_corrected/results_create_datasets-data-custom_lumpy_dataset_v3_0-8192"
-                 "_mos_trimmed2-filters-units-dropout2.pkl")
-    # filename1 = ("nn_models4/results_create_datasets-data-custom_lumpy_dataset_v3_0-8192"
-    #              "_exactly60_augmented-b1024_mos_trimmed2.pkl")
+    if filename1 is None:
+        filename1 = ("nn_models1_corrected/results_create_datasets-data-custom_lumpy_dataset_v3_"
+                     "0-8192_mos_trimmed2-filters-units-dropout2.pkl")
     with open(filename1, 'rb') as f:
         all_data1 = pickle.load(f)
-    filename2 = ("nn_models2_corrected/results_create_datasets-data-custom_lumpy_dataset_v3_0-8192"
-                 "_mos_trimmed2-filters-units-dropout2.pkl")
-    # filename2 = ("nn_models5/results_create_datasets-data-custom_lumpy_dataset_v3_0-8192"
-    #              "_exactly60_augmented-b1024_mos_trimmed2.pkl")
+        print("File 1 loaded from: '{}'".format(filename1))
+    if filename2 is None:
+        filename2 = ("nn_models2_corrected/results_create_datasets-data-custom_lumpy_dataset_v3_"
+                     "0-8192_mos_trimmed2-filters-units-dropout2.pkl")
     with open(filename2, 'rb') as f:
         all_data2 = pickle.load(f)
-    filename3 = ("nn_models3_corrected/results_create_datasets-data-custom_lumpy_dataset_v3_0-8192"
-                 "_mos_trimmed2-filters-units-dropout2.pkl")
-    # filename3 = ("nn_models6/results_create_datasets-data-custom_lumpy_dataset_v3_0-8192"
-    #              "_exactly60_augmented-b1024_mos_trimmed2.pkl")
+        print("File 2 loaded from: '{}'".format(filename2))
+    if filename3 is None:
+        filename3 = ("nn_models3_corrected/results_create_datasets-data-custom_lumpy_dataset_v3_"
+                     "0-8192_mos_trimmed2-filters-units-dropout2.pkl")
     with open(filename3, 'rb') as f:
         all_data3 = pickle.load(f)
+        print("File 3 loaded from: '{}'".format(filename3))
 
-    destination_folder = "medians123_corrected"
+    if destination_folder is None:
+        destination_folder = "medians123_corrected"
     try:
         os.mkdir(destination_folder)
     except FileExistsError:
         pass
+    print("Destination folder: '{}'".format(destination_folder))
 
     # Plot summary of results
     print("\nGenerating global figures...")
@@ -60,9 +62,23 @@ def main():
     last_idx = len(all_data1) - 1
     wider_figsize = list(plt.rcParams.get('figure.figsize'))
     wider_figsize[0] += 2.1
-    x_axis = [16, 32, 64, 128, 256, 512, 1024, 2048, 4096]
-    x_scale = "log"
-    x_label = "Number of Patients in Training Set"
+    len_x_axis = len(all_data1[0][1]["accuracy"])
+    if len_x_axis == 1:
+        x_axis = [1024]
+        x_scale = "linear"
+        x_label = "Number of Patients in Training Set"
+    elif len_x_axis == 6:
+        x_axis = [1, 2, 3, 4, 5, 6]
+        x_scale = "linear"
+        x_label = "Cross Validation Fold Number"
+    elif len_x_axis == 8:
+        x_axis = [1, 2, 3, 4, 5, 6, 7, 8]
+        x_scale = "linear"
+        x_label = "Cross Validation Fold Number"
+    elif len_x_axis == 9:
+        x_axis = [16, 32, 64, 128, 256, 512, 1024, 2048, 4096]
+        x_scale = "log"
+        x_label = "Number of Patients in Training Set"
     x_history = range(1, 50 + 1)
     table_acc = PrettyTable(["Model \\ Training Samples"] + x_axis)
     mean_accuracies = []
@@ -366,4 +382,61 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # # filename1 = ("nn_models1_corrected/results_create_datasets-data-custom_lumpy_dataset_v3_"
+    # #              "0-8192_mos_trimmed2-filters-units-dropout2.pkl")
+    # # filename1 = ("nn_models4/results_create_datasets-data-custom_lumpy_dataset_v3_0-8192"
+    # #              "_exactly60_augmented-b1024_mos_trimmed2.pkl")
+    # filename1 = ("nn_lumpy_no_aug_zero1/results_create_datasets-data-custom_lumpy_dataset_v3_"
+    #              "0-8192_zeroed_mos_trimmed2-filters-units-dropout2.pkl")
+    # # filename2 = ("nn_models2_corrected/results_create_datasets-data-custom_lumpy_dataset_v3_"
+    # #              "0-8192_mos_trimmed2-filters-units-dropout2.pkl")
+    # # filename2 = ("nn_models5/results_create_datasets-data-custom_lumpy_dataset_v3_0-8192"
+    # #              "_exactly60_augmented-b1024_mos_trimmed2.pkl")
+    # filename2 = ("nn_lumpy_no_aug_zero2/results_create_datasets-data-custom_lumpy_dataset_v3_"
+    #              "0-8192_zeroed_mos_trimmed2-filters-units-dropout2.pkl")
+    # # filename3 = ("nn_models3_corrected/results_create_datasets-data-custom_lumpy_dataset_v3_"
+    # #              "0-8192_mos_trimmed2-filters-units-dropout2.pkl")
+    # # filename3 = ("nn_models6/results_create_datasets-data-custom_lumpy_dataset_v3_0-8192"
+    # #              "_exactly60_augmented-b1024_mos_trimmed2.pkl")
+    # filename3 = ("nn_lumpy_no_aug_zero3/results_create_datasets-data-custom_lumpy_dataset_v3_"
+    #              "0-8192_zeroed_mos_trimmed2-filters-units-dropout2.pkl")
+    # # folder = "medians_nn_lumpy_no_aug_no_zero123"
+    # folder = "medians_nn_lumpy_no_aug_zero123"
+    #
+    # main(filename1=filename1, filename2=filename2, filename3=filename3,
+    #      destination_folder=folder)
+
+    target_base_name = None
+    source_folder = "experiments"
+    destination_subfolder = "mean_results"
+    destination_folder = "{}/{}".format(source_folder, destination_subfolder)
+    try:
+        os.mkdir(destination_folder)
+    except FileExistsError:
+        pass
+    subfolders = sorted(next(os.walk(source_folder))[1])
+    if destination_subfolder in subfolders:
+        subfolders.remove(destination_subfolder)
+    for i, subfolder in enumerate(subfolders):
+        full_path = "{}/{}".format(source_folder, subfolder)
+        pkl_names = [x for x in os.listdir(full_path) if x.endswith(".pkl")]
+        if len(pkl_names) != 1:
+            raise Exception("Found more than one or none .pkl files in '{}'".format(subfolder))
+        full_path = "{}/{}/{}".format(source_folder, subfolder, pkl_names[0])
+        if i % 3 == 0:
+            base_name = subfolder[:-1]
+            filename1 = full_path
+        else:
+            if subfolder[:-1] != base_name:
+                raise Exception("Error in the folders names (see folder '{}')".format(subfolder))
+            if i % 3 == 1:
+                filename2 = full_path
+            else:
+                filename3 = full_path
+        if target_base_name is not None and base_name != target_base_name:
+            continue
+        if i % 3 == 2:
+            print("\n--------------------------------------------------------------------------\n")
+            main(filename1=filename1, filename2=filename2, filename3=filename3,
+                 destination_folder="{}/{}".format(destination_folder, base_name))
+            print("\n--------------------------------------------------------------------------\n")
