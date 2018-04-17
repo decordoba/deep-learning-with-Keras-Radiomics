@@ -2013,10 +2013,10 @@ def main(correction):
 
     # Load test dataset if it exists
     if args.dataset_test is not None:
-        dataset_tst_location = args.dataset_test
-        if not os.path.exists(dataset_tst_location) and not dataset_tst_location.startswith("data/"):
-            dataset_tst_location = "data/{}".format(dataset_tst_location)
-        train_t_set, test_t_set, train_t_aux, test_t_aux = load_organized_dataset(dataset_tst_location)
+        dataset_test_loc = args.dataset_test
+        if not os.path.exists(dataset_test_loc) and not dataset_test_loc.startswith("data/"):
+            dataset_test_loc = "data/{}".format(dataset_test_loc)
+        train_t_set, test_t_set, train_t_aux, test_t_aux = load_organized_dataset(dataset_test_loc)
         (x_t_train, y_t_train), (x_t_test, y_t_test), = train_t_set, test_t_set
         (patients_t_train, mask_t_train), (patients_t_test, mask_t_test) = train_t_aux, test_t_aux
         x_t_whole = np.append(x_t_train, x_t_test, axis=0)
@@ -2024,21 +2024,21 @@ def main(correction):
         mask_t_whole = np.append(mask_t_train, mask_t_test, axis=0)
         patients_t_whole = np.append(patients_t_train, patients_t_test, axis=0)
         analyze_data(x_t_whole, y_t_whole, patients_t_whole, mask_t_whole, plot_data=False,
-                    dataset_name=None)
+                     dataset_name=None)
 
     # Remove elements of the dataset if necessary
     # Also, make sure all same patients are adjacent by ordering patient ids
     params = limit_number_patients_per_label(x_whole, y_whole, mask_whole, patients_whole,
-                                            num_patients_per_label=args.size, adjacent=False)
+                                             num_patients_per_label=args.size, adjacent=False)
     x_whole, y_whole, mask_whole, patients_whole = params
     if args.size is not None:
         print("Dataset limited to {} samples which contain {} unique patients"
-                "".format(len(x_whole), len(np.unique(patients_whole))))
+              "".format(len(x_whole), len(np.unique(patients_whole))))
         analyze_data(x_whole, y_whole, patients_whole, mask_whole, plot_data=False,
                      dataset_name=None)
     else:
         print("Dataset contains {} samples which contain {} unique patients"
-                "".format(len(x_whole)), len(np.unique(patients_whole)))
+              "".format(len(x_whole)), len(np.unique(patients_whole)))
 
     patients = np.unique(patients_whole)
     if args.dataset_test is not None:
