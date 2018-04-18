@@ -287,12 +287,13 @@ def bootstrap_augment_dataset(volumes, labels, masks, patients, num_samples, max
     return samples_x, samples_y, samples_m, samples_p
 
 
-def scale_dataset(volumes, masks, scale=0.5):
+def scale_dataset(volumes, masks, scale=0.5, verbose=False):
     """Scale volumes and masks by a factor."""
     # Get approximation of median radius of tumor and radius of every tumor
     new_volumes = []
     new_masks = []
-    for x, m in zip(volumes, masks):
+    num_images = len(volumes)
+    for i, (x, m) in enumerate(zip(volumes, masks)):
         # Transform dataset to floats if necessary
         if not np.issubdtype(x[0, 0, 0], np.floating):
             x = x.astype(float)
@@ -303,6 +304,8 @@ def scale_dataset(volumes, masks, scale=0.5):
         # Covert mask to 0s and 1s again, limit the number of decimals saved, and put in lists
         new_volumes.append(np.around(scaled_x, decimals=6))
         new_masks.append((scaled_m >= 0.5).astype(int))
+        if verbose and i % 5 == 4:
+            print("{}/{} images and masks scaled".format(i + 1, num_images))
     return new_volumes, new_masks
 
 
