@@ -80,8 +80,10 @@ def main(filename1=None, filename2=None, filename3=None, destination_folder=None
         x_scale = "log"
         x_label = "Number of Patients in Training Set"
     x_history = range(1, 50 + 1)
-    table_acc = PrettyTable(["Model \\ Training Samples"] + x_axis)
+    table_acc = PrettyTable(["Model \\ Training Samples"] + x_axis + ["Average"])
+    table_pat_acc = PrettyTable(["Model \\ Training Samples"] + x_axis + ["Average"])
     mean_accuracies = []
+    mean_pat_accuracies = []
     combs = []
     for i, (params1, params2, params3) in enumerate(zip(all_data1, all_data2, all_data3)):
         comb1, all_cv1, all_train1, all_pat1, history1, rocs1 = params1
@@ -294,7 +296,7 @@ def main(filename1=None, filename2=None, filename3=None, destination_folder=None
                   figsize=figsize)
 
         mean_accuracies.append(np.around((np.array(all_cv1["accuracy"]) + all_cv2["accuracy"] + all_cv3["accuracy"]) / 3, decimals=6))
-        table_acc.add_row([comb] + list(mean_accuracies[-1]))
+        table_acc.add_row([comb] + list(mean_accuracies[-1]) + [np.mean(mean_accuracies[-1])])
 
         plot_line((np.array(all_train1["accuracy"]) + all_train2["accuracy"] + all_train3["accuracy"]) / 3, x_axis,
                   label=str(comb), fig_num=5, show=show_plots, marker=".", x_scale=x_scale, x_label=x_label,
@@ -333,6 +335,9 @@ def main(filename1=None, filename2=None, filename3=None, destination_folder=None
                   title="{} Patient Precision (1)".format(title), legend_out=(i == last_idx),
                   figsize=figsize)
 
+        mean_pat_accuracies.append(np.around((np.array(all_pat1["accuracy"]) + all_pat2["accuracy"] + all_pat3["accuracy"]) / 3, decimals=6))
+        table_pat_acc.add_row([comb] + list(mean_pat_accuracies[-1]) + [np.mean(mean_pat_accuracies[-1])])
+
         plot_line((np.array(history1[0]) + history2[0] + history3[0]) / 3, x_history,
                   label=str(comb), fig_num=15, show=show_plots, figsize=figsize, x_label="Epoch",
                   title="Mean Training Accuracy History ", legend_out=(i == last_idx))
@@ -347,8 +352,13 @@ def main(filename1=None, filename2=None, filename3=None, destination_folder=None
                       title="Test Accuracy History - {} patients".format(x_axis[j]))
 
     # Print accuracies
+    print("\nTest Accuracies")
     print(table_acc)
 
+    print("\nPatient Accuracies")
+    print(table_pat_acc)
+
+    print("\nTest Information")
     mean_accuracies = np.array(mean_accuracies)
     bigger_figsize = list(plt.rcParams.get('figure.figsize'))
     bigger_figsize[0] += 2
@@ -368,6 +378,27 @@ def main(filename1=None, filename2=None, filename3=None, destination_folder=None
                 break
             print("  {}. Accuracy: {}".format(k + 1, mean_accuracies[j, i]))
             print("     Model:    {}".format(combs[j]))
+
+    print("\nPatient Information")
+    mean_pat_accuracies = np.array(mean_pat_accuracies)
+    bigger_figsize = list(plt.rcParams.get('figure.figsize'))
+    bigger_figsize[0] += 2
+    bigger_figsize[1] += 1.5
+    fig_num = fig_num + 1
+    plt.figure(fig_num, figsize=bigger_figsize)
+    plt.axhline(0.93, color='k', linestyle=':', label="BFT accuracy")
+    for i in range(len(x_axis)):
+        plot_line(mean_pat_accuracies[:, i], show=show_plots, fig_num=fig_num,
+                  label="{} patients training".format(x_axis[i]), y_label="Patient Accuracy",
+                  title="Patient Accuracies - Training set size vs. Model",
+                  legend_out=(i == len(x_axis) - 1), xticks_labels=combs)
+        print("Training: {} patients".format(x_axis[i]))
+        print("  {}. Patient Accuracy: {}".format(0, np.mean(mean_pat_accuracies[:, i])))
+        for k, j in enumerate(np.argsort(mean_pat_accuracies[:, i])[::-1]):
+            if k >= 5:
+                break
+            print("  {}. Patient Accuracy: {}".format(k + 1, mean_accuracies[j, i]))
+            print("     Model:            {}".format(combs[j]))
 
     # Save PDF results
     save_plt_figures_to_pdf("{}/figures_median.pdf".format(destination_folder))
@@ -441,4 +472,6 @@ if __name__ == "__main__":
             print("\n--------------------------------------------------------------------------\n")
             main(filename1=filename1, filename2=filename2, filename3=filename3,
                  destination_folder="{}/{}".format(destination_folder, base_name))
+            input("Press ENTER to see next...")
+
             print("\n--------------------------------------------------------------------------\n")
