@@ -408,7 +408,17 @@ def analyze_data(volumes, labels, patients, masks, plot_data=True, initial_figur
         all_slices[label].append(volume.shape[2])
         num_labels[label] += 1
     sizes_masks_mean = [s / n for s, n in zip(sizes_masks, num_labels)]
-    print("\nNumber patients:", num_labels[0] + num_labels[1])
+    patients_labels = []
+    for p in np.unique(patients):
+        # Get index first occurence of every patient
+        idx_first = next(i for i, pp in enumerate(patients) if p == pp)
+        patients_labels.append(labels[idx_first])
+    num_patient_labels = Counter(patients_labels)
+    print("\nNumber unique patients: {} (label 0: {}, label 1: {})".format(len(patients_labels),
+                                                                         num_patient_labels[0],
+                                                                         num_patient_labels[1]))
+    print("Number samples: {} (label 0: {}, label 1: {})".format(num_labels[0] + num_labels[1]),
+                                                                 num_labels[0], num_labels[1])
     print(" ")
     print("LABEL 1")
     print("  NUMBER SAMPLES: {}".format(num_labels[1]))
