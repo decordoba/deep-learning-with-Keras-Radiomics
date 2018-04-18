@@ -287,6 +287,25 @@ def bootstrap_augment_dataset(volumes, labels, masks, patients, num_samples, max
     return samples_x, samples_y, samples_m, samples_p
 
 
+def scale_dataset(volumes, masks, scale=0.5):
+    """Scale volumes and masks by a factor."""
+    # Get approximation of median radius of tumor and radius of every tumor
+    new_volumes = []
+    new_masks = []
+    for x, m in zip(volumes, masks):
+        # Transform dataset to floats if necessary
+        if not np.issubdtype(x[0, 0, 0], np.floating):
+            x = x.astype(float)
+        if not np.issubdtype(m[0, 0, 0], np.floating):
+            m = m.astype(float)
+        # Scale image
+        scaled_x, scaled_m = scale_volume(x, m, scales=scale)
+        # Covert mask to 0s and 1s again, limit the number of decimals saved, and put in lists
+        new_volumes.append(np.around(scaled_x, decimals=6))
+        new_masks.append((scaled_m >= 0.5).astype(int))
+    return new_volumes, new_masks
+
+
 def parse_arguments():
     """Parse arguments in code."""
     parser = argparse.ArgumentParser(description="Calculate several statistics from dataset.")

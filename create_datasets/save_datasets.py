@@ -13,6 +13,7 @@ from collections import Counter
 from parse_volumes_dataset import plot_pet_slice
 from generate_dataset import get_current_time
 from sample_dataset import convert_volumes_to_medians, augment_dataset, bootstrap_augment_dataset
+from sample_dataset import scale_dataset
 from parse_volumes_dataset import atenuate_image_from_mask, expand_mask
 
 
@@ -887,7 +888,7 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
                        medians=False, augment_rotate=None, augment_scale=None, skip_patients=None,
                        augment_translate=None, exact_number_patients=None, augment_bootstrap=None,
                        balanced_augmentation=False, hash_num="", aux_masks=None,
-                       imbalance_labels=None):
+                       imbalance_labels=None, reduce_images=False):
     """Save dataset so labels & slices medians are equally distributed in training and test set."""
     # Add suffixes ta dataset name, so it is easy to know how every dataset was generated
     if not convert_to_2d and not medians:
@@ -912,6 +913,9 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
         augt = augment_translate if augment_translate is not None else 0
         augs = augment_scale if augment_scale is not None else 0
         dataset_name += "_augmented-s{}-r{}-t{}".format(augs, augr, augt)
+    if reduce_images:
+        reduction = 2
+        dataset_name += "_reduced{}".format(reduction)
     if medians:
         dataset_name += "_mos"
     if not normalize:
@@ -1052,6 +1056,16 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
                               initial_figure=30, suffix="_normalized",
                               title_suffix="(Normalized)", dataset_name=dataset_name)
         num_patients_by_label, medians_by_label, results = params
+
+    if reduce_images:
+        print("\nReducing images by factor {}...".format(reduction))
+        if not np.issubdtype(x[0, 0, 0], np.floating):
+            x = x.astype(float)
+        if not np.issubdtype(m[0, 0, 0], np.floating):
+            m = m.astype(float)
+        x_set, tmp_masks = scale_dataset(x_set, masks, scale=1 / reduction)
+        if aux_masks is None:
+            masks = tmp_masks
 
     if args.zero_non_mask_pixels:
         print("\nErasing (zeroing) pixels outside the mask (leave margin: {})..."
@@ -1445,6 +1459,8 @@ def parse_arguments(suffix=""):
                         help="set to zero all pixels not in the mask")
     parser.add_argument('-zm', '--leave_margin_when_zeroing', default=False, action="store_true",
                         help="leave a margin of 3 pixels when zeroing non mask pixels")
+    parser.add_argument('-ri', '--reduce_images', default=False, action="store_true",
+                        help="reduce images length 1/2 in every direction (reduce volume 1/8)")
     parser.add_argument('-y', '--yes', default=False, action="store_true",
                         help="skip confirmation dialogs, this will overwrite data without asking")
     parser.add_argument('-l', '--lumpy', default=False, action="store_true",
@@ -1571,4 +1587,5 @@ if __name__ == "__main__":
                            balanced_augmentation=args.balanced_augmentation,
                            exact_number_patients=args.exact_number_patients,
                            skip_patients=args.skip_patients, hash_num=hash_num,
-                           aux_masks=aux_masks, imbalance_labels=args.num_labels0)
+                           aux_masks=aux_masks, imbalance_labels=args.num_labels0,
+                           reduce_images=args.reduce_images)
