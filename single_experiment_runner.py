@@ -1085,7 +1085,13 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
               np.array(range(len(pat_all_data_log["pred_percentages"]))) + 0.5,
               label="Label conviction", color="#00ff00", fig_num=f, show=show_plots,
               axis=(None, None, -0.005, 1.005), style=".-")
-    print("Patient order in figure 13: \n{}".format(np.array(patients_whole)[order]))
+    seen_patients = set()
+    ordered_unique_patients = []
+    for p in patients_whole:
+        if p not in seen_patients:
+            ordered_unique_patients.append(p)
+            seen_patients.add(p)
+    print("Patient order in figure {}: \n{}".format(f, np.array(ordered_unique_patients)[order]))
     # Fig 0
     f = 0
     plot_image(location + "/model0.png", fig_num=f, title="Model used", show=show_plots)
