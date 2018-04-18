@@ -417,8 +417,8 @@ def analyze_data(volumes, labels, patients, masks, plot_data=True, initial_figur
     print("\nNumber unique patients: {} (label 0: {}, label 1: {})".format(len(patients_labels),
                                                                          num_patient_labels[0],
                                                                          num_patient_labels[1]))
-    print("Number samples: {} (label 0: {}, label 1: {})".format(num_labels[0] + num_labels[1]),
-                                                                 num_labels[0], num_labels[1])
+    print("Number samples: {} (label 0: {}, label 1: {})".format(num_labels[0] + num_labels[1],
+                                                                 num_labels[0], num_labels[1]))
     print(" ")
     print("LABEL 1")
     print("  NUMBER SAMPLES: {}".format(num_labels[1]))
