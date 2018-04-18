@@ -417,6 +417,8 @@ if __name__ == "__main__":
     subfolders = sorted(next(os.walk(source_folder))[1])
     if destination_subfolder in subfolders:
         subfolders.remove(destination_subfolder)
+    if "old_experiments" in subfolders:
+        subfolders.remove("old_experiments")
     for i, subfolder in enumerate(subfolders):
         full_path = "{}/{}".format(source_folder, subfolder)
         pkl_names = [x for x in os.listdir(full_path) if x.endswith(".pkl")]
