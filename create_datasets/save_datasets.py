@@ -1059,13 +1059,18 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
 
     if reduce_images:
         print("\nReducing images by factor {}...".format(reduction))
-        if not np.issubdtype(x[0, 0, 0], np.floating):
-            x = x.astype(float)
-        if not np.issubdtype(m[0, 0, 0], np.floating):
-            m = m.astype(float)
-        x_set, tmp_masks = scale_dataset(x_set, masks, scale=1 / reduction)
+        tmp_x, tmp_masks = scale_dataset(x_set, masks, scale=1 / reduction, verbose=True)
+        # plt.ion()
+        # for i, (x, y, p, m) in enumerate(zip(x_set, y_set, patients, masks)):
+        #     plot_pet_slice(x, center=int(x.shape[2] / 2), mask=m, figure=99,
+        #                    label="patient {} - label {}".format(p, y))
+        #     plot_pet_slice(tmp_x[i], center=int(tmp_x[i].shape[2] / 2), mask=tmp_masks[i],
+        #                    figure=98, label="reduced - patient {} - label {}".format(p, y))
+        # plt.ioff()
+        # plt.close("all")
         if aux_masks is None:
             masks = tmp_masks
+        x_set = tmp_x
 
     if args.zero_non_mask_pixels:
         print("\nErasing (zeroing) pixels outside the mask (leave margin: {})..."
