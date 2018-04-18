@@ -978,7 +978,7 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
             medians_by_label, results = medians_by_label3, results3
             num_patients_by_label = num_patients_by_label3
 
-    if exact_number_patients is not None:
+    if exact_number_patients is not None and aux_masks is None:
         if skip_patients is None or skip_patients < 0:
             skip_patients = 0
         print("\nRemoving all but {} patients exactly (patients skipped: {})..."
@@ -997,8 +997,22 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
             x_set, y_set, patients, masks = get_imbalanced_dataset(x_set, y_set, patients, masks,
                                                                    num_label0, num_label1,
                                                                    skip_patients)
+    elif aux_masks is not None:
+        # The number of masks defines how many patients we generate
+        print("\nExchanging original masks by external masks...")
+        x_set, y_set, patients, masks = substitute_masks(x_set, y_set, patients, aux_masks,
+                                                         skip_patients=skip_patients)
+        if exact_number_patients is not None:
+            y_set = y_set[:exact_number_patients]
+            x_set = x_set[:exact_number_patients]
+            patients = patients[:exact_number_patients]
+            masks = masks[:exact_number_patients]
 
     if data_interpolation is not None:
+        if aux_masks is not None:
+            input("Data interpolation and using the masks from a different dataset has not been "
+                  "tested together (most likely all masks will be deformed). "
+                  "Use at your own risk!")
         # Adjust slices so that all pixels are the same width, length and height
         hash_filename = "interpolation{}.pkl".format(hash_num)
         # This step is really slow, so save data with hash to avoid repeating it
@@ -1028,16 +1042,6 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
                               initial_figure=30, suffix="_normalized",
                               title_suffix="(Normalized)", dataset_name=dataset_name)
         num_patients_by_label, medians_by_label, results = params
-
-    if aux_masks is not None:
-        print("\nExchanging original masks by external masks...")
-        x_set, y_set, patients, masks = substitute_masks(x_set, y_set, patients, aux_masks)
-        # plt.ion()
-        # for i, (x, y, p, m) in enumerate(zip(x_set, y_set, patients, masks)):
-        #     plot_pet_slice(x, center=int(x.shape[2] / 2), mask=m, figure=99,
-        #                    label="patient {} - label {}".format(p, y))
-        # plt.ioff()
-        # plt.close("all")
 
     if args.zero_non_mask_pixels:
         print("\nErasing (zeroing) pixels outside the mask (leave margin: {})..."
