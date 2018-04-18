@@ -9,6 +9,7 @@ from matplotlib import pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import scipy.stats as stats
 from scipy.interpolate import RegularGridInterpolator
+import sys
 from collections import Counter
 from parse_volumes_dataset import plot_pet_slice
 from generate_dataset import get_current_time
@@ -416,8 +417,8 @@ def analyze_data(volumes, labels, patients, masks, plot_data=True, initial_figur
         patients_labels.append(labels[idx_first])
     num_patient_labels = Counter(patients_labels)
     print("\nNumber unique patients: {} (label 0: {}, label 1: {})".format(len(patients_labels),
-                                                                         num_patient_labels[0],
-                                                                         num_patient_labels[1]))
+                                                                           num_patient_labels[0],
+                                                                           num_patient_labels[1]))
     print("Number samples: {} (label 0: {}, label 1: {})".format(num_labels[0] + num_labels[1],
                                                                  num_labels[0], num_labels[1]))
     print(" ")
@@ -887,7 +888,7 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
                        convert_to_2d=True, resampling=None, skip_dialog=False, plot_slices=False,
                        medians=False, augment_rotate=None, augment_scale=None, skip_patients=None,
                        augment_translate=None, exact_number_patients=None, augment_bootstrap=None,
-                       balanced_augmentation=False, hash_num="", aux_masks=None,
+                       balanced_augmentation=False, hash_num="", aux_masks=None, args_str=None,
                        imbalance_labels=None, reduce_images=False):
     """Save dataset so labels & slices medians are equally distributed in training and test set."""
     # Add suffixes ta dataset name, so it is easy to know how every dataset was generated
@@ -943,6 +944,14 @@ def improved_save_data(x_set, y_set, patients, masks, dataset_name="organized",
     num_patients_by_label, medians_by_label, results = analyze_data(x_set, y_set, patients, masks,
                                                                     plot_data=plot_data,
                                                                     dataset_name=dataset_name)
+    # Save arguments used in a file
+    if args_str is not None:
+        args_filename = "args_{}".format(args_str.replace(" ", "_").replace("/", "-"))
+        if len(args_filename) > 255:
+            args_filename = args_filename[:252] + "..."
+        with open("data/{}/{}".format(dataset_name, args_filename), 'w') as file:
+            file.write("save_datasets.py " + args_str)
+
     if trim_data:
         slices, sizes, box_sizes, abs_num_slices = results
         slices = slices[0] + slices[1]
@@ -1581,6 +1590,7 @@ if __name__ == "__main__":
                          args.trim, args.unnormalized, dataset_name,
                          args.exact_number_patients, args.skip_patients)
         hash_num = hashlib.sha224(str(relevant_data).encode("utf-8")).hexdigest()
+        args_str = " ".join(sys.argv[1:])
         improved_save_data(x, y, patients, masks, dataset_name=dataset_name, plot_data=args.plot,
                            trim_data=args.trim, data_interpolation=data_interpolation,
                            convert_to_2d=not args.in_3d, resampling=resampling,
@@ -1593,4 +1603,4 @@ if __name__ == "__main__":
                            exact_number_patients=args.exact_number_patients,
                            skip_patients=args.skip_patients, hash_num=hash_num,
                            aux_masks=aux_masks, imbalance_labels=args.num_labels0,
-                           reduce_images=args.reduce_images)
+                           reduce_images=args.reduce_images, args_str=args_str)
