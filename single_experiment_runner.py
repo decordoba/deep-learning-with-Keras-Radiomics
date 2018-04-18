@@ -582,19 +582,23 @@ def reorder_maintaining_label_balance(x_set, y_set, m_set, p_set):
     """
     # All patients are unique
     unique_p = np.unique(p_set)
+    try:
+        labels = np.array(y_set)[:, 1]
+    except IndexError:
+        pass
     if len(unique_p) == len(p_set):
-        c = Counter(y_set)
+        c = Counter(labels)
         c0 = c[0]
         c1 = c[1]
-        assert(c0 + c1 == len(y_set))
-        c0 = c0 / len(y_set)
-        c1 = c1 / len(y_set)
-        idx_ones = np.argwhere(np.array(y_set) == 1).transpose()[0]
-        idx_zeros = np.argwhere(np.array(y_set) == 0).transpose()[0]
+        assert(c0 + c1 == len(labels))
+        c0 = c0 / len(labels)
+        c1 = c1 / len(labels)
+        idx_ones = np.argwhere(np.array(labels) == 1).transpose()[0]
+        idx_zeros = np.argwhere(np.array(labels) == 0).transpose()[0]
         new_x_set, new_y_set, new_m_set, new_p_set = [], [], [], []
         n0 = 0
         n1 = 0
-        for i in range(len(y_set)):
+        for i in range(len(labels)):
             # Fins if we should add a patient with label 0 or 1, and add it
             if abs((n0 + 1) * c1 - n1 * c0) <= abs(n0 * c1 - (n1 + 1) * c0):
                 new_x_set.append(x_set[idx_zeros[n0]])
@@ -608,7 +612,7 @@ def reorder_maintaining_label_balance(x_set, y_set, m_set, p_set):
                 new_m_set.append(m_set[idx_ones[n1]])
                 new_p_set.append(p_set[idx_ones[n1]])
                 n1 += 1
-        return new_x_set, new_y_set, new_m_set, new_p_set
+        return np.array(new_x_set), np.array(new_y_set), np.array(new_m_set), new_p_set, n0, n1
     # Patients are not unique
     else:
         idxs_first_p = []
@@ -616,7 +620,7 @@ def reorder_maintaining_label_balance(x_set, y_set, m_set, p_set):
         for up in unique_p:
             # Get index first occurence of every patient
             idxs_first_p.append(next(i for i, p in enumerate(p_set) if p == up))
-            patients_labels.append(y_set[idxs_first_p[-1]])
+            patients_labels.append(labels[idxs_first_p[-1]])
         c = Counter(patients_labels)
         c0 = c[0]
         c1 = c[1]
@@ -648,8 +652,8 @@ def reorder_maintaining_label_balance(x_set, y_set, m_set, p_set):
             new_m_set.extend(m_set[idx0:idx1])
             new_p_set.extend(p_set[idx0:idx1])
         # If this fails, same patients were not adjacent
-        assert(len(new_y_set) == len(y_set))
-        return new_x_set, new_y_set, new_m_set, new_p_set
+        assert(len(new_p_set) == len(p_set))
+        return np.array(new_x_set), np.array(new_y_set), np.array(new_m_set), new_p_set, n0, n1
 
 
 def get_confusion_matrix(model, x_set, y_set, dummy=None):
@@ -2065,7 +2069,9 @@ def main(correction):
     if args.organize_patients:
         print("\nOrganizing patients by label...")
         params = reorder_maintaining_label_balance(x_whole, y_whole, mask_whole, patients_whole)
-        x_whole, y_whole, mask_whole, patients_whole = params
+        x_whole, y_whole, mask_whole, patients_whole, numpatients0, numpatients1 = params
+        print("Number patients: {} (label 0: {}, label 1: {})".format(numpatients0 + numpatients1,
+                                                                      numpatients0, numpatients1))
 
     if args.plot_slices:
         plt.close("all")
