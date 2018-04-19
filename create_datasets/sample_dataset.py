@@ -91,7 +91,7 @@ def translate_randomly(volume, mask, translation=None, max_distance=5):
     translated_volume = volume
     translated_mask = mask
     for i, dist in enumerate(translation):
-        minv = int(dist)
+        minv = int(np.floor(dist))
         maxv = minv + 1
         maxf = dist - minv
         minf = 1 - maxf
@@ -268,6 +268,7 @@ def bootstrap_augment_dataset(volumes, labels, masks, patients, num_samples, max
         scale = np.random.random() * (max_scale - min_scale) + min_scale
         # Scale images
         scaled_x, scaled_m = scale_volume(x, m, scales=scale)
+        scaled_x[scaled_x < 0] = 0  # When scaling, some values can go slightly below 0
         # Randomly rotate scaled image
         rotated_x, rotated_m, rot = rotate_randomly(scaled_x, scaled_m)
         # Randomly translate scaled image
@@ -301,6 +302,7 @@ def scale_dataset(volumes, masks, scale=0.5, verbose=False):
             m = m.astype(float)
         # Scale image
         scaled_x, scaled_m = scale_volume(x, m, scales=scale)
+        scaled_x[scaled_x < 0] = 0  # When scaling, some values can go slightly below 0
         # Covert mask to 0s and 1s again, limit the number of decimals saved, and put in lists
         new_volumes.append(np.around(scaled_x, decimals=6))
         new_masks.append((scaled_m >= 0.5).astype(int))
