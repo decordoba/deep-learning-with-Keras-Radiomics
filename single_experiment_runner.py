@@ -463,6 +463,28 @@ def plot_binary_background(y_pts, first_x=0, y_label=None, x_label=None, title=N
         fig.clear()
 
 
+def create_spherical_mask(shape, radius, position=None):
+    """Create mask in shape with radius in position (ones in sphere, zeros everywhere else)."""
+    # shape and position must be a 3-tuple of int or float
+    # the units are pixels / voxels (px for short)
+    # radius is a int or float in px
+    semisizes = (radius,) * 3
+    # sphere positioned in the center of shape if position is None
+    if position is None:
+        position = tuple((np.array(shape) - 1) / 2)
+    # genereate the grid for the support points
+    # centered at the position indicated by position
+    grid = [slice(-x0, dim - x0) for x0, dim in zip(position, shape)]
+    position = np.ogrid[grid]
+    # calculate the distance of all points from `position` center
+    # scaled by the radius
+    arr = np.zeros(shape, dtype=float)
+    for x_i, semisize in zip(position, semisizes):
+        arr += (np.abs(x_i / semisize) ** 2)
+    # the inner part of the sphere will have distance below 1
+    return (arr <= 1.0).astype(int)
+
+
 def load_organized_dataset(path):
     """Load organized dataset (contains balanced train and test set)."""
     try:
@@ -801,6 +823,8 @@ def parse_arguments():
     parser.add_argument('--correction', default=False, action="store_true",
                         help="Correct or rerun some of the combinations in a location (corrections"
                         " must be selected manually in the code)")
+    parser.add_argument('--test_mask_spheres', default=False, action="store_true",
+                        help="Apply several spherical masks to data (only if not --do_cross_val)")
     return parser.parse_args()
 
 
@@ -1157,8 +1181,15 @@ def do_cross_validation(layers, optimizer, loss, x_whole, y_whole, patients_whol
 def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, num_patients,
                      location="training_results", verbose=False, num_epochs=50, comb=None,
                      pdf_name="figures.pdf", show_plots=False, num_patients_te=64,
-                     num_patients_tr=(4, 8, 16, 32, 64, 128, 256, 512, 1024), test_data=None):
-    """Do training on dataset, this is dirty code, sorry."""
+                     num_patients_tr=(4, 8, 16, 32, 64, 128, 256, 512, 1024), test_data=None,
+                     test_mask_spheres=False):
+    """Do training on dataset, this is dirty code, sorry.
+
+    If test_mask_spheres is True, the code goal changes completely. It is then assumed that
+    num_patient_tr is only one number (only the first one is used). Then, the training and test set
+    are applied several masks with spherical shape, to see at what point the sphere is too small
+    to get a good accuracy.
+    """
     # Get splits indices to separate dataset in patients (test set split)
     total_patient_num = -1
     prev_patient = ""
@@ -1216,6 +1247,12 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
     if len(num_patients_tr) > len(tr_idx):
         num_patients_tr = num_patients_tr[:len(tr_idx)]
 
+    if test_mask_spheres:
+        # I am hardcoding this, anyway this is only an experiment
+        spheres = [20, 17, 14, 11, 8, 5, 2]
+        num_patients_tr = [num_patients_tr[0]] * len(spheres)
+        tr_idx = [tr_idx[0]] * len(spheres)
+
     # Create variables where training data will be saved
     historic_acc = None
     historic_val_acc = None
@@ -1254,6 +1291,19 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
             y_test_cv = y_t_whole[:te_t_idx]
             patients_test_cv = patients_t_whole[:te_t_idx]
         print("Training shape: {}, Test shape: {}".format(x_train_cv.shape, x_test_cv.shape))
+
+        # Apply sphere mask
+        if test_mask_spheres:
+            radius = spheres[i]
+            mask = create_spherical_mask(x_train_cv[0].shape, radius)
+            masked_x_train_cv = []
+            for x in x_train_cv:
+                masked_x_train_cv.append(x * mask)
+            x_train_cv = masked_x_train_cv
+            masked_x_test_cv = []
+            for x in x_test_cv:
+                masked_x_test_cv.append(x * mask)
+            x_test_cv = masked_x_test_cv
 
         num_times = 0
         max_num_times = 3
@@ -2222,7 +2272,8 @@ def main(correction):
                                           verbose=args.verbose, num_epochs=args.epochs,
                                           pdf_name=pdf_name, show_plots=args.plot, comb=comb,
                                           num_patients_te=args.test_size,
-                                          num_patients_tr=num_patient_tr, test_data=test_data)
+                                          num_patients_tr=num_patient_tr, test_data=test_data,
+                                          test_mask_spheres=args.test_mask_spheres)
             all_data_comb = (comb, *params)
             with open(sublocation + "/" + results_name, 'wb') as f:
                 pickle.dump(all_data_comb, f)
