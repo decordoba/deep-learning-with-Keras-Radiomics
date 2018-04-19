@@ -464,25 +464,47 @@ def plot_binary_background(y_pts, first_x=0, y_label=None, x_label=None, title=N
 
 
 def create_spherical_mask(shape, radius, position=None):
-    """Create mask in shape with radius in position (ones in sphere, zeros everywhere else)."""
-    # shape and position must be a 3-tuple of int or float
-    # the units are pixels / voxels (px for short)
-    # radius is a int or float in px
+    """Create spherical mask in shape with radius in position (ones in sphere, else zeros)."""
+    # Shape and position must be a 3-tuple of int or float
+    # The units are pixels / voxels (px for short)
+    # Radius is a int or float in px
     semisizes = (radius,) * 3
-    # sphere positioned in the center of shape if position is None
+    # Sphere positioned in the center of shape if position is None
     if position is None:
         position = tuple((np.array(shape) - 1) / 2)
-    # genereate the grid for the support points
-    # centered at the position indicated by position
+    # Genereate the grid for the support points
+    # Centered at the position indicated by position
     grid = [slice(-x0, dim - x0) for x0, dim in zip(position, shape)]
     position = np.ogrid[grid]
-    # calculate the distance of all points from `position` center
-    # scaled by the radius
+    # Calculate the distance of all points from `position` center
+    # Scaled by the radius
     arr = np.zeros(shape, dtype=float)
     for x_i, semisize in zip(position, semisizes):
         arr += (np.abs(x_i / semisize) ** 2)
-    # the inner part of the sphere will have distance below 1
+    # The inner part of the sphere will have distance below 1
     return (arr <= 1.0).astype(int)
+
+
+def create_cylindrical_mask(shape, radius):
+    """Create vertical cylindrical mask in shape with radius in center image."""
+    # Shape must be a 3-tuple of int, the units are pixels / voxels (px for short)
+    # Radius is a int or float in px
+    semisizes = (radius,) * 2
+    # Cylinder positioned in the center of shape
+    position = tuple((np.array(shape[:2]) - 1) / 2)
+    # Genereate the grid for the support points
+    # Centered at the position indicated by position
+    grid = [slice(-x0, dim - x0) for x0, dim in zip(position, shape[:2])]
+    position = np.ogrid[grid]
+    # Calculate the distance of all points from `position` center
+    # Scaled by the radius
+    arr = np.zeros(shape[:2], dtype=float)
+    for x_i, semisize in zip(position, semisizes):
+        arr += (np.abs(x_i / semisize) ** 2)
+    # The inner part of the circumpherence will have distance below 1
+    one_slice = (arr <= 1.0).astype(int)
+    # Replicate circumpherence slice for every slice in shape
+    return np.rot90(np.array([one_slice] * shape[2]), axes=(0, 2))
 
 
 def load_organized_dataset(path):
@@ -1292,10 +1314,10 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
             patients_test_cv = patients_t_whole[:te_t_idx]
         print("Training shape: {}, Test shape: {}".format(x_train_cv.shape, x_test_cv.shape))
 
-        # Apply sphere mask
+        # Apply sphere mask (the masks are cylinders because the 3 channels are image medians)
         if test_mask_spheres:
             radius = spheres[i]
-            mask = create_spherical_mask(x_train_cv[0].shape, radius)
+            mask = create_cylindrical_mask(x_train_cv[0].shape, radius)
             masked_x_train_cv = []
             for x in x_train_cv:
                 masked_x_train_cv.append(x * mask)
