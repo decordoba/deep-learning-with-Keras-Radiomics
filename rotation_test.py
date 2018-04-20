@@ -1,8 +1,11 @@
+#!/usr/bin/env python3.5
+"""Small code to test and see scaling, rotation or translation of 3d images."""
 import numpy as np
 import matplotlib.pylab as plt
 from skimage import transform
 from mpl_toolkits.mplot3d import Axes3D
 from scipy import ndimage
+from plot_volume_in_3d import plot_volume_in_3D
 
 
 def rotate_randomly(volume, mask, rotations=None):
@@ -28,14 +31,18 @@ def translate_randomly(volume, mask, translation=None, max_distance=5):
     if translation is None:
         dist = np.square(np.random.random() * max_distance)
         translation = np.zeros(3)
-        translation[0] = np.random.random() * dist
-        translation[1] = np.random.random() * (dist - translation[0])
-        translation[2] = dist - translation[0] - translation[1]
+        pt1 = np.random.random() * dist
+        pt2 = np.random.random() * dist
+        if pt1 > pt2:
+            pt1, pt2 = pt2, pt1
+        translation[0] = pt1
+        translation[1] = pt2 - pt1
+        translation[2] = dist - pt1
         translation = np.sqrt(translation) * ((np.random.randint(0, 2, 3) * 2) - 1)
     translated_volume = volume
     translated_mask = mask
     for i, dist in enumerate(translation):
-        minv = int(dist)
+        minv = int(np.floor(dist))
         maxv = minv + 1
         maxf = dist - minv
         minf = 1 - maxf
@@ -90,8 +97,8 @@ def plot_slices_volume(vol, vmin=0, vmax=1):
         plt.yticks([])
 
 
-def plot_volume_in_3d(vol):
-    """Docstring for plot_volume_in_3d."""
+def original_plot_volume_in_3d(vol):
+    """Docstring for original_plot_volume_in_3d."""
     tmp = np.zeros(vol.shape)
     for x in range(1, vol.shape[0] - 1):
         for y in range(1, vol.shape[1] - 1):
@@ -137,19 +144,23 @@ a[8:13, 12:16, 5:13] = 0  # this adds hole in cube
 # a[3:6, 3:6, 3:6] = 1
 # a[1:3, 4:5, 4:5] = 1
 
+# Shape from file
+# f = np.load("tmp_volume.npz")
+# a = f["v"]
+
 # Plot slices volume
 plot_slices_volume(a)
 
 # Plot volume in 3D
-plot_volume_in_3d(a)
+plot_volume_in_3D(a, show=False, fig_num=None)
 
-test = "r"
+test = "t"
 
 if test == "r":
     ad, ae, rotations = rotate_randomly(a, a)
     print("Rotations:", rotations)
 elif test == "t":
-    ad, ae, translations = translate_randomly(a, a, translation=None, max_distance=5)
+    ad, ae, translations = translate_randomly(a, a, translation=None, max_distance=2)
     print("Translations:", translations)
 elif test == "s":
     scales = [0.8, 1, 1.2]
@@ -165,84 +176,15 @@ if test == "r" or test == "t":
     # Plot slices volume
     plot_slices_volume(ad)
     # Plot volume in 3D
-    plot_volume_in_3d(ad)
+    plot_volume_in_3D(ad, show=False, fig_num=None)
 elif test == "s":
     # Plot slices volume
     plot_slices_volume(ad[0])
     plot_slices_volume(ad[1])
     plot_slices_volume(ad[2])
     # Plot volume in 3D
-    plot_volume_in_3d(ad[0])
-    plot_volume_in_3d(ad[1])
-    plot_volume_in_3d(ad[2])
+    plot_volume_in_3D(ad[0], show=False, fig_num=None)
+    plot_volume_in_3D(ad[1], show=False, fig_num=None)
+    plot_volume_in_3D(ad[2], fig_num=None)
 
 input("Press ENTER to exit")
-
-# aa = np.rot90(a, axes=(0, 1))
-# ab = np.rot90(aa, axes=(1, 2))
-# ac = np.rot90(ab, axes=(0, 2))
-#
-# fig = plt.figure()
-# for i in range(9):
-#     ax = fig.add_subplot(3, 3, i+1)
-#     ax.set_aspect('equal')
-#     plt.imshow(aa[:, :, i], interpolation='nearest', cmap="gray")
-#
-#
-# fig = plt.figure()
-# for i in range(9):
-#     ax = fig.add_subplot(3, 3, i+1)
-#     ax.set_aspect('equal')
-#     plt.imshow(ab[:, :, i], interpolation='nearest', cmap="gray")
-#
-# fig = plt.figure()
-# for i in range(9):
-#     ax = fig.add_subplot(3, 3, i+1)
-#     ax.set_aspect('equal')
-#     plt.imshow(ac[:, :, i], interpolation='nearest', cmap="gray")
-#
-# # rotate 45 degrees
-# c = transform.rotate(a, 45, order=1)
-# d = transform.rotate(a, 45, order=2)
-# e = transform.rotate(a, 45, order=3)
-# f = transform.rotate(a, 45, order=4)
-#
-# plt.close("all")
-# plt.ion()
-# fig = plt.figure()
-# for i in range(9):
-#     ax = fig.add_subplot(3, 3, i+1)
-#     ax.set_aspect('equal')
-#     plt.imshow(a[:, :, i], interpolation='nearest', cmap="gray")
-#
-# fig = plt.figure()
-# for i in range(9):
-#     ax = fig.add_subplot(3, 3, i+1)
-#     ax.set_aspect('equal')
-#     plt.imshow(c[:, :, i], interpolation='nearest', cmap="gray")
-#
-# # fig = plt.figure()
-# # ax = fig.add_subplot(1,1,1)
-# # ax.set_aspect('equal')
-# # plt.imshow(d, interpolation='nearest', cmap="gray")
-# #
-# # fig = plt.figure()
-# # ax = fig.add_subplot(1,1,1)
-# # ax.set_aspect('equal')
-# # plt.imshow(e, interpolation='nearest', cmap="gray")
-# #
-# # fig = plt.figure()
-# # ax = fig.add_subplot(1,1,1)
-# # ax.set_aspect('equal')
-# # plt.imshow(f, interpolation='nearest', cmap="gray")
-# #
-# # # rotate 45 degrees
-# # c = imrotate(a, 45, "nearest")
-# # d = imrotate(a, 45, "bilinear")
-# # e = imrotate(a, 45, "cubic")
-# # f = imrotate(a, 45, "bicubic")
-# #
-# # fig = plt.figure()
-# # ax = fig.add_subplot(1,1,1)
-# # ax.set_aspect('equal')
-# # plt.imshow(d, interpolation='nearest', cmap="gray")
