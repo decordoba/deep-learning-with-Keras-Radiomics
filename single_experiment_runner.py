@@ -1271,7 +1271,7 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
 
     if test_mask_spheres:
         # I am hardcoding this, anyway this is only an experiment
-        spheres = [20, 17, 14, 11, 8, 5, 2]
+        spheres = [10, 7, 5, 3, 2, 1]  # Hardcoded, almost Fibonacci numbers
         num_patients_tr = [num_patients_tr[0]] * len(spheres)
         tr_idx = [tr_idx[0]] * len(spheres)
 
@@ -1321,11 +1321,11 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
             masked_x_train_cv = []
             for x in x_train_cv:
                 masked_x_train_cv.append(x * mask)
-            x_train_cv = masked_x_train_cv
+            x_train_cv = np.array(masked_x_train_cv)
             masked_x_test_cv = []
             for x in x_test_cv:
                 masked_x_test_cv.append(x * mask)
-            x_test_cv = masked_x_test_cv
+            x_test_cv = np.array(masked_x_test_cv)
 
         num_times = 0
         max_num_times = 3
@@ -1471,7 +1471,10 @@ def do_training_test(layers, optimizer, loss, x_whole, y_whole, patients_whole, 
                         show=show_plots)
     # Fig 1
     f = 1
-    title_train = ["Training: {} patients".format(x) for x in num_patients_tr]
+    if not test_mask_spheres:
+        title_train = ["Training: {} patients".format(x) for x in num_patients_tr]
+    else:
+        title_train = ["Radius Sphere: {}".format(x) for x in spheres]
     plot_multiple_accuracy_curves(all_data_log["history_acc"], all_data_log["history_val_acc"],
                                   title="Accuracy History  vs.  Dataset Size", fig_num=f,
                                   show=show_plots, labels=title_train)
@@ -2354,10 +2357,14 @@ def main(correction):
         x_axis = range(1, args.folds + 1)
         x_scale = "linear"
         x_label = "Cross Validation Fold Number"
-    else:
+    elif not args.test_mask_spheres:
         x_axis = num_patient_tr
         x_scale = "log"
         x_label = "Number of Patients in Training Set"
+    else:
+        x_axis = [10, 7, 5, 3, 2, 1]  # Hardcoded, almost Fibonacci numbers
+        x_scale = "linear"
+        x_label = "Radius Spheres in pixels"
     x_history = range(1, args.epochs + 1)
     for i, (comb, all_cv, all_train, pat_cv, history, rocs) in enumerate(all_data):
         figsize = wider_figsize if i == 0 else None
