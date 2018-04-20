@@ -12,3 +12,4 @@ __pycache__/
 *.txt
 *.zip
 nn*
+create_datasets/data/
