@@ -3,7 +3,9 @@
 import os
 import sys
 import argparse
+import imageio
 import numpy as np
+from PIL import Image, ImageChops
 from single_experiment_runner import load_organized_dataset, plot_slices
 from single_experiment_runner import limit_number_patients_per_label
 from matplotlib import pyplot as plt
@@ -14,6 +16,7 @@ from scipy.stats import ks_2samp, iqr
 sys.path.insert(0, 'create_datasets')
 from save_datasets import calculate_shared_axis, plot_boxplot, plot_histogram
 from save_datasets import save_plt_figures_to_pdf, analyze_data, simple_plot_histogram
+from parse_volumes_dataset import plot_pet_slice
 
 
 def get_statistics_mask(mask):
@@ -160,6 +163,8 @@ def parse_arguments():
                         "save pdf with results")
     parser.add_argument('-sd', '--save_dataset', default=False, action="store_true", help="save "
                         "a features dataset (mean, std, volume...)")
+    parser.add_argument('-ss', '--save_slices', default=False, action="store_true", help="save "
+                        "median slice and median slice with mask images")
     parser.add_argument('-f', '--factor', default=False, action="store_true",
                         help="multiply all data by 255")
     return parser.parse_args()
@@ -222,6 +227,71 @@ def calculate_similarity(list0, list1, num_samples=10000):
                                                                       similarity_sampled))
 
 
+def remove_background_color(im):
+    """Remove background frame in an image."""
+    bg = Image.new(im.mode, im.size, im.getpixel((0, 0)))
+    diff = ImageChops.difference(im, bg)
+    diff = ImageChops.add(diff, diff, 2.0, -100)
+    bbox = diff.getbbox()
+    if bbox:
+        return im.crop(bbox)
+    return im
+
+
+def save_images_median_slice(x_whole, y_whole, mask_whole, patients_whole):
+    """Save every median slice as an image with and without mask, and image with all medians."""
+    folder = "median_images"
+    try:
+        os.mkdir(folder)
+    except FileExistsError:
+        pass
+    plt.close("all")
+    labels = y_whole[:, 1]
+    order = [[], []]
+    for i, label in enumerate(labels):
+        order[int(label)].append(i)
+    order = order[0] + order[1]
+    if len(labels) == 77:
+        h, w = 7, 11
+    elif len(labels) == 60:
+        h, w = 6, 10
+    else:
+        h = int(np.floor(np.sqrt(len(labels))))
+        w = int(np.ceil(np.sqrt(len(labels))))
+        if w * h < len(labels):
+            h += 1
+    result = None
+    result_mask = None
+    img_w = None
+    img_h = None
+    for i, idx in enumerate(order):
+        (x, y, m, p) = x_whole[idx], labels[idx], mask_whole[idx], patients_whole[idx]
+        filename = "Patient {} - Label {}".format(p, int(y))
+        image_path = "{}/{}.png".format(folder, filename)
+        mask_path = "{}/{}_masked.png".format(folder, filename)
+        plot_pet_slice(x, mask=None, center=int(x.shape[2] / 2), label=filename, figure=0,
+                       square_pixels=True, show_axis=False, quit_immediately=True)
+        plt.savefig(image_path, bbox_inches='tight')
+        plot_pet_slice(x, mask=m, center=int(x.shape[2] / 2), label=filename, figure=1,
+                       square_pixels=True, show_axis=False, quit_immediately=True)
+        plt.savefig(mask_path, bbox_inches='tight')
+        img = remove_background_color(Image.open(image_path))
+        if result is None:
+            img_w, img_h = img.size
+            result = Image.new("RGB", (img_w * w, img_h * h))
+            result_mask = Image.new("RGB", (img_w * w, img_h * h))
+        coords_x = (i // h) * img_w
+        coords_y = (i % h) * img_h
+        result.paste(img, (coords_x, coords_y, coords_x + img_w, coords_y + img_h))
+        img_mask = remove_background_color(Image.open(mask_path))
+        result_mask.paste(img_mask, (coords_x, coords_y, coords_x + img_w, coords_y + img_h))
+    result.save("{}/{}.png".format(folder, "all_patients"))
+    result_mask.save("{}/{}.png".format(folder, "all_patients_masked"))
+    gif_list = [np.array(result)] * 5 + [np.array(result_mask)]
+    imageio.mimsave("{}/{}.gif".format(folder, "all_patients"), gif_list, duration=0.4)
+    plt.close("all")
+
+
 def main():
     """Load dataset and print statistics."""
     # Parse arguments
@@ -232,7 +302,18 @@ def main():
     if not os.path.exists(dataset_location) and not dataset_location.startswith("data/"):
         dataset_location = "data/{}".format(dataset_location)
     x_whole, y_whole, mask_whole, patients_whole = read_dataset(dataset_location, args.size,
-                                                                args.plot_slices, args.plot)
+                                                                False, args.plot)
+    if args.plot_slices:
+        plt.ion()
+        for i, (x, y, m, p) in enumerate(zip(x_whole, y_whole, mask_whole, patients_whole)):
+            plot_pet_slice(x, mask=m, center=int(x.shape[2] / 2), square_pixels=True,
+                           label="Patient {} - Label {}".format(p, int(y[1])))
+        plt.ioff()
+        plt.close("all")
+
+    if args.save_slices:
+        print("Saving Median Slices as Images...")
+        save_images_median_slice(x_whole, y_whole, mask_whole, patients_whole)
 
     # Calculate statistics
     metrics = [{
