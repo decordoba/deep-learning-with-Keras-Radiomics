@@ -233,6 +233,7 @@ if __name__ == "__main__":
 
     # Create gif with all gifs with the same label
     if not args.plot and args.save_all_in_one and smallest_image_shape is not None:
+        # Save label0 and label1 in different gifs
         if not args.save_in_same_gif:
             for i in range(len(gifs)):
                 if len(gifs[i]) == 45:
@@ -260,6 +261,7 @@ if __name__ == "__main__":
                 gif_filename = "label{}.gif".format(i)
                 imageio.mimsave(gif_filename, images)
                 print("Saved gif '{}'".format(gif_filename))
+        # Save label0 and label1 in same gif
         else:
             num_gifs = 0
             for i in range(len(gifs)):
@@ -267,6 +269,9 @@ if __name__ == "__main__":
             if num_gifs == 60:
                 w = 10
                 h = 6
+            elif num_gifs == 77:
+                w = 11
+                h = 7
             else:
                 w = int(np.floor(np.sqrt(num_gifs)))
                 h = int(np.ceil(np.sqrt(num_gifs)))
