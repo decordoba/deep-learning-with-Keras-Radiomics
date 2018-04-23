@@ -2339,8 +2339,9 @@ def main(correction):
         times_taken.append(clock() - t)
         print("\nFinished combination: {}".format(comb))
         print("  Time taken:         {} s".format(times_taken[-1]))
-        print("  Mean time taken:    {} s".format(np.median(times_taken)))
-        print("  Expected time left: {} s".format((num_comb - i) * np.median(times_taken)))
+        print("  Mean time taken:    {} s".format(np.mean(times_taken)))
+        print("  Expected time left: {} s ({} more jobs)"
+              "".format((num_comb - i) * np.mean(times_taken)), (num_comb - i))
 
     # Plot summary of results
     print("\nGenerating global figures...")
