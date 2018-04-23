@@ -6,6 +6,7 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn import svm
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import pyplot as plt
+from sklearn.metrics import classification_report, confusion_matrix
 
 
 def plot_3d_results(x_mean, x_std, x_volume, y, unique_y, clusters, fignum=0, pause=True,
@@ -46,6 +47,33 @@ def plot_3d_results(x_mean, x_std, x_volume, y, unique_y, clusters, fignum=0, pa
         plt.close("all")
 
 
+def get_confusion_matrix(true_labels, pred_labels):
+    """Docstring for get_confusion_matrix."""
+    errors_vector = np.array(pred_labels != true_labels)
+    num_errors = np.sum(errors_vector)
+    size_set = pred_labels.size
+    accuracy = 1 - num_errors / size_set
+    print("  Results: {} errors from {} examples.".format(num_errors, size_set))
+    print("  Accuracy: {}".format(accuracy))
+    print("  Confusion Matrix (true 0s are col 0, true 1s are col 1):")
+    confusion_mat = confusion_matrix(true_labels, pred_labels)
+    if len(confusion_mat) < 2:
+        if true_labels[0] == 0:
+            confusion_mat = np.array([[confusion_mat[0, 0], 0], [0, 0]])
+        else:
+            confusion_mat = np.array([[0, 0], [0, confusion_mat[0, 0]]])
+    print("        {}\n        {}".format(confusion_mat[0], confusion_mat[1]))
+    print("  Precision and Recall:")
+    num_true_labels = [sum(confusion_mat[0, :]), sum(confusion_mat[1, :])]
+    num_pred_labels = [sum(confusion_mat[:, 0]), sum(confusion_mat[:, 1])]
+    recall = [confusion_mat[0, 0] / num_true_labels[0], confusion_mat[1, 1] / num_true_labels[1]]
+    precision = [confusion_mat[0, 0] / num_pred_labels[0],
+                 confusion_mat[1, 1] / num_pred_labels[1]]
+    print("    Precision: {}".format(precision))
+    print("    Recall: {}".format(recall))
+    print("   ", classification_report(true_labels, pred_labels).replace("\n", "\n    "))
+
+
 def main():
     """Fins bayesian boundary of features dataset."""
     # Load and extract data from dataset
@@ -69,6 +97,8 @@ def main():
     # Return an index list of which cluster every sample belongs to
     clusters1 = g.predict(x)
     # Plot
+    print("\nGaussian Mixture Model")
+    get_confusion_matrix(y, clusters1)
     plot_3d_results(x_mean, x_std, x_volume, y, unique_y, clusters1, fignum=0, pause=False,
                     window_title="Gaussian Mixture Model")
 
@@ -77,6 +107,8 @@ def main():
     clf.fit(x, y)
     clusters2 = clf.predict(x)
     # Plot
+    print("\nGaussian Naive Bayes")
+    get_confusion_matrix(y, clusters2)
     plot_3d_results(x_mean, x_std, x_volume, y, unique_y, clusters2, fignum=1, pause=False,
                     window_title="Gaussian Naive Bayes")
 
@@ -84,6 +116,9 @@ def main():
     clf = svm.SVC(degree=1)
     clf.fit(x, y)
     clusters3 = clf.predict(x)
+    # Plot
+    print("\nSupport Vector Machines")
+    get_confusion_matrix(y, clusters3)
     plot_3d_results(x_mean, x_std, x_volume, y, unique_y, clusters3, fignum=2, pause=True,
                     window_title="Support Vector Machines")
 
