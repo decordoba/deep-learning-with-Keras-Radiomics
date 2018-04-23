@@ -13,7 +13,7 @@ from calculate_dataset_statistics import read_dataset
 def plot_volume_in_3D(volume, threshold=0.5, mask=None, fig_num=0, normalize_volume=True,
                       save_location=None, cmap="autumn", relative_colors=True, split_volume=False,
                       offset=None, show=True, axis_labels_off=True, white_background=False,
-                      white_background_shrink=False, frame=None):
+                      white_background_shrink=False, shrink_margin=5, frame=None):
     """Plot 3D matrix as 3D pixels, show only pixels in mask or with threshold.
 
     Mask should be a boolean mask, where hidden pixels should have value 0 or False.
@@ -82,7 +82,7 @@ def plot_volume_in_3D(volume, threshold=0.5, mask=None, fig_num=0, normalize_vol
         ax.axis('off')
     if show:
         plt.show()
-    if white_background and white_background_shrink:
+    if white_background_shrink:
         min_left_idx = None
         max_right_idx = None
         min_top_idx = None
@@ -95,7 +95,7 @@ def plot_volume_in_3D(volume, threshold=0.5, mask=None, fig_num=0, normalize_vol
             ax.view_init(elev=10., azim=view_angle)
             plt.savefig(filename)
             image = imageio.imread(filename)
-            if white_background and white_background_shrink:
+            if white_background_shrink:
                 left_idx = 0
                 right_idx = image.shape[0] - 1
                 top_idx = 0
@@ -127,12 +127,11 @@ def plot_volume_in_3D(volume, threshold=0.5, mask=None, fig_num=0, normalize_vol
                     min_top_idx = top_idx
                     max_bottom_idx = bottom_idx
             images.append(image)
-        if white_background and white_background_shrink:
-            margin = 5
-            min_left_idx = max(0, min_left_idx - margin)
-            min_top_idx = max(0, min_top_idx - margin)
-            max_right_idx += margin + 1
-            max_bottom_idx += margin + 1
+        if white_background_shrink:
+            min_left_idx = max(0, min_left_idx - shrink_margin)
+            min_top_idx = max(0, min_top_idx - shrink_margin)
+            max_right_idx += shrink_margin + 1
+            max_bottom_idx += shrink_margin + 1
             for i, image in enumerate(images):
                 images[i] = image[min_left_idx:max_right_idx, min_top_idx:max_bottom_idx]
         elif frame is not None:
@@ -161,7 +160,7 @@ def parse_arguments():
     parser.add_argument('-s', '--size', default=None, type=int, metavar="N",
                         help="number of patients to save as gifs (default: all)")
     parser.add_argument('-sp', '--skip_patients', default=0, type=int, metavar="N",
-                        help="skip this number of patients when (default: 0)")
+                        help="skip this number of patients (default: 0)")
     parser.add_argument('-d', '--dataset', default="organized", type=str, metavar="PATH",
                         help="location of the dataset inside the ./data folder "
                         "(default: organized)")
@@ -169,6 +168,8 @@ def parse_arguments():
                         help="split volume to see the inside (recommended)")
     parser.add_argument('-wb', '--white_background', default=False, action="store_true",
                         help="remove background grid behind volume")
+    parser.add_argument('-swb', '--shrink_white_background', default=False, action="store_true",
+                        help="remove white frame in image (makes gifs smaller)")
     parser.add_argument('-al', '--axis_labels', default=False, action="store_true",
                         help="show numbers in axis")
     parser.add_argument('-p', '--plot', default=False, action="store_true",
@@ -179,6 +180,8 @@ def parse_arguments():
                         help="save both labels in the same gif (when -saio enabled)")
     parser.add_argument('-usd', '--use_saved_data', default=False, action="store_true",
                         help="get gifs from old 'volume_gifs.pkl' file")
+    parser.add_argument('--patients', default=None, type=str, help="specifically create"
+                        "these patients only; separate patients with spaces inside quotes ''")
     return parser.parse_args()
 
 
@@ -195,12 +198,17 @@ if __name__ == "__main__":
             pass
         gifs = [[], []]
         smallest_image_shape = None
+        if args.patients is not None:
+            args.patients = args.patients.split()
         for i, (x, y, m, p) in enumerate(zip(images, labels, masks, patients)):
             # Skip patients if required
-            if i < args.skip_patients:
+            if i < args.skip_patients and args.patients is None:
                 continue
             if args.size is not None and i >= args.skip_patients + args.size:
-                break
+                if args.patients is None:
+                    break
+            if args.patients is not None and p not in args.patients:
+                continue
             # Format label
             try:
                 y = y[1]
@@ -215,7 +223,9 @@ if __name__ == "__main__":
             frame = frame if args.white_background is False else (0.5, 0.5)
             gif = plot_volume_in_3D(x, mask=m, split_volume=args.split_volume, show=args.plot,
                                     white_background=args.white_background, frame=frame,
-                                    axis_labels_off=not args.axis_labels, save_location=gif_name)
+                                    axis_labels_off=not args.axis_labels, save_location=gif_name,
+                                    white_background_shrink=args.shrink_white_background,
+                                    shrink_margin=0)
             # Calculate metrics that will be used if args.save_all_in_one is enabled
             gifs[y].append(gif)
             if gifs[y][-1] is not None:
@@ -233,6 +243,9 @@ if __name__ == "__main__":
 
     # Create gif with all gifs with the same label
     if not args.plot and args.save_all_in_one and smallest_image_shape is not None:
+        if args.shrink_white_background:
+            input("Every image has a different size, this may not work well. "
+                  "Press ENTER to continue...")
         # Save label0 and label1 in different gifs
         if not args.save_in_same_gif:
             for i in range(len(gifs)):
