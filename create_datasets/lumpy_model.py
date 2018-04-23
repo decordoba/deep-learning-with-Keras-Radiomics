@@ -117,13 +117,18 @@ def rescale_image(image, rng, convert_to_int=False):
 
 
 def get_lumpy_image(DIM, NBAR, DC, LUMP_FUNCTION, PARS, DISCRETE_LUMPS, RANGE_VALUES, SIGMA,
-                    MASK_THRESHOLD):
+                    MASK_THRESHOLD, add_noise=True, gaussian_probability=True):
     """Create lumpy image and add a noisy background to it."""
+    rnd_type = 1 if gaussian_probability else 0
     image, n, lumps_pos = lumpy_backround(dim=DIM, nbar=NBAR, dc=DC, lump_function=LUMP_FUNCTION,
                                           pars=PARS, discretize_lumps_positions=DISCRETE_LUMPS,
-                                          exact=True)
+                                          exact=True, rnd_type=rnd_type)
 
-    noisy_image, background = add_background(image, sigma=SIGMA, attenuation=1)
+    if add_noise:
+        noisy_image, background = add_background(image, sigma=SIGMA, attenuation=1)
+    else:
+        noisy_image = image
+        background = np.zeros(image.shape)
     final_image = rescale_image(noisy_image, rng=RANGE_VALUES, convert_to_int=True)
     return final_image, image, background, lumps_pos
 
@@ -272,9 +277,9 @@ def parse_arguments(d, n, dc, p1, p2, r, t, v):
                         metavar='N')
     parser.add_argument('-dc', '--dc_offset', default=dc, type=int, help="default: {}".format(dc),
                         metavar='N')
-    parser.add_argument('-p1', '--pars1', default=p1, type=int, help="default: {}".format(p1),
+    parser.add_argument('-p1', '--pars1', default=p1, type=float, help="default: {}".format(p1),
                         metavar='N')
-    parser.add_argument('-p2', '--pars2', default=p2, type=int, help="default: {}".format(p2),
+    parser.add_argument('-p2', '--pars2', default=p2, type=float, help="default: {}".format(p2),
                         metavar='N')
     parser.add_argument('-r', '--range', default=r, type=int, help="default: {}".format(r),
                         metavar='N')
