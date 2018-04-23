@@ -186,7 +186,7 @@ def get_size_mask_efficiently(mask):
 
 def simple_plot_histogram(data, title=None, figure=0, subfigure=None, bins=10, xlim=None,
                           show=True, figsize=(8 * 2, 6 * 2), window_title=None, close_all=False,
-                          label_histogram=None, alpha=1):
+                          label_histogram=None, alpha=1, axis=None):
     """Plot histogram of data."""
     # Close and erase all old figures
     if close_all:
@@ -195,7 +195,7 @@ def simple_plot_histogram(data, title=None, figure=0, subfigure=None, bins=10, x
     if subfigure is not None:
         fig.add_subplot(subfigure)
     # Use this to draw histogram of the data
-    plt.hist(data, normed=True, bins=bins, label=label_histogram, alpha=alpha)
+    n, bins, patches = plt.hist(data, normed=True, bins=bins, label=label_histogram, alpha=alpha)
     if xlim is not None:
         plt.xlim(xlim)
     if title is not None:
@@ -203,9 +203,13 @@ def simple_plot_histogram(data, title=None, figure=0, subfigure=None, bins=10, x
         fig.canvas.set_window_title("Figure {} - {}".format(figure, title))
     if window_title is not None:
         fig.canvas.set_window_title("Figure {} - {}".format(figure, window_title))
-    plt.legend()
+    if axis is not None:
+        plt.axis(axis)
+    if label_histogram is not None:
+        plt.legend()
     if show:
         plt.show()
+    return n, bins, patches
 
 
 def plot_histogram(data, title=None, figure=0, subfigure=None, bins=10, xlim=None, show=True,
@@ -260,17 +264,17 @@ def plot_histogram(data, title=None, figure=0, subfigure=None, bins=10, xlim=Non
 
 
 def plot_boxplot(data, title=None, figure=0, subfigure=None, ylim=None, hide_axis_labels=False,
-                 window_title=None, show=True, close_all=False):
+                 window_title=None, show=True, close_all=False, widths=None, figsize=None):
     """Plot a boxplot (figure where we can easily see median, var and mean) of data."""
     # Close and erase all old figures
     if close_all:
         plt.close("all")
     # Draw boxplot
-    fig = plt.figure(figure)
+    fig = plt.figure(figure, figsize=figsize)
     if subfigure is None:
         subfigure = 111
     ax = fig.add_subplot(subfigure)
-    ax.boxplot(data, showmeans=True)
+    ax.boxplot(data, showmeans=True, widths=widths)
     if ylim is not None:
         plt.ylim(ylim)
     if title is not None:
