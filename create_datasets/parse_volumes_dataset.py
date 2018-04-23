@@ -36,7 +36,7 @@ def get_big_mask(pet_image, mask=None, mask_offset=None):
 
 
 def plot_pet_slice(pet_image, center=None, box=None, mask=None, mask_offset=None, label=None,
-                   figure=0):
+                   figure=0, show_axis=True, square_pixels=False, quit_immediately=False):
     """
     mask and pet_image should be same size
     box is 2 coordinates, we will cut mask and pet_image there
@@ -88,13 +88,22 @@ def plot_pet_slice(pet_image, center=None, box=None, mask=None, mask_offset=None
             fig.canvas.set_window_title("slice: {}/{}".format(i + 1, boxed_pet_image.shape[2]))
         plt.clf()
         plt.pcolormesh(boxed_pet_image[:, :, i], vmin=vmin, vmax=vmax, cmap=cmap)
-        print("Slice: {}/{}".format(i + 1, boxed_pet_image.shape[2]))
+        if square_pixels:
+            plt.axes().set_aspect("equal")
+        if not show_axis:
+            plt.axis("off")
+        if not quit_immediately:
+            print("Slice: {}/{}".format(i + 1, boxed_pet_image.shape[2]))
         if mask is not None:
-            input("Press ENTER to reveal contour. ")
+            if not quit_immediately:
+                input("Press ENTER to reveal contour. ")
             plt.figure(figure)
             plt.pcolormesh(masked_pet_image[:, :, i], vmin=vmin, vmax=vmax, cmap=cmap,
                            rasterized=True, linewidth=0)
-        c = input("ENTER=continue, R=repeat, N=see all, P=previous, Q=quit. ")
+        if not quit_immediately:
+            c = input("ENTER=continue, R=repeat, N=see all, P=previous, Q=quit. ")
+        else:
+            c = "q"
         if c.startswith("r"):
             i -= 1
         elif c.startswith("p"):
