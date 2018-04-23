@@ -12,7 +12,7 @@ from matplotlib import pyplot as plt
 from keras.utils import np_utils
 from scipy.ndimage.morphology import binary_erosion
 from skimage import feature
-from scipy.stats import ks_2samp, iqr
+from scipy.stats import ks_2samp, iqr, expon
 sys.path.insert(0, 'create_datasets')
 from save_datasets import calculate_shared_axis, plot_boxplot, plot_histogram
 from save_datasets import save_plt_figures_to_pdf, analyze_data, simple_plot_histogram
@@ -167,6 +167,8 @@ def parse_arguments():
                         "median slice and median slice with mask images")
     parser.add_argument('-f', '--factor', default=False, action="store_true",
                         help="multiply all data by 255")
+    parser.add_argument('-pvi', '--plot_volume_histogram', default=False, action="store_true",
+                        help="plot volume histogram and boxplots, and calculate volume metrics")
     return parser.parse_args()
 
 
@@ -315,6 +317,82 @@ def main():
         print("Saving Median Slices as Images...")
         save_images_median_slice(x_whole, y_whole, mask_whole, patients_whole)
 
+    if args.plot_volume_histogram:
+        volumes = [[], []]
+        for x, y, m, p in zip(x_whole, y_whole, mask_whole, patients_whole):
+            ones_pos = np.nonzero(m)
+            volumes[int(y[1])].append(len(ones_pos[0]))
+        volume_factor = 4.07283 * 4.07283 * 5.0 / (10 ** 3)
+        print("Volumes Statistics:")
+        for i, v in enumerate(volumes):
+            v = np.array(v)
+            print("Label {}".format(i))
+            print("  VOLUME (px)")
+            print("  median: {}".format(np.median(v)))
+            print("  std:    {}".format(np.std(v)))
+            print("  mean:   {}".format(np.mean(v)))
+            print("  min:    {}".format(np.min(v)))
+            print("  max:    {}".format(np.max(v)))
+            print("  VOLUME (cc)")
+            print("  median: {}".format(np.median(v * volume_factor)))
+            print("  std:    {}".format(np.std(v * volume_factor)))
+            print("  mean:   {}".format(np.mean(v * volume_factor)))
+            print("  min:    {}".format(np.min(v * volume_factor)))
+            print("  max:    {}".format(np.max(v * volume_factor)))
+        plt.ion()
+        # Units: px
+        all_volumes = np.array(volumes[0] + volumes[1])
+        y_axis, x_axis, _ = simple_plot_histogram(all_volumes, bins=12, show=True,
+                                                  figsize=None, alpha=1, figure=0,
+                                                  label_histogram="Histogram",
+                                                  axis=(0, None, None, None))
+        P = expon.fit(all_volumes)
+        rX = np.linspace(0, x_axis[-1] / 12 * 13, 100)
+        rP = expon.pdf(rX, *P)
+        plt.xlabel("Volume (px)")
+        sorted_data = sorted(all_volumes)
+        first = int(np.round(len(sorted_data) * 0.1))
+        last = int(np.round(len(sorted_data) * 0.9))
+        plt.axvline(x=sorted_data[first], color="#eced22", ls="--", lw=2, label="10 % limit")
+        plt.axvline(x=sorted_data[last], color="#e62728", ls="--", lw=2, label="90 % limit")
+        plt.plot(rX, rP, label="Exponential", lw=2)
+        plt.legend()
+        # Units: cc
+        all_volumes = all_volumes * volume_factor
+        y_axis, x_axis, _ = simple_plot_histogram(all_volumes, bins=12, show=True,
+                                                  figsize=None, alpha=1, figure=1,
+                                                  label_histogram="Histogram",
+                                                  axis=(0, None, None, None))
+        P = expon.fit(all_volumes)
+        rX = np.linspace(0, x_axis[-1] / 12 * 13, 100)
+        rP = expon.pdf(rX, *P)
+        plt.xlabel("Volume (cc)")
+        sorted_data = sorted(all_volumes)
+        first = int(np.round(len(sorted_data) * 0.1))
+        last = int(np.round(len(sorted_data) * 0.9))
+        plt.axvline(x=sorted_data[first], color="#eced22", ls="--", lw=2, label="10 % limit")
+        plt.axvline(x=sorted_data[last], color="#e62728", ls="--", lw=2, label="90 % limit")
+        plt.plot(rX, rP, label="Exponential", lw=2)
+        plt.legend()
+        # Boxplots
+        figsize = list(plt.rcParams.get('figure.figsize'))
+        figsize[0] *= 0.47
+        figsize[1] *= 0.8
+        widths = 0.5
+        plot_boxplot(volumes, figure=2, show=True, window_title="Boxplot Volumes (px)",
+                     widths=widths, figsize=figsize)
+        plt.ylabel("Volume (px)")
+        plt.xlim(0.3, 2.7)  # Brings boxplots closer
+        plt.tight_layout()
+        plot_boxplot(np.array([np.array(volumes[0]), np.array(volumes[1])]) * volume_factor,
+                     figure=3, show=True, window_title="Boxplot Volumes (px)", widths=widths,
+                     figsize=figsize)
+        plt.ylabel("Volume (cc)")
+        plt.xlim(0.3, 2.7)  # Brings boxplots closer
+        plt.tight_layout()
+        input("Press ENTER to continue ")
+        plt.ioff()
+
     # Calculate statistics
     metrics = [{
         "std": [], "mean": [], "median": [], "surface_to_volume": [],
@@ -385,7 +463,7 @@ def main():
         print("    Data saved: {}".format(dataset_info))
         print("    X shape:    {}".format(dataset_x.shape))
         print("    Y shape:    {}".format(dataset_y.shape))
-        dataset_name = "features_dataset_{}".format(dataset_info)
+        dataset_name = "features_dataset_{}_{}".format(dataset_info, dataset_location)
         np.savez(dataset_name, x=dataset_x, y=dataset_y)
         print("Dataset saved in: '{}.npz'\n".format(dataset_name))
 
