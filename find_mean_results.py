@@ -84,6 +84,7 @@ def main(filename1=None, filename2=None, filename3=None, destination_folder=None
     table_pat_acc = PrettyTable(["Model \\ Training Samples"] + x_axis + ["Average"])
     mean_accuracies = []
     mean_pat_accuracies = []
+    mean_roc = []
     combs = []
     for i, (params1, params2, params3) in enumerate(zip(all_data1, all_data2, all_data3)):
         comb1, all_cv1, all_train1, all_pat1, history1, rocs1 = params1
@@ -246,6 +247,7 @@ def main(filename1=None, filename2=None, filename3=None, destination_folder=None
         # Fig 13
         f = 13
         rocs = []
+        mean_roc.append([])
         for ii in range(len(all_data_log["true_cv"])):
             # Compute ROC curve and ROC area for each class
             fpr = dict()
@@ -259,6 +261,7 @@ def main(filename1=None, filename2=None, filename3=None, destination_folder=None
             fpr["micro"], tpr["micro"], _ = roc_curve(all_data_log["true_cv"][ii].ravel(),
                                                       all_data_log["pred_cv"][ii].ravel())
             roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
+            mean_roc[-1].append(roc_auc["micro"])
             rocs.append((fpr, tpr, roc_auc))
         plot_multiple_roc_curves(rocs, title="ROC Curves  vs.  Dataset Size", fig_num=f,
                                  show=show_plots, labels=title_train)
@@ -267,6 +270,7 @@ def main(filename1=None, filename2=None, filename3=None, destination_folder=None
         save_plt_figures_to_pdf(destination_folder + "/" + "-".join([str(x) for x in comb]) + "_figures.pdf")
 
     plt.close("all")
+    combs = []
     for i, (params1, params2, params3) in enumerate(zip(all_data1, all_data2, all_data3)):
         comb1, all_cv1, all_train1, all_pat1, history1, rocs1 = params1
         comb2, all_cv2, all_train2, all_pat2, history2, rocs2 = params2
@@ -377,6 +381,28 @@ def main(filename1=None, filename2=None, filename3=None, destination_folder=None
             if k >= 5:
                 break
             print("  {}. Accuracy: {}".format(k + 1, mean_accuracies[j, i]))
+            print("     Model:    {}".format(combs[j]))
+
+    print(" ")
+    mean_roc = np.array(mean_roc)
+    # bigger_figsize = list(plt.rcParams.get('figure.figsize'))
+    # bigger_figsize[0] += 2
+    # bigger_figsize[1] += 1.5
+    fig_num = 27 + len(all_cv1["history_val_acc"])
+    plt.figure(fig_num, figsize=bigger_figsize)
+    plt.axhline(0.982, color='k', linestyle=':', label="BFT AUC")
+    print(mean_roc.shape)
+    for i in range(len(x_axis)):
+        plot_line(mean_roc[:, i], show=show_plots, fig_num=fig_num,
+                  label="{} patients".format(x_axis[i]), y_label="ROC AUC",
+                  title="Training set size vs. Model AUC", x_label="Models",
+                  legend_out=(i == len(x_axis) - 1), xticks_labels=range(1, len(combs) + 1))
+        print("Training: {} patients".format(x_axis[i]))
+        print("  {}. ROC Area: {}".format(0, np.mean(mean_roc[:, i])))
+        for k, j in enumerate(np.argsort(mean_roc[:, i])[::-1]):
+            if k >= 5:
+                break
+            print("  {}. Accuracy: {}".format(k + 1, mean_roc[j, i]))
             print("     Model:    {}".format(combs[j]))
 
     print("\nPatient Information")
