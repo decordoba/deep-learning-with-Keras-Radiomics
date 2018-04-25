@@ -580,7 +580,7 @@ def limit_number_patients_per_label(x_whole, y_whole, mask_whole, patients_whole
         patients_whole = s_patients_whole
     # If no change needed in number of patients, return them all
     if num_patients_per_label is None:
-        return x_whole, y_whole, mask_whole, patients_whole
+        return np.array(x_whole), np.array(y_whole), np.array(mask_whole), patients_whole
     # Get only first num_patients_per_label patients
     n0, n1, i0, i1 = 0, 0, None, None
     new_x, new_y, new_mask, new_patients = [], [], [], []
@@ -2124,7 +2124,7 @@ def main(correction):
                      dataset_name=None)
     else:
         print("Dataset contains {} samples which contain {} unique patients"
-              "".format(len(x_whole)), len(np.unique(patients_whole)))
+              "".format(len(x_whole), len(np.unique(patients_whole))))
 
     patients = np.unique(patients_whole)
     if args.dataset_test is not None:
