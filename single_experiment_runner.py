@@ -485,13 +485,14 @@ def create_spherical_mask(shape, radius, position=None):
     return (arr <= 1.0).astype(int)
 
 
-def create_cylindrical_mask(shape, radius):
+def create_cylindrical_mask(shape, radius, position=None):
     """Create vertical cylindrical mask in shape with radius in center image."""
     # Shape must be a 3-tuple of int, the units are pixels / voxels (px for short)
     # Radius is a int or float in px
     semisizes = (radius,) * 2
     # Cylinder positioned in the center of shape
-    position = tuple((np.array(shape[:2]) - 1) / 2)
+    if position is None:
+        position = tuple((np.array(shape[:2]) - 1) / 2)
     # Genereate the grid for the support points
     # Centered at the position indicated by position
     grid = [slice(-x0, dim - x0) for x0, dim in zip(position, shape[:2])]
